@@ -872,6 +872,11 @@ def DeadStoresChecker : Checker<"DeadStores">,
   ]>,
   Documentation<HasDocumentation>;
 
+def UnassignedReturnValueChecker : Checker<"UnassignedReturnValue">,
+  HelpText<"Return value is unassigned">,
+  Documentation<HasDocumentation>;
+
+
 } // end DeadCode
 
 let ParentPackage = DeadCodeAlpha in {
