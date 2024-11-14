@@ -47,10 +47,19 @@ void UnassignedReturnValueChecker::checkPreCall(const CallEvent &Call,
 void UnassignedReturnValueChecker::checkPostCall(const CallEvent &Call,
                                       CheckerContext &C) const {
   
+  if (const FunctionDecl *FD = Call.getDecl()->getAsFunction()) {
+        if (FD->getNameInfo().getName().getAsString() == "__builtin_constant_p" || 
+            FD->getNameInfo().getName().getAsString() == "errmsg" ||
+            FD->getNameInfo().getName().getAsString() == "errcode"
+        ) {
+            return; // skip analysis for `ereport` calls
+        }
+  }
   SVal returnValue = Call.getReturnValue();
-            if (returnValue.isUndef() || returnValue.isUnknown()) {
-                return;
-            }
+  if (returnValue.isUndef() || returnValue.isUnknown()) {
+    return;
+  }
+
   QualType resultType = Call.getResultType();
 
   for (unsigned i=0; i < Call.getNumArgs(); i++){
@@ -63,19 +72,17 @@ void UnassignedReturnValueChecker::checkPostCall(const CallEvent &Call,
       ErrorNode = C.generateNonFatalErrorNode();
 
     }
-
-  
+  llvm::outs() << Call.getDecl()->getAsFunction()->getNameAsString() << "\n";
   }
-  
 }
 void UnassignedReturnValueChecker::checkDeadSymbols(SymbolReaper &SR, CheckerContext &C) const{
   if (ReturnValueSymbol && SR.isDead(ReturnValueSymbol)){
     if (ErrorNode){
       emitUnassigned(C, ArgExpr);
-    }
+    } 
+
   }
   ReturnValueSymbol = nullptr; 
-
 }
 
 
