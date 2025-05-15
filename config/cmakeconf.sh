@@ -1,4 +1,8 @@
 #/bin/bash
+if [[ "$LLVM_HOME" == "" ]]; then
+  echo "LLVM_HOME is not defined!"
+  exit 1
+fi
 rm -r $LLVM_HOME/release $LLVM_HOME/install
 mkdir $LLVM_HOME/release $LLVOM_HOME/install
 cd $LLVM_HOME/release
