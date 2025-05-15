@@ -103,7 +103,7 @@ def LocalizabilityOptIn : Package<"localizability">, ParentPackage<CocoaOptIn>;
 
 def MPI : Package<"mpi">, ParentPackage<OptIn>;
 
-def Postgres : Package<"postgres">, ParentPackage<OptIn>;
+def Postgres : Package<"postgres">;
 
 def LLVM : Package<"llvm">;
 def LLVMAlpha : Package<"llvm">, ParentPackage<Alpha>;
@@ -1382,7 +1382,7 @@ def PostgresChecker : Checker<"Postgres-Checker">,
   HelpText<"Checks Postgres code">,
   Documentation<HasDocumentation>;
 
-} // end "optin.mpi"
+} // end "postgres"
 
 //===----------------------------------------------------------------------===//
 // Checkers for LLVM development.

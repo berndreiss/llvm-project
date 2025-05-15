@@ -33,12 +33,19 @@ using namespace clang;
 using namespace ento;
 
 class PostgresChecker :
-    public Checker<check::PreCall> {
+    public Checker<check::PreCall, check::Location> {
   //const BugType BT{this, "Out-of-bound array access"};
 
 public:
   void checkPreCall(const CallEvent &Call, CheckerContext &C) const;
-  bool checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S);
+  void checkLocation(SVal l, bool isLoad, const Stmt *S, CheckerContext &C) const;
+  bool checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S) const;
+private:
+  void HandleUseAfterFree(CheckerContext &C, SourceRange Range,
+                          SymbolRef Sym) const;
+  void HandleDoubleFree(CheckerContext &C, SourceRange Range, bool Released,
+                        SymbolRef Sym, SymbolRef PrevSym) const;
+
 };
 
 class RefState {
@@ -105,10 +112,13 @@ public:
   }
 
   LLVM_DUMP_METHOD void dump() const { dump(llvm::errs()); }
+
 };
 
 
 REGISTER_MAP_WITH_PROGRAMSTATE(RegionState, SymbolRef, RefState)
+
+static bool isReleased(SymbolRef Sym, CheckerContext &C);
 
 class Dependency{
   std::string arg;
@@ -117,10 +127,18 @@ class Dependency{
 
 llvm::StringMap<std::string> StrictMap;
 llvm::StringMap<Dependency> DendentMap;
+void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
+                          SymbolRef Sym) const{
 
-void handleDoubleFree(){
+  llvm::outs() << "USE AFTER FREE!\n";
+}
+
+  void PostgresChecker::HandleDoubleFree(CheckerContext &C, SourceRange Range, bool Released,
+                        SymbolRef Sym, SymbolRef PrevSym) const{
+
   llvm::outs() << "DOUBLE FREE!\n";
 }
+
 void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) const {
 
   const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(Call.getDecl());
@@ -180,7 +198,7 @@ void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) con
   if (RsBase){
     // Check for double free
     if (RsBase->isReleased() || RsBase->isRelinquished()){
-      handleDoubleFree();
+      HandleDoubleFree(C, ParentExpr->getSourceRange(), RsBase->isReleased(), SymBase, PreviousRetStatusSymbol);
     }
   }
 
@@ -207,9 +225,34 @@ void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) con
     //llvm::errs() << IL.has_value() << "\n";
   }
 }
-bool checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S){
-  return true;
+
+bool PostgresChecker::checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S) const{
+
+  if (isReleased(Sym, C)) {
+    HandleUseAfterFree(C, S->getSourceRange(), Sym);
+    return true;
+  }
+
+  return false;
+
 }
+
+static bool isReleased(SymbolRef Sym, CheckerContext &C) {
+  assert(Sym);
+  const RefState *RS = C.getState()->get<RegionState>(Sym);
+  return (RS && RS->isReleased());
+}
+
+// Check if the location is a freed symbolic region.
+void PostgresChecker::checkLocation(SVal l, bool isLoad, const Stmt *S,
+                                  CheckerContext &C) const {
+  SymbolRef Sym = l.getLocSymbolInBase();
+  if (Sym) {
+    checkUseAfterFree(Sym, C, S);
+  }
+}
+
+
 
 namespace clang {
 namespace ento {
