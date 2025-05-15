@@ -490,8 +490,7 @@ bool ScopDetection::onlyValidRequiredInvariantLoads(
 
     for (auto NonAffineRegion : Context.NonAffineSubRegionSet) {
       if (isSafeToLoadUnconditionally(Load->getPointerOperand(),
-                                      Load->getType(), Load->getAlign(), DL,
-                                      nullptr))
+                                      Load->getType(), Load->getAlign(), DL))
         continue;
 
       if (NonAffineRegion->contains(Load) &&
@@ -1698,8 +1697,6 @@ bool ScopDetection::hasPossiblyDistributableLoop(
     DetectionContext &Context) const {
   for (auto *BB : Context.CurRegion.blocks()) {
     auto *L = LI.getLoopFor(BB);
-    if (!L)
-      continue;
     if (!Context.CurRegion.contains(L))
       continue;
     if (Context.BoxedLoopsSet.count(L))

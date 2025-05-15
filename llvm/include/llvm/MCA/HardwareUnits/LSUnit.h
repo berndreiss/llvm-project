@@ -210,8 +210,8 @@ class LSUnitBase : public HardwareUnit {
   /// True if loads don't alias with stores.
   ///
   /// By default, the LS unit assumes that loads and stores don't alias with
-  /// each other. If this field is set to false, then loads are always assumed
-  /// to alias with stores.
+  /// eachother. If this field is set to false, then loads are always assumed to
+  /// alias with stores.
   const bool NoAlias;
 
   /// Used to map group identifiers to MemoryGroups.

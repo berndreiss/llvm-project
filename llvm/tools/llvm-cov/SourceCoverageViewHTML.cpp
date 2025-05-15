@@ -1128,45 +1128,36 @@ void SourceCoverageViewHTML::renderBranchView(raw_ostream &OS, BranchView &BRV,
               "line-number") +
               "): [";
 
-    if (R.TrueFolded && R.FalseFolded) {
+    if (R.Folded) {
       OS << "Folded - Ignored]\n";
       continue;
     }
 
     // Display TrueCount or TruePercent.
-    std::string TrueColor =
-        (R.TrueFolded || R.ExecutionCount ? "None" : "red branch");
+    std::string TrueColor = R.ExecutionCount ? "None" : "red branch";
     std::string TrueCovClass =
-        (R.TrueFolded || R.ExecutionCount > 0 ? "covered-line"
-                                              : "uncovered-line");
+        (R.ExecutionCount > 0) ? "covered-line" : "uncovered-line";
 
-    if (R.TrueFolded)
-      OS << "Folded, ";
-    else {
-      OS << tag("span", "True", TrueColor) << ": ";
-      if (getOptions().ShowBranchCounts)
-        OS << tag("span", formatCount(R.ExecutionCount), TrueCovClass) << ", ";
-      else
-        OS << format("%0.2f", TruePercent) << "%, ";
-    }
+    OS << tag("span", "True", TrueColor);
+    OS << ": ";
+    if (getOptions().ShowBranchCounts)
+      OS << tag("span", formatCount(R.ExecutionCount), TrueCovClass) << ", ";
+    else
+      OS << format("%0.2f", TruePercent) << "%, ";
 
     // Display FalseCount or FalsePercent.
-    std::string FalseColor =
-        (R.FalseFolded || R.FalseExecutionCount ? "None" : "red branch");
+    std::string FalseColor = R.FalseExecutionCount ? "None" : "red branch";
     std::string FalseCovClass =
-        (R.FalseFolded || R.FalseExecutionCount > 0 ? "covered-line"
-                                                    : "uncovered-line");
+        (R.FalseExecutionCount > 0) ? "covered-line" : "uncovered-line";
 
-    if (R.FalseFolded)
-      OS << "Folded]\n";
-    else {
-      OS << tag("span", "False", FalseColor) << ": ";
-      if (getOptions().ShowBranchCounts)
-        OS << tag("span", formatCount(R.FalseExecutionCount), FalseCovClass)
-           << "]\n";
-      else
-        OS << format("%0.2f", FalsePercent) << "%]\n";
-    }
+    OS << tag("span", "False", FalseColor);
+    OS << ": ";
+    if (getOptions().ShowBranchCounts)
+      OS << tag("span", formatCount(R.FalseExecutionCount), FalseCovClass);
+    else
+      OS << format("%0.2f", FalsePercent) << "%";
+
+    OS << "]\n";
   }
   OS << EndPre;
   OS << EndExpansionDiv;

@@ -89,6 +89,7 @@ public:
 
   StackOffset getFrameIndexReference(const MachineFunction &MF, int FI,
                                      Register &FrameReg) const override;
+  bool hasFP(const MachineFunction &MF) const override;
 
   const SpillSlot *getCalleeSavedSpillSlots(unsigned &NumEntries)
       const override {
@@ -112,9 +113,6 @@ public:
   const MachineInstr *getAlignaInstr(const MachineFunction &MF) const;
 
   void insertCFIInstructions(MachineFunction &MF) const;
-
-protected:
-  bool hasFPImpl(const MachineFunction &MF) const override;
 
 private:
   using CSIVect = std::vector<CalleeSavedInfo>;

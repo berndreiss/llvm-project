@@ -276,19 +276,6 @@ DeclarationFragments DeclarationFragmentsBuilder::getFragmentsForType(
 
   DeclarationFragments Fragments;
 
-  if (const MacroQualifiedType *MQT = dyn_cast<MacroQualifiedType>(T)) {
-    Fragments.append(
-        getFragmentsForType(MQT->getUnderlyingType(), Context, After));
-    return Fragments;
-  }
-
-  if (const AttributedType *AT = dyn_cast<AttributedType>(T)) {
-    // FIXME: Serialize Attributes correctly
-    Fragments.append(
-        getFragmentsForType(AT->getModifiedType(), Context, After));
-    return Fragments;
-  }
-
   // An ElaboratedType is a sugar for types that are referred to using an
   // elaborated keyword, e.g., `struct S`, `enum E`, or (in C++) via a
   // qualified name, e.g., `N::M::type`, or both.
@@ -1110,6 +1097,7 @@ DeclarationFragmentsBuilder::getFragmentsForTemplateArguments(
           Spelling.clear();
           raw_string_ostream OutStream(Spelling);
           CTA.print(Context.getPrintingPolicy(), OutStream, false);
+          OutStream.flush();
         }
       }
 
@@ -1339,11 +1327,13 @@ DeclarationFragmentsBuilder::getFragmentsForFunctionTemplateSpecialization(
 
 DeclarationFragments
 DeclarationFragmentsBuilder::getFragmentsForMacro(StringRef Name,
-                                                  const MacroInfo *MI) {
+                                                  const MacroDirective *MD) {
   DeclarationFragments Fragments;
   Fragments.append("#define", DeclarationFragments::FragmentKind::Keyword)
       .appendSpace();
   Fragments.append(Name, DeclarationFragments::FragmentKind::Identifier);
+
+  auto *MI = MD->getMacroInfo();
 
   if (MI->isFunctionLike()) {
     Fragments.append("(", DeclarationFragments::FragmentKind::Text);
@@ -1621,9 +1611,6 @@ DeclarationFragmentsBuilder::getSubHeading(const NamedDecl *Decl) {
              cast<CXXMethodDecl>(Decl)->isOverloadedOperator()) {
     Fragments.append(Decl->getNameAsString(),
                      DeclarationFragments::FragmentKind::Identifier);
-  } else if (isa<TagDecl>(Decl) &&
-             cast<TagDecl>(Decl)->getTypedefNameForAnonDecl()) {
-    return getSubHeading(cast<TagDecl>(Decl)->getTypedefNameForAnonDecl());
   } else if (Decl->getIdentifier()) {
     Fragments.append(Decl->getName(),
                      DeclarationFragments::FragmentKind::Identifier);

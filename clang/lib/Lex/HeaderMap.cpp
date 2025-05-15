@@ -54,10 +54,7 @@ std::unique_ptr<HeaderMap> HeaderMap::Create(FileEntryRef FE, FileManager &FM) {
   unsigned FileSize = FE.getSize();
   if (FileSize <= sizeof(HMapHeader)) return nullptr;
 
-  auto FileBuffer =
-      FM.getBufferForFile(FE, /*IsVolatile=*/false,
-                          /*RequiresNullTerminator=*/true,
-                          /*MaybeList=*/std::nullopt, /*IsText=*/false);
+  auto FileBuffer = FM.getBufferForFile(FE);
   if (!FileBuffer || !*FileBuffer)
     return nullptr;
   bool NeedsByteSwap;

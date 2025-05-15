@@ -31,7 +31,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
-#include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -119,7 +119,8 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
     for (WinEHTryBlockMapEntry &TBME : EHInfo.TryBlockMap) {
       for (WinEHHandlerType &H : TBME.HandlerArray) {
         if (const AllocaInst *AI = H.CatchObj.Alloca)
-          CatchObjects[AI].push_back(&H.CatchObj.FrameIndex);
+          CatchObjects.insert({AI, {}}).first->second.push_back(
+              &H.CatchObj.FrameIndex);
         else
           H.CatchObj.FrameIndex = INT_MAX;
       }
@@ -199,22 +200,12 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
             }
           }
         }
+        // Look for calls to the @llvm.va_start intrinsic. We can omit some
+        // prologue boilerplate for variadic functions that don't examine their
+        // arguments.
         if (const auto *II = dyn_cast<IntrinsicInst>(&I)) {
-          switch (II->getIntrinsicID()) {
-          case Intrinsic::vastart:
-            // Look for calls to the @llvm.va_start intrinsic. We can omit
-            // some prologue boilerplate for variadic functions that don't
-            // examine their arguments.
+          if (II->getIntrinsicID() == Intrinsic::vastart)
             MF->getFrameInfo().setHasVAStart(true);
-            break;
-          case Intrinsic::fake_use:
-            // Look for llvm.fake.uses, so that we can remove loads into fake
-            // uses later if necessary.
-            MF->setHasFakeUses(true);
-            break;
-          default:
-            break;
-          }
         }
 
         // If we have a musttail call in a variadic function, we need to ensure
@@ -245,7 +236,6 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
   // Create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
   // also creates the initial PHI MachineInstrs, though none of the input
   // operands are populated.
-  MBBMap.resize(Fn->getMaxBlockNumber());
   for (const BasicBlock &BB : *Fn) {
     // Don't create MachineBasicBlocks for imaginary EH pad blocks. These blocks
     // are really data, and no instructions can live here.
@@ -271,7 +261,7 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
     }
 
     MachineBasicBlock *MBB = mf.CreateMachineBasicBlock(&BB);
-    MBBMap[BB.getNumber()] = MBB;
+    MBBMap[&BB] = MBB;
     MF->push_back(MBB);
 
     // Transfer the address-taken flag. This is necessary because there could
@@ -317,16 +307,20 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
     for (WinEHTryBlockMapEntry &TBME : EHInfo.TryBlockMap) {
       for (WinEHHandlerType &H : TBME.HandlerArray) {
         if (H.Handler)
-          H.Handler = getMBB(cast<const BasicBlock *>(H.Handler));
+          H.Handler = MBBMap[cast<const BasicBlock *>(H.Handler)];
       }
     }
     for (CxxUnwindMapEntry &UME : EHInfo.CxxUnwindMap)
       if (UME.Cleanup)
-        UME.Cleanup = getMBB(cast<const BasicBlock *>(UME.Cleanup));
-    for (SEHUnwindMapEntry &UME : EHInfo.SEHUnwindMap)
-      UME.Handler = getMBB(cast<const BasicBlock *>(UME.Handler));
-    for (ClrEHUnwindMapEntry &CME : EHInfo.ClrEHUnwindMap)
-      CME.Handler = getMBB(cast<const BasicBlock *>(CME.Handler));
+        UME.Cleanup = MBBMap[cast<const BasicBlock *>(UME.Cleanup)];
+    for (SEHUnwindMapEntry &UME : EHInfo.SEHUnwindMap) {
+      const auto *BB = cast<const BasicBlock *>(UME.Handler);
+      UME.Handler = MBBMap[BB];
+    }
+    for (ClrEHUnwindMapEntry &CME : EHInfo.ClrEHUnwindMap) {
+      const auto *BB = cast<const BasicBlock *>(CME.Handler);
+      CME.Handler = MBBMap[BB];
+    }
   } else if (Personality == EHPersonality::Wasm_CXX) {
     WasmEHFuncInfo &EHInfo = *MF->getWasmEHFuncInfo();
     calculateWasmEHInfo(&fn, EHInfo);
@@ -336,16 +330,16 @@ void FunctionLoweringInfo::set(const Function &fn, MachineFunction &mf,
     for (auto &KV : EHInfo.SrcToUnwindDest) {
       const auto *Src = cast<const BasicBlock *>(KV.first);
       const auto *Dest = cast<const BasicBlock *>(KV.second);
-      SrcToUnwindDest[getMBB(Src)] = getMBB(Dest);
+      SrcToUnwindDest[MBBMap[Src]] = MBBMap[Dest];
     }
     EHInfo.SrcToUnwindDest = std::move(SrcToUnwindDest);
     DenseMap<BBOrMBB, SmallPtrSet<BBOrMBB, 4>> UnwindDestToSrcs;
     for (auto &KV : EHInfo.UnwindDestToSrcs) {
       const auto *Dest = cast<const BasicBlock *>(KV.first);
-      MachineBasicBlock *DestMBB = getMBB(Dest);
-      UnwindDestToSrcs[DestMBB] = SmallPtrSet<BBOrMBB, 4>();
+      UnwindDestToSrcs[MBBMap[Dest]] = SmallPtrSet<BBOrMBB, 4>();
       for (const auto P : KV.second)
-        UnwindDestToSrcs[DestMBB].insert(getMBB(cast<const BasicBlock *>(P)));
+        UnwindDestToSrcs[MBBMap[Dest]].insert(
+            MBBMap[cast<const BasicBlock *>(P)]);
     }
     EHInfo.UnwindDestToSrcs = std::move(UnwindDestToSrcs);
   }

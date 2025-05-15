@@ -37,6 +37,7 @@ if(APPLE_EMBEDDED)
 endif()
 
 add_lldb_tool(lldb-server
+    Acceptor.cpp
     lldb-gdbserver.cpp
     lldb-platform.cpp
     lldb-server.cpp

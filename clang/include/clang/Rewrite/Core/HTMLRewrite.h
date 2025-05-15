@@ -17,13 +17,10 @@
 #include "clang/Basic/SourceLocation.h"
 #include <string>
 
-namespace llvm {
-class RewriteBuffer;
-} // namespace llvm
-
 namespace clang {
 
 class Rewriter;
+class RewriteBuffer;
 class Preprocessor;
 
 namespace html {
@@ -56,9 +53,9 @@ namespace html {
 
   /// HighlightRange - This is the same as the above method, but takes
   /// decomposed file locations.
-  void HighlightRange(llvm::RewriteBuffer &RB, unsigned B, unsigned E,
-                      const char *BufferStart, const char *StartTag,
-                      const char *EndTag);
+  void HighlightRange(RewriteBuffer &RB, unsigned B, unsigned E,
+                      const char *BufferStart,
+                      const char *StartTag, const char *EndTag);
 
   /// EscapeText - HTMLize a specified file so that special characters are
   /// are translated so that they are not interpreted as HTML tags.

@@ -1,4 +1,4 @@
-#include <clc/utils.h>
+#include <utils.h>
 
 #define __CLC_SW_FUNC(x) __CLC_CONCAT(__clc_, x)
 

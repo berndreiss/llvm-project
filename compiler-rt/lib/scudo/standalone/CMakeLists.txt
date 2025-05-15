@@ -246,6 +246,7 @@ if(COMPILER_RT_SCUDO_STANDALONE_BUILD_SHARED)
     PARENT_TARGET scudo_standalone)
 endif()
 
+add_subdirectory(benchmarks)
 if(COMPILER_RT_INCLUDE_TESTS)
   add_subdirectory(tests)
 endif()

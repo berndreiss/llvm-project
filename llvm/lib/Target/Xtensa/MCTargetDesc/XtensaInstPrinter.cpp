@@ -74,7 +74,7 @@ void XtensaInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   printAnnotation(O, Annot);
 }
 
-void XtensaInstPrinter::printRegName(raw_ostream &O, MCRegister Reg) {
+void XtensaInstPrinter::printRegName(raw_ostream &O, MCRegister Reg) const {
   O << getRegisterName(Reg);
 }
 

@@ -31,6 +31,8 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/IR/DebugLoc.h"
+#include "llvm/InitializePasses.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 
@@ -138,16 +140,14 @@ bool X86LowerTileCopy::runOnMachineFunction(MachineFunction &MF) {
       MachineInstr *NewMI =
           addFrameReference(BuildMI(MBB, MI, DL, TII->get(Opc)), TileSS)
               .addReg(SrcReg, getKillRegState(SrcMO.isKill()));
-      MachineOperand *MO = &NewMI->getOperand(X86::AddrIndexReg);
-      MO->setReg(GR64Cand ? GR64Cand : X86::RAX);
+      MachineOperand &MO = NewMI->getOperand(2);
+      MO.setReg(GR64Cand ? GR64Cand : X86::RAX);
+      MO.setIsKill(true);
       // tileloadd (%sp, %idx), %tmm
       Opc = GET_EGPR_IF_ENABLED(X86::TILELOADD);
 #undef GET_EGPR_IF_ENABLED
       NewMI = addFrameReference(BuildMI(MBB, MI, DL, TII->get(Opc), DstReg),
                                 TileSS);
-      MO = &NewMI->getOperand(1 + X86::AddrIndexReg);
-      MO->setReg(GR64Cand ? GR64Cand : X86::RAX);
-      MO->setIsKill(true);
       if (!GR64Cand) {
         // restore %rax
         // mov (%sp) %rax

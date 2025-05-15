@@ -10,7 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/Config/llvm-config.h" // for LLVM_ENABLE_THREADS
 #include "llvm/ExecutionEngine/Orc/TargetProcess/JITLoaderGDB.h"
 #include "llvm/ExecutionEngine/Orc/TargetProcess/RegisterEHFrames.h"
 #include "llvm/ExecutionEngine/Orc/TargetProcess/SimpleExecutorMemoryManager.h"

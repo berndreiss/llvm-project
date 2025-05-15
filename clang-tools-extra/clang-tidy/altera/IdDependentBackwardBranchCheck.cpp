@@ -78,22 +78,16 @@ void IdDependentBackwardBranchCheck::registerMatchers(MatchFinder *Finder) {
 
 IdDependentBackwardBranchCheck::IdDependencyRecord *
 IdDependentBackwardBranchCheck::hasIdDepVar(const Expr *Expression) {
-  if (!Expression)
-    return nullptr;
-
   if (const auto *Declaration = dyn_cast<DeclRefExpr>(Expression)) {
     // It is a DeclRefExpr, so check if it's an ID-dependent variable.
-    const auto *CheckVariable =
-        dyn_cast_if_present<VarDecl>(Declaration->getDecl());
-    if (!CheckVariable)
-      return nullptr;
+    const auto *CheckVariable = dyn_cast<VarDecl>(Declaration->getDecl());
     auto FoundVariable = IdDepVarsMap.find(CheckVariable);
     if (FoundVariable == IdDepVarsMap.end())
       return nullptr;
     return &(FoundVariable->second);
   }
   for (const auto *Child : Expression->children())
-    if (const auto *ChildExpression = dyn_cast_if_present<Expr>(Child))
+    if (const auto *ChildExpression = dyn_cast<Expr>(Child))
       if (IdDependencyRecord *Result = hasIdDepVar(ChildExpression))
         return Result;
   return nullptr;
@@ -101,21 +95,16 @@ IdDependentBackwardBranchCheck::hasIdDepVar(const Expr *Expression) {
 
 IdDependentBackwardBranchCheck::IdDependencyRecord *
 IdDependentBackwardBranchCheck::hasIdDepField(const Expr *Expression) {
-  if (!Expression)
-    return nullptr;
-
   if (const auto *MemberExpression = dyn_cast<MemberExpr>(Expression)) {
     const auto *CheckField =
-        dyn_cast_if_present<FieldDecl>(MemberExpression->getMemberDecl());
-    if (!CheckField)
-      return nullptr;
+        dyn_cast<FieldDecl>(MemberExpression->getMemberDecl());
     auto FoundField = IdDepFieldsMap.find(CheckField);
     if (FoundField == IdDepFieldsMap.end())
       return nullptr;
     return &(FoundField->second);
   }
   for (const auto *Child : Expression->children())
-    if (const auto *ChildExpression = dyn_cast_if_present<Expr>(Child))
+    if (const auto *ChildExpression = dyn_cast<Expr>(Child))
       if (IdDependencyRecord *Result = hasIdDepField(ChildExpression))
         return Result;
   return nullptr;

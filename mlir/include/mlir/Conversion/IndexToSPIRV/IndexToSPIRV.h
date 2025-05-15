@@ -21,7 +21,7 @@ class Pass;
 #include "mlir/Conversion/Passes.h.inc"
 
 namespace index {
-void populateIndexToSPIRVPatterns(const SPIRVTypeConverter &converter,
+void populateIndexToSPIRVPatterns(SPIRVTypeConverter &converter,
                                   RewritePatternSet &patterns);
 std::unique_ptr<OperationPass<>> createConvertIndexToSPIRVPass();
 } // namespace index

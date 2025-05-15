@@ -825,8 +825,7 @@ def : InstRW<[P10W_F2_4C, P10W_DISP_ANY, P10F2_Read, P10F2_Read, P10F2_Read],
 def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read],
       (instrs
     SRADI_rec,
-    SRAWI_rec,
-    SRAWI8_rec
+    SRAWI_rec
 )>;
 
 // Single crack instructions
@@ -834,8 +833,7 @@ def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read],
 def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read, P10F2_Read],
       (instrs
     SRAD_rec,
-    SRAW_rec,
-    SRAW8_rec
+    SRAW_rec
 )>;
 
 // 2-way crack instructions
@@ -928,7 +926,7 @@ def : InstRW<[P10W_FX_3C, P10W_DISP_ANY, P10FX_Read],
     SETNBC, SETNBC8,
     SETNBCR, SETNBCR8,
     SRADI, SRADI_32,
-    SRAWI, SRAWI8,
+    SRAWI,
     SUBFIC, SUBFIC8,
     SUBFME, SUBFME8,
     SUBFME8O, SUBFMEO,
@@ -1010,7 +1008,7 @@ def : InstRW<[P10W_FX_3C, P10W_DISP_ANY, P10FX_Read, P10FX_Read],
     SLD,
     SLW, SLW8,
     SRAD,
-    SRAW, SRAW8,
+    SRAW,
     SRD,
     SRW, SRW8,
     SUBF, SUBF8,

@@ -12,9 +12,10 @@
 
 // UNSUPPORTED: c++03, c++11, c++14
 
-#include <cassert>
 #include <new>
-#include <type_traits>
+#include <cassert>
+
+#include "test_macros.h"
 
 constexpr int gi = 5;
 constexpr float gf = 8.f;

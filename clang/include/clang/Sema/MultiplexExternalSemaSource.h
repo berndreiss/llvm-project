@@ -361,7 +361,7 @@ public:
                                         QualType T) override;
 
   // Inform all attached sources that a mangling number was assigned.
-  void AssignedLambdaNumbering(CXXRecordDecl *Lambda) override;
+  void AssignedLambdaNumbering(const CXXRecordDecl *Lambda) override;
 
   /// LLVM-style RTTI.
   /// \{

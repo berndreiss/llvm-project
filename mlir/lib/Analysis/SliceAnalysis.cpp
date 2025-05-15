@@ -16,7 +16,6 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Support/LLVM.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 
@@ -92,13 +91,14 @@ static void getBackwardSliceImpl(Operation *op,
   if (options.filter && !options.filter(op))
     return;
 
-  auto processValue = [&](Value value) {
-    if (auto *definingOp = value.getDefiningOp()) {
+  for (const auto &en : llvm::enumerate(op->getOperands())) {
+    auto operand = en.value();
+    if (auto *definingOp = operand.getDefiningOp()) {
       if (backwardSlice->count(definingOp) == 0)
         getBackwardSliceImpl(definingOp, backwardSlice, options);
-    } else if (auto blockArg = dyn_cast<BlockArgument>(value)) {
+    } else if (auto blockArg = dyn_cast<BlockArgument>(operand)) {
       if (options.omitBlockArguments)
-        return;
+        continue;
 
       Block *block = blockArg.getOwner();
       Operation *parentOp = block->getParentOp();
@@ -113,24 +113,7 @@ static void getBackwardSliceImpl(Operation *op,
     } else {
       llvm_unreachable("No definingOp and not a block argument.");
     }
-  };
-
-  if (!options.omitUsesFromAbove) {
-    llvm::for_each(op->getRegions(), [&](Region &region) {
-      // Walk this region recursively to collect the regions that descend from
-      // this op's nested regions (inclusive).
-      SmallPtrSet<Region *, 4> descendents;
-      region.walk(
-          [&](Region *childRegion) { descendents.insert(childRegion); });
-      region.walk([&](Operation *op) {
-        for (OpOperand &operand : op->getOpOperands()) {
-          if (!descendents.contains(operand.get().getParentRegion()))
-            processValue(operand.get());
-        }
-      });
-    });
   }
-  llvm::for_each(op->getOperands(), processValue);
 
   backwardSlice->insert(op);
 }

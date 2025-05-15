@@ -358,21 +358,20 @@ struct CounterMappingRegion {
 struct CountedRegion : public CounterMappingRegion {
   uint64_t ExecutionCount;
   uint64_t FalseExecutionCount;
-  bool TrueFolded;
-  bool FalseFolded;
+  bool Folded;
   bool HasSingleByteCoverage;
 
   CountedRegion(const CounterMappingRegion &R, uint64_t ExecutionCount,
                 bool HasSingleByteCoverage)
       : CounterMappingRegion(R), ExecutionCount(ExecutionCount),
-        FalseExecutionCount(0), TrueFolded(false), FalseFolded(true),
+        FalseExecutionCount(0), Folded(false),
         HasSingleByteCoverage(HasSingleByteCoverage) {}
 
   CountedRegion(const CounterMappingRegion &R, uint64_t ExecutionCount,
                 uint64_t FalseExecutionCount, bool HasSingleByteCoverage)
       : CounterMappingRegion(R), ExecutionCount(ExecutionCount),
-        FalseExecutionCount(FalseExecutionCount), TrueFolded(false),
-        FalseFolded(false), HasSingleByteCoverage(HasSingleByteCoverage) {}
+        FalseExecutionCount(FalseExecutionCount), Folded(false),
+        HasSingleByteCoverage(HasSingleByteCoverage) {}
 };
 
 /// MCDC Record grouping all information together.
@@ -661,7 +660,7 @@ class CounterMappingContext {
 
 public:
   CounterMappingContext(ArrayRef<CounterExpression> Expressions,
-                        ArrayRef<uint64_t> CounterValues = {})
+                        ArrayRef<uint64_t> CounterValues = std::nullopt)
       : Expressions(Expressions), CounterValues(CounterValues) {}
 
   void setCounts(ArrayRef<uint64_t> Counts) { CounterValues = Counts; }
@@ -720,10 +719,10 @@ struct FunctionRecord {
         Region.Kind == CounterMappingRegion::MCDCBranchRegion) {
       CountedBranchRegions.emplace_back(Region, Count, FalseCount,
                                         HasSingleByteCoverage);
-      // If either counter is hard-coded to zero, then this region represents a
+      // If both counters are hard-coded to zero, then this region represents a
       // constant-folded branch.
-      CountedBranchRegions.back().TrueFolded = Region.Count.isZero();
-      CountedBranchRegions.back().FalseFolded = Region.FalseCount.isZero();
+      if (Region.Count.isZero() && Region.FalseCount.isZero())
+        CountedBranchRegions.back().Folded = true;
       return;
     }
     if (CountedRegions.empty())
@@ -971,7 +970,7 @@ public:
   /// Ignores non-instrumented object files unless all are not instrumented.
   static Expected<std::unique_ptr<CoverageMapping>>
   load(ArrayRef<StringRef> ObjectFilenames, StringRef ProfileFilename,
-       vfs::FileSystem &FS, ArrayRef<StringRef> Arches = {},
+       vfs::FileSystem &FS, ArrayRef<StringRef> Arches = std::nullopt,
        StringRef CompilationDir = "",
        const object::BuildIDFetcher *BIDFetcher = nullptr,
        bool CheckBinaryIDs = false);

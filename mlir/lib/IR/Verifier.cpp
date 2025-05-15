@@ -32,7 +32,6 @@
 #include "mlir/IR/RegionKindInterface.h"
 #include "mlir/IR/Threading.h"
 #include "llvm/ADT/DenseMapInfoVariant.h"
-#include "llvm/ADT/PointerIntPair.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -56,7 +55,6 @@ public:
 
 private:
   using WorkItem = llvm::PointerUnion<Operation *, Block *>;
-  using WorkItemEntry = llvm::PointerIntPair<WorkItem, 1, bool>;
 
   /// This verifier uses a DFS of the tree of operations/blocks. The method
   /// verifyOnEntrance is invoked when we visit a node for the first time, i.e.
@@ -269,9 +267,10 @@ LogicalResult OperationVerifier::verifyOnExit(Operation &op) {
 /// Such ops are collected separately and verified inside
 /// verifyBlockPostChildren.
 LogicalResult OperationVerifier::verifyOperation(Operation &op) {
-  SmallVector<WorkItemEntry> worklist{{&op, false}};
+  SmallVector<WorkItem> worklist{{&op}};
+  DenseSet<WorkItem> seen;
   while (!worklist.empty()) {
-    WorkItemEntry &top = worklist.back();
+    WorkItem top = worklist.back();
 
     auto visit = [](auto &&visitor, WorkItem w) {
       if (w.is<Operation *>())
@@ -279,28 +278,24 @@ LogicalResult OperationVerifier::verifyOperation(Operation &op) {
       return visitor(w.get<Block *>());
     };
 
-    const bool isExit = top.getInt();
-    top.setInt(true);
-    auto item = top.getPointer();
-
+    const bool isExit = !seen.insert(top).second;
     // 2nd visit of this work item ("exit").
     if (isExit) {
-      if (failed(
-              visit([this](auto *workItem) { return verifyOnExit(*workItem); },
-                    item)))
-        return failure();
       worklist.pop_back();
+      if (failed(visit(
+              [this](auto *workItem) { return verifyOnExit(*workItem); }, top)))
+        return failure();
       continue;
     }
 
     // 1st visit of this work item ("entrance").
     if (failed(visit(
             [this](auto *workItem) { return verifyOnEntrance(*workItem); },
-            item)))
+            top)))
       return failure();
 
-    if (item.is<Block *>()) {
-      Block &currentBlock = *item.get<Block *>();
+    if (top.is<Block *>()) {
+      Block &currentBlock = *top.get<Block *>();
       // Skip "isolated from above operations".
       for (Operation &o : llvm::reverse(currentBlock)) {
         if (o.getNumRegions() == 0 ||
@@ -310,7 +305,7 @@ LogicalResult OperationVerifier::verifyOperation(Operation &op) {
       continue;
     }
 
-    Operation &currentOp = *item.get<Operation *>();
+    Operation &currentOp = *top.get<Operation *>();
     if (verifyRecursively)
       for (Region &region : llvm::reverse(currentOp.getRegions()))
         for (Block &block : llvm::reverse(region))

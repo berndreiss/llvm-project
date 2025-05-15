@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 %s -ast-dump | FileCheck %s
-// RUN: %clang_cc1 -fexperimental-late-parse-attributes %s -ast-dump | FileCheck %s
 
 #define __counted_by_or_null(f)  __attribute__((counted_by_or_null(f)))
 

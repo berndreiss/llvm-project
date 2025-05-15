@@ -33,7 +33,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __is_permutation {
+namespace __is_permutation {
+struct __fn {
   template <class _Iter1, class _Sent1, class _Iter2, class _Sent2, class _Proj1, class _Proj2, class _Pred>
   _LIBCPP_HIDE_FROM_ABI constexpr static bool __is_permutation_func_impl(
       _Iter1 __first1,
@@ -90,9 +91,10 @@ struct __is_permutation {
         __proj2);
   }
 };
+} // namespace __is_permutation
 
 inline namespace __cpo {
-inline constexpr auto is_permutation = __is_permutation{};
+inline constexpr auto is_permutation = __is_permutation::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

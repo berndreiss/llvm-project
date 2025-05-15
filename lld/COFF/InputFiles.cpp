@@ -25,7 +25,6 @@
 #include "llvm/DebugInfo/CodeView/TypeDeserializer.h"
 #include "llvm/DebugInfo/PDB/Native/NativeSession.h"
 #include "llvm/DebugInfo/PDB/Native/PDBFile.h"
-#include "llvm/IR/Mangler.h"
 #include "llvm/LTO/LTO.h"
 #include "llvm/Object/Binary.h"
 #include "llvm/Object/COFF.h"
@@ -62,7 +61,7 @@ static StringRef getBasename(StringRef path) {
 std::string lld::toString(const coff::InputFile *file) {
   if (!file)
     return "<internal>";
-  if (file->parentName.empty())
+  if (file->parentName.empty() || file->kind() == coff::InputFile::ImportKind)
     return std::string(file->getName());
 
   return (getBasename(file->parentName) + "(" + getBasename(file->getName()) +
@@ -74,25 +73,19 @@ std::string lld::toString(const coff::InputFile *file) {
 /// If Source is Undefined and has no weak alias set, makes it a weak
 /// alias to Target.
 static void checkAndSetWeakAlias(COFFLinkerContext &ctx, InputFile *f,
-                                 Symbol *source, Symbol *target,
-                                 bool isAntiDep) {
+                                 Symbol *source, Symbol *target) {
   if (auto *u = dyn_cast<Undefined>(source)) {
     if (u->weakAlias && u->weakAlias != target) {
-      // Ignore duplicated anti-dependency symbols.
-      if (isAntiDep)
+      // Weak aliases as produced by GCC are named in the form
+      // .weak.<weaksymbol>.<othersymbol>, where <othersymbol> is the name
+      // of another symbol emitted near the weak symbol.
+      // Just use the definition from the first object file that defined
+      // this weak symbol.
+      if (ctx.config.allowDuplicateWeak)
         return;
-      if (!u->isAntiDep) {
-        // Weak aliases as produced by GCC are named in the form
-        // .weak.<weaksymbol>.<othersymbol>, where <othersymbol> is the name
-        // of another symbol emitted near the weak symbol.
-        // Just use the definition from the first object file that defined
-        // this weak symbol.
-        if (ctx.config.allowDuplicateWeak)
-          return;
-        ctx.symtab.reportDuplicate(source, f);
-      }
+      ctx.symtab.reportDuplicate(source, f);
     }
-    u->setWeakAlias(target, isAntiDep);
+    u->weakAlias = target;
   }
 }
 
@@ -106,20 +99,6 @@ ArchiveFile::ArchiveFile(COFFLinkerContext &ctx, MemoryBufferRef m)
 void ArchiveFile::parse() {
   // Parse a MemoryBufferRef as an archive file.
   file = CHECK(Archive::create(mb), this);
-
-  // Try to read symbols from ECSYMBOLS section on ARM64EC.
-  if (isArm64EC(ctx.config.machine)) {
-    iterator_range<Archive::symbol_iterator> symbols =
-        CHECK(file->ec_symbols(), this);
-    if (!symbols.empty()) {
-      for (const Archive::Symbol &sym : symbols)
-        ctx.symtab.addLazyArchive(this, sym);
-
-      // Read both EC and native symbols on ARM64X.
-      if (ctx.config.machine != ARM64X)
-        return;
-    }
-  }
 
   // Read the symbol table to construct Lazy objects.
   for (const Archive::Symbol &sym : file->symbols())
@@ -196,8 +175,6 @@ void ObjFile::initializeECThunks() {
         ctx.symtab.addEntryThunk(getSymbol(entry->src), getSymbol(entry->dst));
         break;
       case Arm64ECThunkType::Exit:
-        ctx.symtab.addExitThunk(getSymbol(entry->src), getSymbol(entry->dst));
-        break;
       case Arm64ECThunkType::GuestExit:
         break;
       default:
@@ -442,8 +419,7 @@ void ObjFile::initializeSymbols() {
   uint32_t numSymbols = coffObj->getNumberOfSymbols();
   symbols.resize(numSymbols);
 
-  SmallVector<std::pair<Symbol *, const coff_aux_weak_external *>, 8>
-      weakAliases;
+  SmallVector<std::pair<Symbol *, uint32_t>, 8> weakAliases;
   std::vector<uint32_t> pendingIndexes;
   pendingIndexes.reserve(numSymbols);
 
@@ -455,35 +431,11 @@ void ObjFile::initializeSymbols() {
     COFFSymbolRef coffSym = check(coffObj->getSymbol(i));
     bool prevailingComdat;
     if (coffSym.isUndefined()) {
-      symbols[i] = createUndefined(coffSym, false);
+      symbols[i] = createUndefined(coffSym);
     } else if (coffSym.isWeakExternal()) {
-      auto aux = coffSym.getAux<coff_aux_weak_external>();
-      bool overrideLazy = true;
-
-      // On ARM64EC, external function calls emit a pair of weak-dependency
-      // aliases: func to #func and #func to the func guess exit thunk
-      // (instead of a single undefined func symbol, which would be emitted on
-      // other targets). Allow such aliases to be overridden by lazy archive
-      // symbols, just as we would for undefined symbols.
-      if (isArm64EC(getMachineType()) &&
-          aux->Characteristics == IMAGE_WEAK_EXTERN_ANTI_DEPENDENCY) {
-        COFFSymbolRef targetSym = check(coffObj->getSymbol(aux->TagIndex));
-        if (!targetSym.isAnyUndefined()) {
-          // If the target is defined, it may be either a guess exit thunk or
-          // the actual implementation. If it's the latter, consider the alias
-          // to be part of the implementation and override potential lazy
-          // archive symbols.
-          StringRef targetName = check(coffObj->getSymbolName(targetSym));
-          StringRef name = check(coffObj->getSymbolName(coffSym));
-          std::optional<std::string> mangledName =
-              getArm64ECMangledFunctionName(name);
-          overrideLazy = mangledName == targetName;
-        } else {
-          overrideLazy = false;
-        }
-      }
-      symbols[i] = createUndefined(coffSym, overrideLazy);
-      weakAliases.emplace_back(symbols[i], aux);
+      symbols[i] = createUndefined(coffSym);
+      uint32_t tagIndex = coffSym.getAux<coff_aux_weak_external>()->TagIndex;
+      weakAliases.emplace_back(symbols[i], tagIndex);
     } else if (std::optional<Symbol *> optSym =
                    createDefined(coffSym, comdatDefs, prevailingComdat)) {
       symbols[i] = *optSym;
@@ -522,34 +474,17 @@ void ObjFile::initializeSymbols() {
 
   for (auto &kv : weakAliases) {
     Symbol *sym = kv.first;
-    const coff_aux_weak_external *aux = kv.second;
-    checkAndSetWeakAlias(ctx, this, sym, symbols[aux->TagIndex],
-                         aux->Characteristics ==
-                             IMAGE_WEAK_EXTERN_ANTI_DEPENDENCY);
+    uint32_t idx = kv.second;
+    checkAndSetWeakAlias(ctx, this, sym, symbols[idx]);
   }
 
   // Free the memory used by sparseChunks now that symbol loading is finished.
   decltype(sparseChunks)().swap(sparseChunks);
 }
 
-Symbol *ObjFile::createUndefined(COFFSymbolRef sym, bool overrideLazy) {
+Symbol *ObjFile::createUndefined(COFFSymbolRef sym) {
   StringRef name = check(coffObj->getSymbolName(sym));
-  Symbol *s = ctx.symtab.addUndefined(name, this, overrideLazy);
-
-  // Add an anti-dependency alias for undefined AMD64 symbols on the ARM64EC
-  // target.
-  if (isArm64EC(ctx.config.machine) && getMachineType() == AMD64) {
-    auto u = dyn_cast<Undefined>(s);
-    if (u && !u->weakAlias) {
-      if (std::optional<std::string> mangledName =
-              getArm64ECMangledFunctionName(name)) {
-        Symbol *m = ctx.symtab.addUndefined(saver().save(*mangledName), this,
-                                            /*overrideLazy=*/false);
-        u->setWeakAlias(m, /*antiDep=*/true);
-      }
-    }
-  }
-  return s;
+  return ctx.symtab.addUndefined(name, this, sym.isWeakExternal());
 }
 
 static const coff_aux_section_definition *findSectionDef(COFFObjectFile *obj,
@@ -789,7 +724,7 @@ std::optional<Symbol *> ObjFile::createDefined(
   return createRegular(sym);
 }
 
-MachineTypes ObjFile::getMachineType() const {
+MachineTypes ObjFile::getMachineType() {
   if (coffObj)
     return static_cast<MachineTypes>(coffObj->getMachine());
   return IMAGE_FILE_MACHINE_UNKNOWN;
@@ -1050,28 +985,7 @@ void ObjFile::enqueuePdbFile(StringRef path, ObjFile *fromFile) {
 }
 
 ImportFile::ImportFile(COFFLinkerContext &ctx, MemoryBufferRef m)
-    : InputFile(ctx, ImportKind, m), live(!ctx.config.doGC) {}
-
-MachineTypes ImportFile::getMachineType() const {
-  uint16_t machine =
-      reinterpret_cast<const coff_import_header *>(mb.getBufferStart())
-          ->Machine;
-  return MachineTypes(machine);
-}
-
-ImportThunkChunk *ImportFile::makeImportThunk() {
-  switch (hdr->Machine) {
-  case AMD64:
-    return make<ImportThunkChunkX64>(ctx, impSym);
-  case I386:
-    return make<ImportThunkChunkX86>(ctx, impSym);
-  case ARM64:
-    return make<ImportThunkChunkARM64>(ctx, impSym, ARM64);
-  case ARMNT:
-    return make<ImportThunkChunkARM>(ctx, impSym);
-  }
-  llvm_unreachable("unknown machine type");
-}
+    : InputFile(ctx, ImportKind, m), live(!ctx.config.doGC), thunkLive(live) {}
 
 void ImportFile::parse() {
   const auto *hdr =
@@ -1084,17 +998,9 @@ void ImportFile::parse() {
 
   // Read names and create an __imp_ symbol.
   StringRef buf = mb.getBuffer().substr(sizeof(*hdr));
-  auto split = buf.split('\0');
-  buf = split.second;
-  StringRef name;
-  if (isArm64EC(hdr->Machine)) {
-    if (std::optional<std::string> demangledName =
-            getArm64ECDemangledFunctionName(split.first))
-      name = saver().save(*demangledName);
-  }
-  if (name.empty())
-    name = saver().save(split.first);
+  StringRef name = saver().save(buf.split('\0').first);
   StringRef impName = saver().save("__imp_" + name);
+  buf = buf.substr(name.size() + 1);
   dllName = buf.split('\0').first;
   StringRef extName;
   switch (hdr->getNameType()) {
@@ -1119,66 +1025,21 @@ void ImportFile::parse() {
   this->hdr = hdr;
   externalName = extName;
 
-  bool isCode = hdr->getType() == llvm::COFF::IMPORT_CODE;
-
-  if (ctx.config.machine != ARM64EC) {
-    impSym = ctx.symtab.addImportData(impName, this, location);
-  } else {
-    // In addition to the regular IAT, ARM64EC also contains an auxiliary IAT,
-    // which holds addresses that are guaranteed to be callable directly from
-    // ARM64 code. Function symbol naming is swapped: __imp_ symbols refer to
-    // the auxiliary IAT, while __imp_aux_ symbols refer to the regular IAT. For
-    // data imports, the naming is reversed.
-    StringRef auxImpName = saver().save("__imp_aux_" + name);
-    if (isCode) {
-      impSym = ctx.symtab.addImportData(auxImpName, this, location);
-      impECSym = ctx.symtab.addImportData(impName, this, auxLocation);
-    } else {
-      impSym = ctx.symtab.addImportData(impName, this, location);
-      impECSym = ctx.symtab.addImportData(auxImpName, this, auxLocation);
-    }
-    if (!impECSym)
-      return;
-
-    StringRef auxImpCopyName = saver().save("__auximpcopy_" + name);
-    auxImpCopySym =
-        ctx.symtab.addImportData(auxImpCopyName, this, auxCopyLocation);
-    if (!auxImpCopySym)
-      return;
-  }
+  impSym = ctx.symtab.addImportData(impName, this);
   // If this was a duplicate, we logged an error but may continue;
   // in this case, impSym is nullptr.
   if (!impSym)
     return;
 
   if (hdr->getType() == llvm::COFF::IMPORT_CONST)
-    static_cast<void>(ctx.symtab.addImportData(name, this, location));
+    static_cast<void>(ctx.symtab.addImportData(name, this));
 
   // If type is function, we need to create a thunk which jump to an
   // address pointed by the __imp_ symbol. (This allows you to call
   // DLL functions just like regular non-DLL functions.)
-  if (isCode) {
-    if (ctx.config.machine != ARM64EC) {
-      thunkSym = ctx.symtab.addImportThunk(name, impSym, makeImportThunk());
-    } else {
-      thunkSym = ctx.symtab.addImportThunk(
-          name, impSym, make<ImportThunkChunkX64>(ctx, impSym));
-
-      if (std::optional<std::string> mangledName =
-              getArm64ECMangledFunctionName(name)) {
-        StringRef auxThunkName = saver().save(*mangledName);
-        auxThunkSym = ctx.symtab.addImportThunk(
-            auxThunkName, impECSym,
-            make<ImportThunkChunkARM64>(ctx, impECSym, ARM64EC));
-      }
-
-      StringRef impChkName = saver().save("__impchk_" + name);
-      impchkThunk = make<ImportThunkChunkARM64EC>(this);
-      impchkThunk->sym =
-          ctx.symtab.addImportThunk(impChkName, impSym, impchkThunk);
-      ctx.driver.pullArm64ECIcallHelper();
-    }
-  }
+  if (hdr->getType() == llvm::COFF::IMPORT_CODE)
+    thunkSym = ctx.symtab.addImportThunk(
+        name, cast_or_null<DefinedImportData>(impSym), hdr->Machine);
 }
 
 BitcodeFile::BitcodeFile(COFFLinkerContext &ctx, MemoryBufferRef mb,
@@ -1250,7 +1111,7 @@ void BitcodeFile::parse() {
       sym = ctx.symtab.addUndefined(symName, this, true);
       std::string fallback = std::string(objSym.getCOFFWeakExternalFallback());
       Symbol *alias = ctx.symtab.addUndefined(saver.save(fallback));
-      checkAndSetWeakAlias(ctx, this, sym, alias, false);
+      checkAndSetWeakAlias(ctx, this, sym, alias);
     } else if (comdatIndex != -1) {
       if (symName == obj->getComdatTable()[comdatIndex].first) {
         sym = comdat[comdatIndex].first;
@@ -1278,9 +1139,8 @@ void BitcodeFile::parseLazy() {
       ctx.symtab.addLazyObject(this, sym.getName());
 }
 
-MachineTypes BitcodeFile::getMachineType() const {
-  Triple t(obj->getTargetTriple());
-  switch (t.getArch()) {
+MachineTypes BitcodeFile::getMachineType() {
+  switch (Triple(obj->getTargetTriple()).getArch()) {
   case Triple::x86_64:
     return AMD64;
   case Triple::x86:
@@ -1289,7 +1149,7 @@ MachineTypes BitcodeFile::getMachineType() const {
   case Triple::thumb:
     return ARMNT;
   case Triple::aarch64:
-    return t.isWindowsArm64EC() ? ARM64EC : ARM64;
+    return ARM64;
   default:
     return IMAGE_FILE_MACHINE_UNKNOWN;
   }
@@ -1360,7 +1220,7 @@ void DLLFile::parse() {
   }
 }
 
-MachineTypes DLLFile::getMachineType() const {
+MachineTypes DLLFile::getMachineType() {
   if (coffObj)
     return static_cast<MachineTypes>(coffObj->getMachine());
   return IMAGE_FILE_MACHINE_UNKNOWN;

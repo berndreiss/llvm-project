@@ -30,7 +30,7 @@ OMPThreadPrivateDecl *OMPThreadPrivateDecl::Create(ASTContext &C,
                                                    SourceLocation L,
                                                    ArrayRef<Expr *> VL) {
   auto *D = OMPDeclarativeDirective::createDirective<OMPThreadPrivateDecl>(
-      C, DC, {}, VL.size(), L);
+      C, DC, std::nullopt, VL.size(), L);
   D->setVars(VL);
   return D;
 }

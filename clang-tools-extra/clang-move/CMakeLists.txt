@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   FrontendOpenMP
   )
 
-add_clang_library(clangMove STATIC
+add_clang_library(clangMove
   Move.cpp
   HelperDeclRefGraph.cpp
 

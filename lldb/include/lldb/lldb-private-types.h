@@ -12,7 +12,6 @@
 #include "lldb/lldb-private.h"
 
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/SmallString.h"
 
 #include <type_traits>
 
@@ -26,8 +25,6 @@ namespace lldb_private {
 class Platform;
 class ExecutionContext;
 class RegisterFlags;
-
-typedef llvm::SmallString<256> PathSmallString;
 
 typedef llvm::sys::DynamicLibrary (*LoadPluginCallbackType)(
     const lldb::DebuggerSP &debugger_sp, const FileSpec &spec, Status &error);

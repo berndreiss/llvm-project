@@ -217,9 +217,8 @@ ABIArgInfo AIXABIInfo::classifyArgumentType(QualType Ty) const {
                                    /*Realign*/ TyAlign > CCAlign);
   }
 
-  return (isPromotableTypeForABI(Ty)
-              ? ABIArgInfo::getExtend(Ty, CGT.ConvertType(Ty))
-              : ABIArgInfo::getDirect());
+  return (isPromotableTypeForABI(Ty) ? ABIArgInfo::getExtend(Ty)
+                                     : ABIArgInfo::getDirect());
 }
 
 CharUnits AIXABIInfo::getParamTypeAlignment(QualType Ty) const {
@@ -892,9 +891,8 @@ PPC64_SVR4_ABIInfo::classifyArgumentType(QualType Ty) const {
                                    /*Realign=*/TyAlign > ABIAlign);
   }
 
-  return (isPromotableTypeForABI(Ty)
-              ? ABIArgInfo::getExtend(Ty, CGT.ConvertType(Ty))
-              : ABIArgInfo::getDirect());
+  return (isPromotableTypeForABI(Ty) ? ABIArgInfo::getExtend(Ty)
+                                     : ABIArgInfo::getDirect());
 }
 
 ABIArgInfo

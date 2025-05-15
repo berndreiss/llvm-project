@@ -633,16 +633,13 @@ static void handleInvalidBuiltin(InvalidBuiltinData *Data, ReportOptions Opts) {
 
   ScopedReport R(Opts, Loc, ET);
 
-  if (Data->Kind == BCK_AssumePassedFalse)
-    Diag(Loc, DL_Error, ET, "assumption is violated during execution");
-  else
-    Diag(Loc, DL_Error, ET,
-         "passing zero to __builtin_%0(), which is not a valid argument")
-        << ((Data->Kind == BCK_CTZPassedZero) ? "ctz" : "clz");
+  Diag(Loc, DL_Error, ET,
+       "passing zero to %0, which is not a valid argument")
+    << ((Data->Kind == BCK_CTZPassedZero) ? "ctz()" : "clz()");
 }
 
 void __ubsan::__ubsan_handle_invalid_builtin(InvalidBuiltinData *Data) {
-  GET_REPORT_OPTIONS(false);
+  GET_REPORT_OPTIONS(true);
   handleInvalidBuiltin(Data, Opts);
 }
 void __ubsan::__ubsan_handle_invalid_builtin_abort(InvalidBuiltinData *Data) {

@@ -1,10 +1,7 @@
 // RUN: %clang_cc1 -O0 -finclude-default-header -fsyntax-only -triple dxil-pc-shadermodel6.6-library %s -verify
 void unroll_no_vars() {
-  // expected-note@+1 {{declared here}}
   int I = 3;
-  // expected-error@+2 {{expression is not an integral constant expression}}
-  // expected-note@+1 {{read of non-const variable 'I' is not allowed in a constant expression}}
-  [unroll(I)]
+  [unroll(I)]  // expected-error {{'unroll' attribute requires an integer constant}}
   while (I--);
 }
 

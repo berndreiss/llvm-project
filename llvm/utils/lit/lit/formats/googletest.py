@@ -334,11 +334,7 @@ class GoogleTest(TestFormat):
                             returnCode = lit.Test.SKIPPED
                         elif "failures" in testinfo:
                             has_failure_in_shard = True
-                            returnCode = (
-                                lit.Test.XFAIL
-                                if test.isExpectedToFail()
-                                else lit.Test.FAIL
-                            )
+                            returnCode = lit.Test.FAIL
                             output = header
                             for fail in testinfo["failures"]:
                                 output += fail["failure"] + "\n"

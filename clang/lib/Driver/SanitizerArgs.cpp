@@ -119,12 +119,6 @@ static SanitizerMask parseArgValues(const Driver &D, const llvm::opt::Arg *A,
 static int parseCoverageFeatures(const Driver &D, const llvm::opt::Arg *A,
                                  bool DiagnoseErrors);
 
-/// Parse -fsanitize-undefined-ignore-overflow-pattern= flag values, diagnosing
-/// any invalid values. Returns a mask of excluded overflow patterns.
-static int parseOverflowPatternExclusionValues(const Driver &D,
-                                               const llvm::opt::Arg *A,
-                                               bool DiagnoseErrors);
-
 /// Parse -f(no-)?sanitize-metadata= flag values, diagnosing any invalid
 /// components. Returns OR of members of \c BinaryMetadataFeature enumeration.
 static int parseBinaryMetadataFeatures(const Driver &D, const llvm::opt::Arg *A,
@@ -558,15 +552,11 @@ SanitizerArgs::SanitizerArgs(const ToolChain &TC,
                          SanitizerKind::Leak | SanitizerKind::Thread |
                          SanitizerKind::Memory | SanitizerKind::KernelAddress |
                          SanitizerKind::Scudo | SanitizerKind::SafeStack),
-      std::make_pair(SanitizerKind::MemTag, SanitizerKind::Address |
-                                                SanitizerKind::KernelAddress |
-                                                SanitizerKind::HWAddress |
-                                                SanitizerKind::KernelHWAddress),
-      std::make_pair(SanitizerKind::KCFI, SanitizerKind::Function),
-      std::make_pair(SanitizerKind::Realtime,
-                     SanitizerKind::Address | SanitizerKind::Thread |
-                         SanitizerKind::Undefined | SanitizerKind::Memory)};
-
+      std::make_pair(SanitizerKind::MemTag,
+                     SanitizerKind::Address | SanitizerKind::KernelAddress |
+                         SanitizerKind::HWAddress |
+                         SanitizerKind::KernelHWAddress),
+      std::make_pair(SanitizerKind::KCFI, SanitizerKind::Function)};
   // Enable toolchain specific default sanitizers if not explicitly disabled.
   SanitizerMask Default = TC.getDefaultSanitizers() & ~AllRemove;
 
@@ -798,13 +788,6 @@ SanitizerArgs::SanitizerArgs(const ToolChain &TC,
           << "fsanitize-trap=cfi";
   }
 
-  for (const auto *Arg : Args.filtered(
-           options::OPT_fsanitize_undefined_ignore_overflow_pattern_EQ)) {
-    Arg->claim();
-    OverflowPatternExclusions |=
-        parseOverflowPatternExclusionValues(D, Arg, DiagnoseErrors);
-  }
-
   // Parse -f(no-)?sanitize-coverage flags if coverage is supported by the
   // enabled sanitizers.
   for (const auto *Arg : Args) {
@@ -929,16 +912,10 @@ SanitizerArgs::SanitizerArgs(const ToolChain &TC,
         DiagnoseErrors);
   }
 
-  SharedRuntime = Args.hasFlag(
-      options::OPT_shared_libsan, options::OPT_static_libsan,
-      TC.getTriple().isAndroid() || TC.getTriple().isOSFuchsia() ||
-          TC.getTriple().isOSDarwin() || TC.getTriple().isOSWindows());
-  if (!SharedRuntime && TC.getTriple().isOSWindows()) {
-    Arg *A =
-        Args.getLastArg(options::OPT_shared_libsan, options::OPT_static_libsan);
-    D.Diag(clang::diag::err_drv_unsupported_opt_for_target)
-        << A->getSpelling() << TC.getTriple().str();
-  }
+  SharedRuntime =
+      Args.hasFlag(options::OPT_shared_libsan, options::OPT_static_libsan,
+                   TC.getTriple().isAndroid() || TC.getTriple().isOSFuchsia() ||
+                       TC.getTriple().isOSDarwin());
 
   ImplicitCfiRuntime = TC.getTriple().isAndroid();
 
@@ -1264,10 +1241,6 @@ void SanitizerArgs::addArgs(const ToolChain &TC, const llvm::opt::ArgList &Args,
   addSpecialCaseListOpt(Args, CmdArgs,
                         "-fsanitize-system-ignorelist=", SystemIgnorelistFiles);
 
-  if (OverflowPatternExclusions)
-    Args.AddAllArgs(
-        CmdArgs, options::OPT_fsanitize_undefined_ignore_overflow_pattern_EQ);
-
   if (MsanTrackOrigins)
     CmdArgs.push_back(Args.MakeArgString("-fsanitize-memory-track-origins=" +
                                          Twine(MsanTrackOrigins)));
@@ -1451,31 +1424,6 @@ SanitizerMask parseArgValues(const Driver &D, const llvm::opt::Arg *A,
           << A->getSpelling() << Value;
   }
   return Kinds;
-}
-
-static int parseOverflowPatternExclusionValues(const Driver &D,
-                                               const llvm::opt::Arg *A,
-                                               bool DiagnoseErrors) {
-  int Exclusions = 0;
-  for (int i = 0, n = A->getNumValues(); i != n; ++i) {
-    const char *Value = A->getValue(i);
-    int E =
-        llvm::StringSwitch<int>(Value)
-            .Case("none", LangOptionsBase::None)
-            .Case("all", LangOptionsBase::All)
-            .Case("add-unsigned-overflow-test",
-                  LangOptionsBase::AddUnsignedOverflowTest)
-            .Case("add-signed-overflow-test",
-                  LangOptionsBase::AddSignedOverflowTest)
-            .Case("negated-unsigned-const", LangOptionsBase::NegUnsignedConst)
-            .Case("unsigned-post-decr-while", LangOptionsBase::PostDecrInWhile)
-            .Default(0);
-    if (E == 0)
-      D.Diag(clang::diag::err_drv_unsupported_option_argument)
-          << A->getSpelling() << Value;
-    Exclusions |= E;
-  }
-  return Exclusions;
 }
 
 int parseCoverageFeatures(const Driver &D, const llvm::opt::Arg *A,

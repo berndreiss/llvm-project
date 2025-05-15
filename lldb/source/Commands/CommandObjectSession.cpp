@@ -19,9 +19,7 @@ public:
       : CommandObjectParsed(interpreter, "session save",
                             "Save the current session transcripts to a file.\n"
                             "If no file if specified, transcripts will be "
-                            "saved to a temporary file.\n"
-                            "Note: transcripts will only be saved if "
-                            "interpreter.save-transcript is true.\n",
+                            "saved to a temporary file.",
                             "session save [file]") {
     AddSimpleArgumentList(eArgTypePath, eArgRepeatOptional);
   }

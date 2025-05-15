@@ -179,7 +179,7 @@ void SourceCoverageViewText::renderLine(raw_ostream &OS, LineRef L,
   unsigned Col = 1;
   for (const auto *S : Segments) {
     unsigned End = std::min(S->Col, static_cast<unsigned>(Line.size()) + 1);
-    colored_ostream(OS, Highlight.value_or(raw_ostream::SAVEDCOLOR),
+    colored_ostream(OS, Highlight ? *Highlight : raw_ostream::SAVEDCOLOR,
                     getOptions().Colors && Highlight, /*Bold=*/false,
                     /*BG=*/true)
         << Line.substr(Col - 1, End - Col);
@@ -196,7 +196,7 @@ void SourceCoverageViewText::renderLine(raw_ostream &OS, LineRef L,
   }
 
   // Show the rest of the line.
-  colored_ostream(OS, Highlight.value_or(raw_ostream::SAVEDCOLOR),
+  colored_ostream(OS, Highlight ? *Highlight : raw_ostream::SAVEDCOLOR,
                   getOptions().Colors && Highlight, /*Bold=*/false, /*BG=*/true)
       << Line.substr(Col - 1, Line.size() - Col + 1);
   OS << '\n';
@@ -309,38 +309,31 @@ void SourceCoverageViewText::renderBranchView(raw_ostream &OS, BranchView &BRV,
     renderLinePrefix(OS, ViewDepth);
     OS << "  Branch (" << R.LineStart << ":" << R.ColumnStart << "): [";
 
-    if (R.TrueFolded && R.FalseFolded) {
+    if (R.Folded) {
       OS << "Folded - Ignored]\n";
       continue;
     }
 
-    if (R.TrueFolded)
-      OS << "Folded, ";
-    else {
-      colored_ostream(OS, raw_ostream::RED,
-                      getOptions().Colors && !R.ExecutionCount,
-                      /*Bold=*/false, /*BG=*/true)
-          << "True";
+    colored_ostream(OS, raw_ostream::RED,
+                    getOptions().Colors && !R.ExecutionCount,
+                    /*Bold=*/false, /*BG=*/true)
+        << "True";
 
-      if (getOptions().ShowBranchCounts)
-        OS << ": " << formatCount(R.ExecutionCount) << ", ";
-      else
-        OS << ": " << format("%0.2f", TruePercent) << "%, ";
-    }
+    if (getOptions().ShowBranchCounts)
+      OS << ": " << formatCount(R.ExecutionCount) << ", ";
+    else
+      OS << ": " << format("%0.2f", TruePercent) << "%, ";
 
-    if (R.FalseFolded)
-      OS << "Folded]\n";
-    else {
-      colored_ostream(OS, raw_ostream::RED,
-                      getOptions().Colors && !R.FalseExecutionCount,
-                      /*Bold=*/false, /*BG=*/true)
-          << "False";
+    colored_ostream(OS, raw_ostream::RED,
+                    getOptions().Colors && !R.FalseExecutionCount,
+                    /*Bold=*/false, /*BG=*/true)
+        << "False";
 
-      if (getOptions().ShowBranchCounts)
-        OS << ": " << formatCount(R.FalseExecutionCount) << "]\n";
-      else
-        OS << ": " << format("%0.2f", FalsePercent) << "%]\n";
-    }
+    if (getOptions().ShowBranchCounts)
+      OS << ": " << formatCount(R.FalseExecutionCount);
+    else
+      OS << ": " << format("%0.2f", FalsePercent) << "%";
+    OS << "]\n";
   }
 }
 

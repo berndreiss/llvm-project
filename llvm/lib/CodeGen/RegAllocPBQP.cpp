@@ -123,7 +123,7 @@ public:
     initializeSlotIndexesWrapperPassPass(*PassRegistry::getPassRegistry());
     initializeLiveIntervalsWrapperPassPass(*PassRegistry::getPassRegistry());
     initializeLiveStacksPass(*PassRegistry::getPassRegistry());
-    initializeVirtRegMapWrapperLegacyPass(*PassRegistry::getPassRegistry());
+    initializeVirtRegMapPass(*PassRegistry::getPassRegistry());
   }
 
   /// Return the pass name.
@@ -559,8 +559,8 @@ void RegAllocPBQP::getAnalysisUsage(AnalysisUsage &au) const {
   au.addPreserved<MachineLoopInfoWrapperPass>();
   au.addRequired<MachineDominatorTreeWrapperPass>();
   au.addPreserved<MachineDominatorTreeWrapperPass>();
-  au.addRequired<VirtRegMapWrapperLegacy>();
-  au.addPreserved<VirtRegMapWrapperLegacy>();
+  au.addRequired<VirtRegMap>();
+  au.addPreserved<VirtRegMap>();
   MachineFunctionPass::getAnalysisUsage(au);
 }
 
@@ -795,7 +795,7 @@ bool RegAllocPBQP::runOnMachineFunction(MachineFunction &MF) {
   MachineBlockFrequencyInfo &MBFI =
       getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI();
 
-  VirtRegMap &VRM = getAnalysis<VirtRegMapWrapperLegacy>().getVRM();
+  VirtRegMap &VRM = getAnalysis<VirtRegMap>();
 
   PBQPVirtRegAuxInfo VRAI(
       MF, LIS, VRM, getAnalysis<MachineLoopInfoWrapperPass>().getLI(), MBFI);

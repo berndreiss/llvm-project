@@ -37,14 +37,19 @@ struct ELFRelocationEntry {
   const MCSymbolELF *Symbol; // The symbol to relocate with.
   unsigned Type;   // The type of the relocation.
   uint64_t Addend; // The addend to use.
+  const MCSymbolELF *OriginalSymbol; // The original value of Symbol if we changed it.
+  uint64_t OriginalAddend; // The original value of addend.
 
   ELFRelocationEntry(uint64_t Offset, const MCSymbolELF *Symbol, unsigned Type,
-                     uint64_t Addend)
-      : Offset(Offset), Symbol(Symbol), Type(Type), Addend(Addend) {}
+                     uint64_t Addend, const MCSymbolELF *OriginalSymbol,
+                     uint64_t OriginalAddend)
+      : Offset(Offset), Symbol(Symbol), Type(Type), Addend(Addend),
+        OriginalSymbol(OriginalSymbol), OriginalAddend(OriginalAddend) {}
 
   void print(raw_ostream &Out) const {
     Out << "Off=" << Offset << ", Sym=" << Symbol << ", Type=" << Type
-        << ", Addend=" << Addend;
+        << ", Addend=" << Addend << ", OriginalSymbol=" << OriginalSymbol
+        << ", OriginalAddend=" << OriginalAddend;
   }
 
   LLVM_DUMP_METHOD void dump() const { print(errs()); }
@@ -94,6 +99,8 @@ public:
   virtual void sortRelocs(const MCAssembler &Asm,
                           std::vector<ELFRelocationEntry> &Relocs);
 
+  virtual void addTargetSectionFlags(MCContext &Ctx, MCSectionELF &Sec);
+
   /// \name Accessors
   /// @{
   uint8_t getOSABI() const { return OSABI; }
@@ -137,9 +144,17 @@ public:
   unsigned setRSsym(unsigned Value, unsigned Type) const {
     return (Type & R_SSYM_MASK) | ((Value & 0xff) << R_SSYM_SHIFT);
   }
+
+  // On AArch64, return a new section to be added to the ELF object that
+  // contains relocations used to describe every symbol that should have memory
+  // tags applied. Returns nullptr if no such section is necessary (i.e. there's
+  // no tagged globals).
+  virtual MCSectionELF *getMemtagRelocsSection(MCContext &Ctx) const {
+    return nullptr;
+  }
 };
 
-class ELFObjectWriter final : public MCObjectWriter {
+class ELFObjectWriter : public MCObjectWriter {
   unsigned ELFHeaderEFlags = 0;
 
 public:

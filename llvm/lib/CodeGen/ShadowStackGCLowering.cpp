@@ -242,12 +242,13 @@ bool ShadowStackGCLoweringImpl::doInitialization(Module &M) {
   //   void *Roots[];          // Stack roots (in-place array, so we pretend).
   // };
 
-  PointerType *StackEntryPtrTy = PointerType::getUnqual(M.getContext());
+  StackEntryTy = StructType::create(M.getContext(), "gc_stackentry");
 
   EltTys.clear();
-  EltTys.push_back(StackEntryPtrTy);
+  EltTys.push_back(PointerType::getUnqual(StackEntryTy));
   EltTys.push_back(FrameMapPtrTy);
-  StackEntryTy = StructType::create(EltTys, "gc_stackentry");
+  StackEntryTy->setBody(EltTys);
+  PointerType *StackEntryPtrTy = PointerType::getUnqual(StackEntryTy);
 
   // Get the root chain if it already exists.
   Head = M.getGlobalVariable("llvm_gc_root_chain");

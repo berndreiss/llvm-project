@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 -fsyntax-only -fexperimental-bounds-safety -verify %s
-// RUN: %clang_cc1 -fsyntax-only -fexperimental-bounds-safety -fexperimental-late-parse-attributes -verify %s
 //
 // This is a portion of the `attr-counted-by-vla.c` test but is checked
 // under the semantics of `-fexperimental-bounds-safety` which has different

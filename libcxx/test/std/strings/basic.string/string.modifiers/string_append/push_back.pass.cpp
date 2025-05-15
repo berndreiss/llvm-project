@@ -23,8 +23,9 @@ struct VeryLarge {
   char b;
 };
 
+namespace std {
 template <>
-struct std::char_traits<VeryLarge> {
+struct char_traits<VeryLarge> {
   using char_type  = VeryLarge;
   using int_type   = int;
   using off_type   = streamoff;
@@ -54,6 +55,7 @@ struct std::char_traits<VeryLarge> {
   static bool eq_int_type(int_type c1, int_type c2);
   static int_type eof();
 };
+} // end namespace std
 
 template <class S>
 TEST_CONSTEXPR_CXX20 void test(S s, typename S::value_type c, S expected) {

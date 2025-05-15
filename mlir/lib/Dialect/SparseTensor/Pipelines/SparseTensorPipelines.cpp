@@ -45,8 +45,7 @@ void mlir::sparse_tensor::buildSparsifier(OpPassManager &pm,
       /*enableVLAVectorization=*/options.armSVE,
       /*enableSIMDIndex32=*/options.force32BitVectorIndices,
       options.enableGPULibgen,
-      options.sparsificationOptions().sparseEmitStrategy,
-      options.sparsificationOptions().parallelizationStrategy));
+      options.sparsificationOptions().sparseEmitStrategy));
 
   // Bail-early for test setup.
   if (options.testBufferizationAnalysisOnly)
@@ -77,19 +76,16 @@ void mlir::sparse_tensor::buildSparsifier(OpPassManager &pm,
   pm.addNestedPass<func::FuncOp>(createConvertSCFToCFPass());
   pm.addPass(memref::createExpandStridedMetadataPass());
   pm.addPass(createLowerAffinePass());
-  pm.addPass(
-      createConvertVectorToLLVMPass(options.convertVectorToLLVMOptions()));
+  pm.addPass(createConvertVectorToLLVMPass(options.lowerVectorToLLVMOptions()));
   pm.addPass(createFinalizeMemRefToLLVMConversionPass());
   pm.addNestedPass<func::FuncOp>(createConvertComplexToStandardPass());
   pm.addNestedPass<func::FuncOp>(arith::createArithExpandOpsPass());
   pm.addNestedPass<func::FuncOp>(createConvertMathToLLVMPass());
   pm.addPass(createConvertMathToLibmPass());
   pm.addPass(createConvertComplexToLibmPass());
-  pm.addPass(
-      createConvertVectorToLLVMPass(options.convertVectorToLLVMOptions()));
+  pm.addPass(createConvertVectorToLLVMPass(options.lowerVectorToLLVMOptions()));
   pm.addPass(createConvertComplexToLLVMPass());
-  pm.addPass(
-      createConvertVectorToLLVMPass(options.convertVectorToLLVMOptions()));
+  pm.addPass(createConvertVectorToLLVMPass(options.lowerVectorToLLVMOptions()));
   pm.addPass(createConvertFuncToLLVMPass());
 
   // Finalize GPU code generation.

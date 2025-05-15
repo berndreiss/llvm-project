@@ -97,19 +97,19 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg);
 class ThreadLister {
  public:
   explicit ThreadLister(pid_t pid);
+  ~ThreadLister();
   enum Result {
     Error,
     Incomplete,
     Ok,
   };
   Result ListThreads(InternalMmapVector<tid_t> *threads);
-  const char *LoadStatus(tid_t tid);
 
  private:
-  bool IsAlive(tid_t tid);
+  bool IsAlive(int tid);
 
-  InternalScopedString task_path_;
-  InternalScopedString status_path_;
+  pid_t pid_;
+  int descriptor_ = -1;
   InternalMmapVector<char> buffer_;
 };
 

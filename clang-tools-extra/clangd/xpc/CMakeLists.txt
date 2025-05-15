@@ -14,12 +14,12 @@ set(LLVM_LINK_COMPONENTS
 # Needed by LLVM's CMake checks because this file defines multiple targets.
 set(LLVM_OPTIONAL_SOURCES Conversion.cpp XPCTransport.cpp)
 
-add_clang_library(clangdXpcJsonConversions STATIC
+add_clang_library(clangdXpcJsonConversions
   Conversion.cpp
   LINK_LIBS clangDaemon clangdSupport
   )
 
-add_clang_library(clangdXpcTransport STATIC
+add_clang_library(clangdXpcTransport
   XPCTransport.cpp
   LINK_LIBS clangDaemon clangdSupport clangdXpcJsonConversions
   DEPENDS ClangDriverOptions

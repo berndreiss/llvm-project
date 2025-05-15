@@ -439,11 +439,6 @@ public:
   void VisitBTFTagAttributedType(const BTFTagAttributedType *T) {
     Visit(T->getWrappedType());
   }
-  void VisitHLSLAttributedResourceType(const HLSLAttributedResourceType *T) {
-    QualType Contained = T->getContainedType();
-    if (!Contained.isNull())
-      Visit(Contained);
-  }
   void VisitSubstTemplateTypeParmType(const SubstTemplateTypeParmType *) {}
   void
   VisitSubstTemplateTypeParmPackType(const SubstTemplateTypeParmPackType *T) {
@@ -588,7 +583,7 @@ public:
   void VisitCapturedDecl(const CapturedDecl *D) { Visit(D->getBody()); }
 
   void VisitOMPThreadPrivateDecl(const OMPThreadPrivateDecl *D) {
-    for (const auto *E : D->varlist())
+    for (const auto *E : D->varlists())
       Visit(E);
   }
 
@@ -608,7 +603,7 @@ public:
   }
 
   void VisitOMPAllocateDecl(const OMPAllocateDecl *D) {
-    for (const auto *E : D->varlist())
+    for (const auto *E : D->varlists())
       Visit(E);
     for (const auto *C : D->clauselists())
       Visit(C);

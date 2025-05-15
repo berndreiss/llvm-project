@@ -24,7 +24,6 @@
 #include <__ranges/access.h>
 #include <__ranges/concepts.h>
 #include <__type_traits/desugars_to.h>
-#include <__type_traits/is_integral.h>
 #include <__type_traits/is_reference.h>
 #include <__type_traits/is_trivially_copyable.h>
 #include <__type_traits/remove_cvref.h>
@@ -48,7 +47,8 @@ namespace ranges {
 template <class _T1>
 using minmax_result = min_max_result<_T1>;
 
-struct __minmax {
+namespace __minmax {
+struct __fn {
   template <class _Type,
             class _Proj                                                      = identity,
             indirect_strict_weak_order<projected<const _Type*, _Proj>> _Comp = ranges::less>
@@ -159,9 +159,10 @@ struct __minmax {
     }
   }
 };
+} // namespace __minmax
 
 inline namespace __cpo {
-inline constexpr auto minmax = __minmax{};
+inline constexpr auto minmax = __minmax::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

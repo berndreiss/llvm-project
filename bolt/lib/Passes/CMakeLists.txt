@@ -26,7 +26,6 @@ add_llvm_library(LLVMBOLTPasses
   PatchEntries.cpp
   PettisAndHansen.cpp
   PLTCall.cpp
-  ContinuityStats.cpp
   RegAnalysis.cpp
   RegReAssign.cpp
   ReorderAlgorithm.cpp

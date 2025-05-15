@@ -21,47 +21,31 @@ namespace {
 /// given tuple value. If some tuple elements are, in turn, tuples, the elements
 /// of those are extracted recursively such that the returned values have the
 /// same types as `resultTypes.getFlattenedTypes()`.
-static SmallVector<Value> buildDecomposeTuple(OpBuilder &builder,
-                                              TypeRange resultTypes,
-                                              ValueRange inputs, Location loc) {
-  // Skip materialization if the single input value is not a tuple.
-  if (inputs.size() != 1)
-    return {};
-  Value tuple = inputs.front();
-  auto tupleType = dyn_cast<TupleType>(tuple.getType());
-  if (!tupleType)
-    return {};
-  // Skip materialization if the flattened types do not match the requested
-  // result types.
-  SmallVector<Type> flattenedTypes;
-  tupleType.getFlattenedTypes(flattenedTypes);
-  if (TypeRange(resultTypes) != TypeRange(flattenedTypes))
-    return {};
-  // Recursively decompose the tuple.
-  SmallVector<Value> result;
-  std::function<void(Value)> decompose = [&](Value tuple) {
-    auto tupleType = dyn_cast<TupleType>(tuple.getType());
-    if (!tupleType) {
-      // This is not a tuple.
-      result.push_back(tuple);
-      return;
+static LogicalResult buildDecomposeTuple(OpBuilder &builder, Location loc,
+                                         TupleType resultType, Value value,
+                                         SmallVectorImpl<Value> &values) {
+  for (unsigned i = 0, e = resultType.size(); i < e; ++i) {
+    Type elementType = resultType.getType(i);
+    Value element = builder.create<test::GetTupleElementOp>(
+        loc, elementType, value, builder.getI32IntegerAttr(i));
+    if (auto nestedTupleType = dyn_cast<TupleType>(elementType)) {
+      // Recurse if the current element is also a tuple.
+      if (failed(buildDecomposeTuple(builder, loc, nestedTupleType, element,
+                                     values)))
+        return failure();
+    } else {
+      values.push_back(element);
     }
-    for (unsigned i = 0, e = tupleType.size(); i < e; ++i) {
-      Type elementType = tupleType.getType(i);
-      Value element = builder.create<test::GetTupleElementOp>(
-          loc, elementType, tuple, builder.getI32IntegerAttr(i));
-      decompose(element);
-    }
-  };
-  decompose(tuple);
-  return result;
+  }
+  return success();
 }
 
 /// Creates a `test.make_tuple` op out of the given inputs building a tuple of
 /// type `resultType`. If that type is nested, each nested tuple is built
 /// recursively with another `test.make_tuple` op.
-static Value buildMakeTupleOp(OpBuilder &builder, TupleType resultType,
-                              ValueRange inputs, Location loc) {
+static std::optional<Value> buildMakeTupleOp(OpBuilder &builder,
+                                             TupleType resultType,
+                                             ValueRange inputs, Location loc) {
   // Build one value for each element at this nesting level.
   SmallVector<Value> elements;
   elements.reserve(resultType.getTypes().size());
@@ -80,13 +64,13 @@ static Value buildMakeTupleOp(OpBuilder &builder, TupleType resultType,
       inputIt += numNestedFlattenedTypes;
 
       // Recurse on the values for the nested TupleType.
-      Value res = buildMakeTupleOp(builder, nestedTupleType,
-                                   nestedFlattenedelements, loc);
-      if (!res)
-        return Value();
+      std::optional<Value> res = buildMakeTupleOp(builder, nestedTupleType,
+                                                  nestedFlattenedelements, loc);
+      if (!res.has_value())
+        return {};
 
       // The tuple constructed by the conversion is the element value.
-      elements.push_back(res);
+      elements.push_back(res.value());
     } else {
       // Base case: take one input as is.
       elements.push_back(*inputIt++);
@@ -99,8 +83,8 @@ static Value buildMakeTupleOp(OpBuilder &builder, TupleType resultType,
 
 /// A pass for testing call graph type decomposition.
 ///
-/// This instantiates the patterns with a TypeConverter that splits tuple types
-/// into their respective element types.
+/// This instantiates the patterns with a TypeConverter and ValueDecomposer
+/// that splits tuple types into their respective element types.
 /// For example, `tuple<T1, T2, T3> --> T1, T2, T3`.
 struct TestDecomposeCallGraphTypes
     : public PassWrapper<TestDecomposeCallGraphTypes, OperationPass<ModuleOp>> {
@@ -140,9 +124,12 @@ struct TestDecomposeCallGraphTypes
           return success();
         });
     typeConverter.addArgumentMaterialization(buildMakeTupleOp);
-    typeConverter.addTargetMaterialization(buildDecomposeTuple);
 
-    populateDecomposeCallGraphTypesPatterns(context, typeConverter, patterns);
+    ValueDecomposer decomposer;
+    decomposer.addDecomposeValueConversion(buildDecomposeTuple);
+
+    populateDecomposeCallGraphTypesPatterns(context, typeConverter, decomposer,
+                                            patterns);
 
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
       return signalPassFailure();

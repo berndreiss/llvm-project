@@ -892,9 +892,7 @@ void llvm::addPredicatedMveVpredROp(MachineInstrBuilder &MIB,
 void ARMBaseInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator I,
                                    const DebugLoc &DL, MCRegister DestReg,
-                                   MCRegister SrcReg, bool KillSrc,
-                                   bool RenamableDest,
-                                   bool RenamableSrc) const {
+                                   MCRegister SrcReg, bool KillSrc) const {
   bool GPRDest = ARM::GPRRegClass.contains(DestReg);
   bool GPRSrc = ARM::GPRRegClass.contains(SrcReg);
 
@@ -1163,13 +1161,6 @@ void ARMBaseInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
             .addImm(0)
             .addMemOperand(MMO)
             .add(predOps(ARMCC::AL));
-      } else if (ARM::cl_FPSCR_NZCVRegClass.hasSubClassEq(RC)) {
-        BuildMI(MBB, I, DebugLoc(), get(ARM::VSTR_FPSCR_NZCVQC_off))
-            .addReg(SrcReg, getKillRegState(isKill))
-            .addFrameIndex(FI)
-            .addImm(0)
-            .addMemOperand(MMO)
-            .add(predOps(ARMCC::AL));
       } else
         llvm_unreachable("Unknown reg class!");
       break;
@@ -1333,7 +1324,6 @@ Register ARMBaseInstrInfo::isStoreToStackSlot(const MachineInstr &MI,
   case ARM::VSTRD:
   case ARM::VSTRS:
   case ARM::VSTR_P0_off:
-  case ARM::VSTR_FPSCR_NZCVQC_off:
   case ARM::MVE_VSTRWU32:
     if (MI.getOperand(1).isFI() && MI.getOperand(2).isImm() &&
         MI.getOperand(2).getImm() == 0) {
@@ -1421,12 +1411,6 @@ void ARMBaseInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
           .add(predOps(ARMCC::AL));
     } else if (ARM::VCCRRegClass.hasSubClassEq(RC)) {
       BuildMI(MBB, I, DL, get(ARM::VLDR_P0_off), DestReg)
-          .addFrameIndex(FI)
-          .addImm(0)
-          .addMemOperand(MMO)
-          .add(predOps(ARMCC::AL));
-    } else if (ARM::cl_FPSCR_NZCVRegClass.hasSubClassEq(RC)) {
-      BuildMI(MBB, I, DL, get(ARM::VLDR_FPSCR_NZCVQC_off), DestReg)
           .addFrameIndex(FI)
           .addImm(0)
           .addMemOperand(MMO)
@@ -1591,7 +1575,6 @@ Register ARMBaseInstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
   case ARM::VLDRD:
   case ARM::VLDRS:
   case ARM::VLDR_P0_off:
-  case ARM::VLDR_FPSCR_NZCVQC_off:
   case ARM::MVE_VLDRWU32:
     if (MI.getOperand(1).isFI() && MI.getOperand(2).isImm() &&
         MI.getOperand(2).getImm() == 0) {
@@ -2328,7 +2311,7 @@ ARMBaseInstrInfo::canFoldIntoMOVCC(Register Reg, const MachineRegisterInfo &MRI,
       return nullptr;
   }
   bool DontMoveAcrossStores = true;
-  if (!MI->isSafeToMove(DontMoveAcrossStores))
+  if (!MI->isSafeToMove(/* AliasAnalysis = */ nullptr, DontMoveAcrossStores))
     return nullptr;
   return MI;
 }
@@ -5888,11 +5871,9 @@ static bool isLRAvailable(const TargetRegisterInfo &TRI,
   return !Live;
 }
 
-std::optional<std::unique_ptr<outliner::OutlinedFunction>>
+std::optional<outliner::OutlinedFunction>
 ARMBaseInstrInfo::getOutliningCandidateInfo(
-    const MachineModuleInfo &MMI,
-    std::vector<outliner::Candidate> &RepeatedSequenceLocs,
-    unsigned MinRepeats) const {
+    std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
   unsigned SequenceSize = 0;
   for (auto &MI : RepeatedSequenceLocs[0])
     SequenceSize += getInstSizeInBytes(MI);
@@ -5933,7 +5914,7 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
     llvm::erase_if(RepeatedSequenceLocs, CantGuaranteeValueAcrossCall);
 
     // If the sequence doesn't have enough candidates left, then we're done.
-    if (RepeatedSequenceLocs.size() < MinRepeats)
+    if (RepeatedSequenceLocs.size() < 2)
       return std::nullopt;
   }
 
@@ -5959,7 +5940,7 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
   else
     RepeatedSequenceLocs.erase(RepeatedSequenceLocs.begin(), NoBTI);
 
-  if (RepeatedSequenceLocs.size() < MinRepeats)
+  if (RepeatedSequenceLocs.size() < 2)
     return std::nullopt;
 
   // Likewise, partition the candidates according to PAC-RET enablement.
@@ -5976,7 +5957,7 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
   else
     RepeatedSequenceLocs.erase(RepeatedSequenceLocs.begin(), NoPAC);
 
-  if (RepeatedSequenceLocs.size() < MinRepeats)
+  if (RepeatedSequenceLocs.size() < 2)
     return std::nullopt;
 
   // At this point, we have only "safe" candidates to outline. Figure out
@@ -6080,7 +6061,7 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
         RepeatedSequenceLocs.size() * Costs.CallDefault) {
       RepeatedSequenceLocs = CandidatesWithoutStackFixups;
       FrameID = MachineOutlinerNoLRSave;
-      if (RepeatedSequenceLocs.size() < MinRepeats)
+      if (RepeatedSequenceLocs.size() < 2)
         return std::nullopt;
     } else
       SetCandidateCallInfo(MachineOutlinerDefault, Costs.CallDefault);
@@ -6092,8 +6073,8 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
     // check if the range contains a call.  These require a save + restore of
     // the link register.
     outliner::Candidate &FirstCand = RepeatedSequenceLocs[0];
-    if (any_of(drop_end(FirstCand),
-               [](const MachineInstr &MI) { return MI.isCall(); }))
+    if (std::any_of(FirstCand.begin(), std::prev(FirstCand.end()),
+                    [](const MachineInstr &MI) { return MI.isCall(); }))
       NumBytesToCreateFrame += Costs.SaveRestoreLROnStack;
 
     // Handle the last instruction separately.  If it is tail call, then the
@@ -6106,8 +6087,8 @@ ARMBaseInstrInfo::getOutliningCandidateInfo(
       NumBytesToCreateFrame += Costs.SaveRestoreLROnStack;
   }
 
-  return std::make_unique<outliner::OutlinedFunction>(
-      RepeatedSequenceLocs, SequenceSize, NumBytesToCreateFrame, FrameID);
+  return outliner::OutlinedFunction(RepeatedSequenceLocs, SequenceSize,
+                                    NumBytesToCreateFrame, FrameID);
 }
 
 bool ARMBaseInstrInfo::checkAndUpdateStackOffset(MachineInstr *MI,
@@ -6222,9 +6203,6 @@ void ARMBaseInstrInfo::mergeOutliningCandidateAttributes(
   if (CFn.hasFnAttribute("branch-target-enforcement"))
     F.addFnAttr(CFn.getFnAttribute("branch-target-enforcement"));
 
-  if (CFn.hasFnAttribute("sign-return-address"))
-    F.addFnAttr(CFn.getFnAttribute("sign-return-address"));
-
   ARMGenInstrInfo::mergeOutliningCandidateAttributes(F, Candidates);
 }
 
@@ -6300,9 +6278,8 @@ bool ARMBaseInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
 }
 
 outliner::InstrType
-ARMBaseInstrInfo::getOutliningTypeImpl(const MachineModuleInfo &MMI,
-                                       MachineBasicBlock::iterator &MIT,
-                                       unsigned Flags) const {
+ARMBaseInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MIT,
+                                   unsigned Flags) const {
   MachineInstr &MI = *MIT;
   const TargetRegisterInfo *TRI = &getRegisterInfo();
 
@@ -6373,7 +6350,8 @@ ARMBaseInstrInfo::getOutliningTypeImpl(const MachineModuleInfo &MMI,
 
     // We have a function we have information about.  Check if it's something we
     // can safely outline.
-    MachineFunction *CalleeMF = MMI.getMachineFunction(*Callee);
+    MachineFunction *MF = MI.getParent()->getParent();
+    MachineFunction *CalleeMF = MF->getMMI().getMachineFunction(*Callee);
 
     // We don't know what's going on with the callee at all.  Don't touch it.
     if (!CalleeMF)
@@ -6641,7 +6619,10 @@ void ARMBaseInstrInfo::buildOutlinedFrame(
       MBB.addLiveIn(ARM::LR);
 
     // Insert a save before the outlined region
-    bool Auth = MF.getInfo<ARMFunctionInfo>()->shouldSignReturnAddress(true);
+    bool Auth = OF.Candidates.front()
+                    .getMF()
+                    ->getInfo<ARMFunctionInfo>()
+                    ->shouldSignReturnAddress(true);
     saveLROnStack(MBB, It, true, Auth);
 
     // Fix up the instructions in the range, since we're going to modify the
@@ -6883,13 +6864,15 @@ bool ARMPipelinerLoopInfo::tooMuchRegisterPressure(SwingSchedulerDAG &SSD,
       if (MI->isPHI() && S.getKind() == SDep::Anti) {
         Register Reg = S.getReg();
         if (Reg.isVirtual())
-          CrossIterationNeeds[Reg.id()].set(0);
+          CrossIterationNeeds.insert(std::make_pair(Reg.id(), IterNeed()))
+              .first->second.set(0);
       } else if (S.isAssignedRegDep()) {
         int OStg = SMS.stageScheduled(S.getSUnit());
         if (OStg >= 0 && OStg != Stg) {
           Register Reg = S.getReg();
           if (Reg.isVirtual())
-            CrossIterationNeeds[Reg.id()] |= ((1 << (OStg - Stg)) - 1);
+            CrossIterationNeeds.insert(std::make_pair(Reg.id(), IterNeed()))
+                .first->second |= ((1 << (OStg - Stg)) - 1);
         }
       }
   }

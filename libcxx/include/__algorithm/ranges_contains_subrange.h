@@ -35,7 +35,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __contains_subrange {
+namespace __contains_subrange {
+struct __fn {
   template <forward_iterator _Iter1,
             sentinel_for<_Iter1> _Sent1,
             forward_iterator _Iter2,
@@ -80,9 +81,10 @@ struct __contains_subrange {
     return __ret.empty() == false;
   }
 };
+} // namespace __contains_subrange
 
 inline namespace __cpo {
-inline constexpr auto contains_subrange = __contains_subrange{};
+inline constexpr auto contains_subrange = __contains_subrange::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

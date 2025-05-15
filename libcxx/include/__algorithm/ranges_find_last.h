@@ -21,7 +21,6 @@
 #include <__ranges/access.h>
 #include <__ranges/concepts.h>
 #include <__ranges/subrange.h>
-#include <__utility/forward.h>
 #include <__utility/move.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -73,7 +72,8 @@ __find_last_impl(_Iter __first, _Sent __last, _Pred __pred, _Proj& __proj) {
   }
 }
 
-struct __find_last {
+namespace __find_last {
+struct __fn {
   template <class _Type>
   struct __op {
     const _Type& __value;
@@ -97,8 +97,10 @@ struct __find_last {
     return ranges::__find_last_impl(ranges::begin(__range), ranges::end(__range), __op<_Type>{__value}, __proj);
   }
 };
+} // namespace __find_last
 
-struct __find_last_if {
+namespace __find_last_if {
+struct __fn {
   template <class _Pred>
   struct __op {
     _Pred& __pred;
@@ -125,8 +127,10 @@ struct __find_last_if {
     return ranges::__find_last_impl(ranges::begin(__range), ranges::end(__range), __op<_Pred>{__pred}, __proj);
   }
 };
+} // namespace __find_last_if
 
-struct __find_last_if_not {
+namespace __find_last_if_not {
+struct __fn {
   template <class _Pred>
   struct __op {
     _Pred& __pred;
@@ -153,11 +157,12 @@ struct __find_last_if_not {
     return ranges::__find_last_impl(ranges::begin(__range), ranges::end(__range), __op<_Pred>{__pred}, __proj);
   }
 };
+} // namespace __find_last_if_not
 
 inline namespace __cpo {
-inline constexpr auto find_last        = __find_last{};
-inline constexpr auto find_last_if     = __find_last_if{};
-inline constexpr auto find_last_if_not = __find_last_if_not{};
+inline constexpr auto find_last        = __find_last::__fn{};
+inline constexpr auto find_last_if     = __find_last_if::__fn{};
+inline constexpr auto find_last_if_not = __find_last_if_not::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

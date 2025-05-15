@@ -28,7 +28,6 @@
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/StreamString.h"
 
-#include "AbortWithPayloadFrameRecognizer.h"
 #include "SystemRuntimeMacOSX.h"
 
 #include <memory>
@@ -91,10 +90,7 @@ SystemRuntimeMacOSX::SystemRuntimeMacOSX(Process *process)
       m_libpthread_offsets(), m_dispatch_tsd_indexes_addr(LLDB_INVALID_ADDRESS),
       m_libdispatch_tsd_indexes(),
       m_dispatch_voucher_offsets_addr(LLDB_INVALID_ADDRESS),
-      m_libdispatch_voucher_offsets() {
-
-  RegisterAbortWithPayloadFrameRecognizer(process);
-}
+      m_libdispatch_voucher_offsets() {}
 
 // Destructor
 SystemRuntimeMacOSX::~SystemRuntimeMacOSX() { Clear(true); }

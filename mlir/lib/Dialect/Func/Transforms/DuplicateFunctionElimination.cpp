@@ -54,10 +54,6 @@ struct DuplicateFuncOpEquivalenceInfo
     if (lhs == getTombstoneKey() || lhs == getEmptyKey() ||
         rhs == getTombstoneKey() || rhs == getEmptyKey())
       return false;
-
-    if (lhs.isDeclaration() || rhs.isDeclaration())
-      return false;
-
     // Check discardable attributes equivalence
     if (lhs->getDiscardableAttrDictionary() !=
         rhs->getDiscardableAttrDictionary())
@@ -101,14 +97,14 @@ struct DuplicateFunctionEliminationPass
       }
     });
 
-    // Update all symbol uses to reference unique func op
-    // representants and erase redundant func ops.
-    SymbolTableCollection symbolTable;
-    SymbolUserMap userMap(symbolTable, module);
+    // Update call ops to call unique func op representants.
+    module.walk([&](func::CallOp callOp) {
+      func::FuncOp callee = getRepresentant[callOp.getCalleeAttr().getAttr()];
+      callOp.setCallee(callee.getSymName());
+    });
+
+    // Erase redundant func ops.
     for (auto it : toBeErased) {
-      StringAttr oldSymbol = it.getSymNameAttr();
-      StringAttr newSymbol = getRepresentant[oldSymbol].getSymNameAttr();
-      userMap.replaceAllUsesWith(it, newSymbol);
       it.erase();
     }
   }

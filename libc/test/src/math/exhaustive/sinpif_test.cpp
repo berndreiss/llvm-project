@@ -7,8 +7,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "exhaustive_test.h"
+#include "mpfr.h"
 #include "src/math/sinpif.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
+#include <sys/types.h>
 
 namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
 

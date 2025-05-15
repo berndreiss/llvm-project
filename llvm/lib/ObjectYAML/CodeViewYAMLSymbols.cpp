@@ -308,6 +308,7 @@ void UnknownSymbolRecord::map(yaml::IO &io) {
     std::string Str;
     raw_string_ostream OS(Str);
     Binary.writeAsBinary(OS);
+    OS.flush();
     Data.assign(Str.begin(), Str.end());
   }
 }

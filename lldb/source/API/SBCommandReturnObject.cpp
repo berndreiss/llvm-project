@@ -11,8 +11,6 @@
 #include "lldb/API/SBError.h"
 #include "lldb/API/SBFile.h"
 #include "lldb/API/SBStream.h"
-#include "lldb/API/SBStructuredData.h"
-#include "lldb/Core/StructuredDataImpl.h"
 #include "lldb/Interpreter/CommandReturnObject.h"
 #include "lldb/Utility/ConstString.h"
 #include "lldb/Utility/Instrumentation.h"
@@ -87,36 +85,27 @@ SBCommandReturnObject::operator bool() const {
 const char *SBCommandReturnObject::GetOutput() {
   LLDB_INSTRUMENT_VA(this);
 
-  ConstString output(ref().GetOutputString());
+  ConstString output(ref().GetOutputData());
   return output.AsCString(/*value_if_empty*/ "");
 }
 
 const char *SBCommandReturnObject::GetError() {
   LLDB_INSTRUMENT_VA(this);
 
-  ConstString output(ref().GetErrorString());
+  ConstString output(ref().GetErrorData());
   return output.AsCString(/*value_if_empty*/ "");
-}
-
-SBStructuredData SBCommandReturnObject::GetErrorData() {
-  LLDB_INSTRUMENT_VA(this);
-
-  StructuredData::ObjectSP data(ref().GetErrorData());
-  SBStructuredData sb_data;
-  sb_data.m_impl_up->SetObjectSP(data);
-  return sb_data;
 }
 
 size_t SBCommandReturnObject::GetOutputSize() {
   LLDB_INSTRUMENT_VA(this);
 
-  return ref().GetOutputString().size();
+  return ref().GetOutputData().size();
 }
 
 size_t SBCommandReturnObject::GetErrorSize() {
   LLDB_INSTRUMENT_VA(this);
 
-  return ref().GetErrorString().size();
+  return ref().GetErrorData().size();
 }
 
 size_t SBCommandReturnObject::PutOutput(FILE *fh) {
@@ -337,10 +326,10 @@ void SBCommandReturnObject::SetError(lldb::SBError &error,
                                      const char *fallback_error_cstr) {
   LLDB_INSTRUMENT_VA(this, error, fallback_error_cstr);
 
-  if (error.IsValid() && !error.Fail())
-    ref().SetError(error.ref().Clone());
+  if (error.IsValid())
+    ref().SetError(error.ref(), fallback_error_cstr);
   else if (fallback_error_cstr)
-    ref().SetError(Status::FromErrorString(fallback_error_cstr));
+    ref().SetError(Status(), fallback_error_cstr);
 }
 
 void SBCommandReturnObject::SetError(const char *error_cstr) {

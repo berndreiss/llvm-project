@@ -167,8 +167,8 @@ Value *SimplifyIndvar::foldIVUser(Instruction *UseInst, Instruction *IVOperand) 
       D = ConstantInt::get(UseInst->getContext(),
                            APInt::getOneBitSet(BitWidth, D->getZExtValue()));
     }
-    const SCEV *LHS = SE->getSCEV(IVSrc);
-    const SCEV *RHS = SE->getSCEV(D);
+    const auto *LHS = SE->getSCEV(IVSrc);
+    const auto *RHS = SE->getSCEV(D);
     FoldedExpr = SE->getUDivExpr(LHS, RHS);
     // We might have 'exact' flag set at this point which will no longer be
     // correct after we make the replacement.
@@ -297,8 +297,8 @@ void SimplifyIndvar::eliminateIVComparison(ICmpInst *ICmp,
 
 bool SimplifyIndvar::eliminateSDiv(BinaryOperator *SDiv) {
   // Get the SCEVs for the ICmp operands.
-  const SCEV *N = SE->getSCEV(SDiv->getOperand(0));
-  const SCEV *D = SE->getSCEV(SDiv->getOperand(1));
+  auto *N = SE->getSCEV(SDiv->getOperand(0));
+  auto *D = SE->getSCEV(SDiv->getOperand(1));
 
   // Simplify unnecessary loops away.
   const Loop *L = LI->getLoopFor(SDiv->getParent());
@@ -397,7 +397,7 @@ void SimplifyIndvar::simplifyIVRemainder(BinaryOperator *Rem,
     }
 
     auto *T = Rem->getType();
-    const SCEV *NLessOne = SE->getMinusSCEV(N, SE->getOne(T));
+    const auto *NLessOne = SE->getMinusSCEV(N, SE->getOne(T));
     if (SE->isKnownPredicate(LT, NLessOne, D)) {
       replaceRemWithNumeratorOrZero(Rem);
       return;
@@ -1024,7 +1024,7 @@ bool simplifyLoopIVs(Loop *L, ScalarEvolution *SE, DominatorTree *DT,
                      LoopInfo *LI, const TargetTransformInfo *TTI,
                      SmallVectorImpl<WeakTrackingVH> &Dead) {
   SCEVExpander Rewriter(*SE, SE->getDataLayout(), "indvars");
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifndef NDEBUG
   Rewriter.setDebugType(DEBUG_TYPE);
 #endif
   bool Changed = false;
@@ -1103,8 +1103,10 @@ class WidenIV {
 
   void updatePostIncRangeInfo(Value *Def, Instruction *UseI, ConstantRange R) {
     DefUserPair Key(Def, UseI);
-    auto [It, Inserted] = PostIncRangeInfos.try_emplace(Key, R);
-    if (!Inserted)
+    auto It = PostIncRangeInfos.find(Key);
+    if (It == PostIncRangeInfos.end())
+      PostIncRangeInfos.insert({Key, R});
+    else
       It->second = R.intersectWith(It->second);
   }
 

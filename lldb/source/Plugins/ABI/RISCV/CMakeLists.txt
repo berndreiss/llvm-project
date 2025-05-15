@@ -6,7 +6,6 @@ add_lldb_library(lldbPluginABIRISCV PLUGIN
     lldbSymbol
     lldbTarget
     lldbPluginProcessUtility
-    lldbValueObject
   LINK_COMPONENTS
     Support
     TargetParser

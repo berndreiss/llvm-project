@@ -52,11 +52,6 @@ extern cl::OptionCategory LLVMReduceOptions;
 static cl::opt<std::string> TargetTriple("mtriple",
                                          cl::desc("Set the target triple"),
                                          cl::cat(LLVMReduceOptions));
-static cl::opt<bool> PrintInvalidMachineReductions(
-    "print-invalid-reduction-machine-verifier-errors",
-    cl::desc(
-        "Print machine verifier errors on invalid reduction attempts triple"),
-    cl::cat(LLVMReduceOptions));
 
 static cl::opt<bool> TmpFilesAsBitcode(
     "write-tmp-files-as-bitcode",
@@ -237,7 +232,7 @@ static std::unique_ptr<MachineFunction> cloneMF(MachineFunction *SrcMF,
                                                 MachineModuleInfo &DestMMI) {
   auto DstMF = std::make_unique<MachineFunction>(
       SrcMF->getFunction(), SrcMF->getTarget(), SrcMF->getSubtarget(),
-      SrcMF->getContext(), SrcMF->getFunctionNumber());
+      SrcMF->getFunctionNumber(), DestMMI);
   DenseMap<MachineBasicBlock *, MachineBasicBlock *> Src2DstMBB;
 
   auto *SrcMRI = &SrcMF->getRegInfo();
@@ -311,10 +306,9 @@ static std::unique_ptr<MachineFunction> cloneMF(MachineFunction *SrcMF,
       DstMRI->setType(NewReg, RegTy);
 
     // Copy register allocation hints.
-    const auto *Hints = SrcMRI->getRegAllocationHints(Reg);
-    if (Hints)
-      for (Register PrefReg : Hints->second)
-        DstMRI->addRegAllocationHint(NewReg, PrefReg);
+    const auto &Hints = SrcMRI->getRegAllocationHints(Reg);
+    for (Register PrefReg : Hints.second)
+      DstMRI->addRegAllocationHint(NewReg, PrefReg);
   }
 
   const TargetSubtargetInfo &STI = DstMF->getSubtarget();
@@ -403,7 +397,6 @@ static std::unique_ptr<MachineFunction> cloneMF(MachineFunction *SrcMF,
   DstMF->setHasEHCatchret(SrcMF->hasEHCatchret());
   DstMF->setHasEHScopes(SrcMF->hasEHScopes());
   DstMF->setHasEHFunclets(SrcMF->hasEHFunclets());
-  DstMF->setHasFakeUses(SrcMF->hasFakeUses());
   DstMF->setIsOutlined(SrcMF->isOutlined());
 
   if (!SrcMF->getLandingPads().empty() ||
@@ -423,7 +416,7 @@ static std::unique_ptr<MachineFunction> cloneMF(MachineFunction *SrcMF,
 
   DstMRI->freezeReservedRegs();
 
-  DstMF->verify(nullptr, "", &errs(), /*AbortOnError=*/true);
+  DstMF->verify(nullptr, "", /*AbortOnError=*/true);
   return DstMF;
 }
 
@@ -439,7 +432,7 @@ void ReducerWorkItem::print(raw_ostream &ROS, void *p) const {
     printMIR(ROS, *M);
     for (Function &F : *M) {
       if (auto *MF = MMI->getMachineFunction(F))
-        printMIR(ROS, *MMI, *MF);
+        printMIR(ROS, *MF);
     }
   } else {
     M->print(ROS, /*AssemblyAnnotationWriter=*/nullptr,
@@ -456,21 +449,8 @@ bool ReducerWorkItem::verify(raw_fd_ostream *OS) const {
 
   for (const Function &F : getModule()) {
     if (const MachineFunction *MF = MMI->getMachineFunction(F)) {
-      // With the current state of quality, most reduction attempts fail the
-      // machine verifier. Avoid spamming large function dumps on nearly every
-      // attempt until the situation is better.
-      if (!MF->verify(nullptr, "",
-                      /*OS=*/PrintInvalidMachineReductions ? &errs() : nullptr,
-                      /*AbortOnError=*/false)) {
-
-        if (!PrintInvalidMachineReductions) {
-          WithColor::warning(errs())
-              << "reduction attempt on function '" << MF->getName()
-              << "' failed machine verifier (debug with "
-                 "-print-invalid-reduction-machine-verifier-errors)\n";
-        }
+      if (!MF->verify(nullptr, "", /*AbortOnError=*/false))
         return true;
-      }
     }
   }
 
@@ -550,8 +530,7 @@ static uint64_t computeMIRComplexityScoreImpl(const MachineFunction &MF) {
   const MachineRegisterInfo &MRI = MF.getRegInfo();
   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
     Register Reg = Register::index2VirtReg(I);
-    if (const auto *Hints = MRI.getRegAllocationHints(Reg))
-      Score += Hints->second.size();
+    Score += MRI.getRegAllocationHints(Reg).second.size();
   }
 
   for (const MachineBasicBlock &MBB : MF) {
@@ -662,26 +641,11 @@ static uint64_t computeIRComplexityScoreImpl(const Function &F) {
           ++Score;
         if (OverflowOp->hasNoSignedWrap())
           ++Score;
-      } else if (const auto *Trunc = dyn_cast<TruncInst>(&I)) {
-        if (Trunc->hasNoSignedWrap())
-          ++Score;
-        if (Trunc->hasNoUnsignedWrap())
-          ++Score;
-      } else if (const auto *ExactOp = dyn_cast<PossiblyExactOperator>(&I)) {
-        if (ExactOp->isExact())
-          ++Score;
-      } else if (const auto *NNI = dyn_cast<PossiblyNonNegInst>(&I)) {
-        if (NNI->hasNonNeg())
-          ++Score;
-      } else if (const auto *PDI = dyn_cast<PossiblyDisjointInst>(&I)) {
-        if (PDI->isDisjoint())
-          ++Score;
       } else if (const auto *GEP = dyn_cast<GEPOperator>(&I)) {
         if (GEP->isInBounds())
           ++Score;
-        if (GEP->hasNoUnsignedSignedWrap())
-          ++Score;
-        if (GEP->hasNoUnsignedWrap())
+      } else if (const auto *ExactOp = dyn_cast<PossiblyExactOperator>(&I)) {
+        if (ExactOp->isExact())
           ++Score;
       } else if (const auto *FPOp = dyn_cast<FPMathOperator>(&I)) {
         FastMathFlags FMF = FPOp->getFastMathFlags();

@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "FifoFiles.h"
-#include "JSONUtils.h"
 
 #if !defined(_WIN32)
 #include <sys/stat.h>
@@ -19,6 +18,11 @@
 #include <fstream>
 #include <future>
 #include <optional>
+#include <thread>
+
+#include "llvm/Support/FileSystem.h"
+
+#include "lldb/lldb-defines.h"
 
 using namespace llvm;
 

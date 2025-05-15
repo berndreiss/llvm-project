@@ -613,8 +613,6 @@ class SCFTransformDialectExtension
     : public transform::TransformDialectExtension<
           SCFTransformDialectExtension> {
 public:
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFTransformDialectExtension)
-
   using Base::Base;
 
   void init() {

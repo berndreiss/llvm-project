@@ -14,7 +14,6 @@
 #define FORTRAN_OPTIMIZER_SUPPORT_INITFIR_H
 
 #include "flang/Optimizer/Dialect/CUF/CUFDialect.h"
-#include "flang/Optimizer/Dialect/CUF/CUFToLLVMIRTranslation.h"
 #include "flang/Optimizer/Dialect/FIRDialect.h"
 #include "flang/Optimizer/HLFIR/HLFIRDialect.h"
 #include "mlir/Conversion/Passes.h"
@@ -47,7 +46,6 @@ namespace fir::support {
 inline void registerNonCodegenDialects(mlir::DialectRegistry &registry) {
   registry.insert<FLANG_NONCODEGEN_DIALECT_LIST>();
   mlir::func::registerInlinerExtension(registry);
-  mlir::LLVM::registerInlinerInterface(registry);
 }
 
 /// Register all the dialects used by flang.
@@ -62,7 +60,6 @@ inline void addFIRExtensions(mlir::DialectRegistry &registry,
   if (addFIRInlinerInterface)
     addFIRInlinerExtension(registry);
   addFIRToLLVMIRExtension(registry);
-  cuf::registerCUFDialectTranslation(registry);
 }
 
 inline void loadNonCodegenDialects(mlir::MLIRContext &context) {

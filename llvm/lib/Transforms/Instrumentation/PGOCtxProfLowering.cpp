@@ -8,7 +8,6 @@
 //
 
 #include "llvm/Transforms/Instrumentation/PGOCtxProfLowering.h"
-#include "llvm/Analysis/CtxProfAnalysis.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/IR/Analysis.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -17,7 +16,6 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
-#include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/CommandLine.h"
 #include <utility>
 
@@ -32,7 +30,7 @@ static cl::list<std::string> ContextRoots(
         "root of an interesting graph, which will be profiled independently "
         "from other similar graphs."));
 
-bool PGOCtxProfLoweringPass::isCtxIRPGOInstrEnabled() {
+bool PGOCtxProfLoweringPass::isContextualIRPGOEnabled() {
   return !ContextRoots.empty();
 }
 
@@ -71,33 +69,33 @@ public:
 // of its parameters, and llvm.instrprof.callsite captures the total number of
 // callsites. Those values are the same for instances of those intrinsics in
 // this function. Find the first instance of each and return them.
-std::pair<uint32_t, uint32_t> getNumCountersAndCallsites(const Function &F) {
-  uint32_t NumCounters = 0;
-  uint32_t NumCallsites = 0;
+std::pair<uint32_t, uint32_t> getNrCountersAndCallsites(const Function &F) {
+  uint32_t NrCounters = 0;
+  uint32_t NrCallsites = 0;
   for (const auto &BB : F) {
     for (const auto &I : BB) {
       if (const auto *Incr = dyn_cast<InstrProfIncrementInst>(&I)) {
         uint32_t V =
             static_cast<uint32_t>(Incr->getNumCounters()->getZExtValue());
-        assert((!NumCounters || V == NumCounters) &&
+        assert((!NrCounters || V == NrCounters) &&
                "expected all llvm.instrprof.increment[.step] intrinsics to "
                "have the same total nr of counters parameter");
-        NumCounters = V;
+        NrCounters = V;
       } else if (const auto *CSIntr = dyn_cast<InstrProfCallsite>(&I)) {
         uint32_t V =
             static_cast<uint32_t>(CSIntr->getNumCounters()->getZExtValue());
-        assert((!NumCallsites || V == NumCallsites) &&
+        assert((!NrCallsites || V == NrCallsites) &&
                "expected all llvm.instrprof.callsite intrinsics to have the "
                "same total nr of callsites parameter");
-        NumCallsites = V;
+        NrCallsites = V;
       }
 #if NDEBUG
-      if (NumCounters && NumCallsites)
-        return std::make_pair(NumCounters, NumCallsites);
+      if (NrCounters && NrCallsites)
+        return std::make_pair(NrCounters, NrCallsites);
 #endif
     }
   }
-  return {NumCounters, NumCallsites};
+  return {NrCounters, NrCallsites};
 }
 } // namespace
 
@@ -124,8 +122,8 @@ CtxInstrumentationLowerer::CtxInstrumentationLowerer(Module &M,
   ContextNodeTy = StructType::get(M.getContext(), {
                                                       I64Ty,     /*Guid*/
                                                       PointerTy, /*Next*/
-                                                      I32Ty,     /*NumCounters*/
-                                                      I32Ty, /*NumCallsites*/
+                                                      I32Ty,     /*NrCounters*/
+                                                      I32Ty,     /*NrCallsites*/
                                                   });
 
   // Define a global for each entrypoint. We'll reuse the entrypoint's name as
@@ -154,28 +152,29 @@ CtxInstrumentationLowerer::CtxInstrumentationLowerer(Module &M,
   StartCtx = cast<Function>(
       M.getOrInsertFunction(
            CompilerRtAPINames::StartCtx,
-           FunctionType::get(PointerTy,
-                             {PointerTy, /*ContextRoot*/
+           FunctionType::get(ContextNodeTy->getPointerTo(),
+                             {ContextRootTy->getPointerTo(), /*ContextRoot*/
                               I64Ty, /*Guid*/ I32Ty,
-                              /*NumCounters*/ I32Ty /*NumCallsites*/},
+                              /*NrCounters*/ I32Ty /*NrCallsites*/},
                              false))
           .getCallee());
   GetCtx = cast<Function>(
       M.getOrInsertFunction(CompilerRtAPINames::GetCtx,
-                            FunctionType::get(PointerTy,
+                            FunctionType::get(ContextNodeTy->getPointerTo(),
                                               {PointerTy, /*Callee*/
                                                I64Ty,     /*Guid*/
-                                               I32Ty,     /*NumCounters*/
-                                               I32Ty},    /*NumCallsites*/
+                                               I32Ty,     /*NrCounters*/
+                                               I32Ty},    /*NrCallsites*/
                                               false))
           .getCallee());
   ReleaseCtx = cast<Function>(
-      M.getOrInsertFunction(CompilerRtAPINames::ReleaseCtx,
-                            FunctionType::get(Type::getVoidTy(M.getContext()),
-                                              {
-                                                  PointerTy, /*ContextRoot*/
-                                              },
-                                              false))
+      M.getOrInsertFunction(
+           CompilerRtAPINames::ReleaseCtx,
+           FunctionType::get(Type::getVoidTy(M.getContext()),
+                             {
+                                 ContextRootTy->getPointerTo(), /*ContextRoot*/
+                             },
+                             false))
           .getCallee());
 
   // Declare the TLSes we will need to use.
@@ -207,7 +206,7 @@ bool CtxInstrumentationLowerer::lowerFunction(Function &F) {
   auto &ORE = FAM.getResult<OptimizationRemarkEmitterAnalysis>(F);
 
   Value *Guid = nullptr;
-  auto [NumCounters, NumCallsites] = getNumCountersAndCallsites(F);
+  auto [NrCounters, NrCallsites] = getNrCountersAndCallsites(F);
 
   Value *Context = nullptr;
   Value *RealContext = nullptr;
@@ -224,16 +223,15 @@ bool CtxInstrumentationLowerer::lowerFunction(Function &F) {
       assert(Mark->getIndex()->isZero());
 
       IRBuilder<> Builder(Mark);
-
-      Guid = Builder.getInt64(
-          AssignGUIDPass::getGUID(cast<Function>(*Mark->getNameValue())));
+      // FIXME(mtrofin): use InstrProfSymtab::getCanonicalName
+      Guid = Builder.getInt64(F.getGUID());
       // The type of the context of this function is now knowable since we have
-      // NumCallsites and NumCounters. We delcare it here because it's more
+      // NrCallsites and NrCounters. We delcare it here because it's more
       // convenient - we have the Builder.
       ThisContextType = StructType::get(
           F.getContext(),
-          {ContextNodeTy, ArrayType::get(Builder.getInt64Ty(), NumCounters),
-           ArrayType::get(Builder.getPtrTy(), NumCallsites)});
+          {ContextNodeTy, ArrayType::get(Builder.getInt64Ty(), NrCounters),
+           ArrayType::get(Builder.getPtrTy(), NrCallsites)});
       // Figure out which way we obtain the context object for this function -
       // if it's an entrypoint, then we call StartCtx, otherwise GetCtx. In the
       // former case, we also set TheRootContext since we need to release it
@@ -242,28 +240,28 @@ bool CtxInstrumentationLowerer::lowerFunction(Function &F) {
       auto Iter = ContextRootMap.find(&F);
       if (Iter != ContextRootMap.end()) {
         TheRootContext = Iter->second;
-        Context = Builder.CreateCall(
-            StartCtx, {TheRootContext, Guid, Builder.getInt32(NumCounters),
-                       Builder.getInt32(NumCallsites)});
+        Context = Builder.CreateCall(StartCtx, {TheRootContext, Guid,
+                                                Builder.getInt32(NrCounters),
+                                                Builder.getInt32(NrCallsites)});
         ORE.emit(
             [&] { return OptimizationRemark(DEBUG_TYPE, "Entrypoint", &F); });
       } else {
         Context =
-            Builder.CreateCall(GetCtx, {&F, Guid, Builder.getInt32(NumCounters),
-                                        Builder.getInt32(NumCallsites)});
+            Builder.CreateCall(GetCtx, {&F, Guid, Builder.getInt32(NrCounters),
+                                        Builder.getInt32(NrCallsites)});
         ORE.emit([&] {
           return OptimizationRemark(DEBUG_TYPE, "RegularFunction", &F);
         });
       }
       // The context could be scratch.
       auto *CtxAsInt = Builder.CreatePtrToInt(Context, Builder.getInt64Ty());
-      if (NumCallsites > 0) {
+      if (NrCallsites > 0) {
         // Figure out which index of the TLS 2-element buffers to use.
         // Scratch context => we use index == 1. Real contexts => index == 0.
         auto *Index = Builder.CreateAnd(CtxAsInt, Builder.getInt64(1));
         // The GEPs corresponding to that index, in the respective TLS.
         ExpectedCalleeTLSAddr = Builder.CreateGEP(
-            PointerType::getUnqual(F.getContext()),
+            Builder.getInt8Ty()->getPointerTo(),
             Builder.CreateThreadLocalAddress(ExpectedCalleeTLS), {Index});
         CallsiteInfoTLSAddr = Builder.CreateGEP(
             Builder.getInt32Ty(),
@@ -276,7 +274,7 @@ bool CtxInstrumentationLowerer::lowerFunction(Function &F) {
       // with counters) stays the same.
       RealContext = Builder.CreateIntToPtr(
           Builder.CreateAnd(CtxAsInt, Builder.getInt64(-2)),
-          PointerType::getUnqual(F.getContext()));
+          ThisContextType->getPointerTo());
       I.eraseFromParent();
       break;
     }

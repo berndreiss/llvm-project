@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++03
 // UNSUPPORTED: no-threads
+// ALLOW_RETRIES: 2
 
 // <mutex>
 
@@ -15,36 +15,44 @@
 
 // bool try_lock();
 
-#include <mutex>
 #include <cassert>
+#include <chrono>
+#include <cstdlib>
+#include <mutex>
 #include <thread>
 
 #include "make_test_thread.h"
+#include "test_macros.h"
 
-int main(int, char**) {
-  // Try to lock a mutex that is not locked yet. This should succeed.
-  {
-    std::timed_mutex m;
-    bool succeeded = m.try_lock();
-    assert(succeeded);
+std::timed_mutex m;
+
+typedef std::chrono::system_clock Clock;
+typedef Clock::time_point time_point;
+typedef Clock::duration duration;
+typedef std::chrono::milliseconds ms;
+typedef std::chrono::nanoseconds ns;
+
+void f()
+{
+    time_point t0 = Clock::now();
+    assert(!m.try_lock());
+    assert(!m.try_lock());
+    assert(!m.try_lock());
+    while(!m.try_lock())
+        ;
+    time_point t1 = Clock::now();
     m.unlock();
-  }
+    ns d = t1 - t0 - ms(250);
+    assert(d < ms(200));  // within 200ms
+}
 
-  // Try to lock a mutex that is already locked. This should fail.
-  {
-    std::timed_mutex m;
+int main(int, char**)
+{
     m.lock();
-
-    std::thread t = support::make_test_thread([&] {
-      for (int i = 0; i != 10; ++i) {
-        bool succeeded = m.try_lock();
-        assert(!succeeded);
-      }
-    });
-    t.join();
-
+    std::thread t = support::make_test_thread(f);
+    std::this_thread::sleep_for(ms(250));
     m.unlock();
-  }
+    t.join();
 
   return 0;
 }

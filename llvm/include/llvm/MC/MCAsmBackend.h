@@ -50,10 +50,8 @@ public:
 
   const llvm::endianness Endian;
 
-  /// Fixup kind used for linker relaxation. Currently only used by RISC-V
-  /// and LoongArch.
+  /// Fixup kind used for linker relaxation. Currently only used by RISC-V.
   const unsigned RelaxFixupKind;
-  bool allowLinkerRelaxation() const { return RelaxFixupKind != MaxFixupKind; }
 
   /// Return true if this target might automatically pad instructions and thus
   /// need to emit padding enable/disable directives around sensative code.

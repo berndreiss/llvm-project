@@ -5,7 +5,7 @@
 #include "msan_interface_internal.h"
 #include "sanitizer_common/sanitizer_tls_get_addr.h"
 
-using namespace __msan;
+namespace __msan {
 
 MsanThread *MsanThread::Create(thread_callback_t start_routine,
                                void *arg) {
@@ -20,8 +20,13 @@ MsanThread *MsanThread::Create(thread_callback_t start_routine,
 }
 
 void MsanThread::SetThreadStackAndTls() {
-  GetThreadStackAndTls(IsMainThread(), &stack_.bottom, &stack_.top, &tls_begin_,
-                       &tls_end_);
+  uptr tls_size = 0;
+  uptr stack_size = 0;
+  GetThreadStackAndTls(IsMainThread(), &stack_.bottom, &stack_size, &tls_begin_,
+                       &tls_size);
+  stack_.top = stack_.bottom + stack_size;
+  tls_end_ = tls_begin_ + tls_size;
+
   int local;
   CHECK(AddrIsInStack((uptr)&local));
 }
@@ -69,7 +74,9 @@ thread_return_t MsanThread::ThreadStart() {
     return 0;
   }
 
-  return start_routine_(arg_);
+  thread_return_t res = start_routine_(arg_);
+
+  return res;
 }
 
 MsanThread::StackBounds MsanThread::GetStackBounds() const {
@@ -112,3 +119,5 @@ void MsanThread::FinishSwitchFiber(uptr *bottom_old, uptr *size_old) {
   next_stack_.top = 0;
   next_stack_.bottom = 0;
 }
+
+} // namespace __msan

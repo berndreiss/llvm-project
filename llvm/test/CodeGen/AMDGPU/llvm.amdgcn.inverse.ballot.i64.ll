@@ -18,6 +18,8 @@ define amdgpu_cs void @constant_false_inverse_ballot(ptr addrspace(1) %out) {
 ; GISEL-NEXT:    v_mov_b32_e32 v3, 0
 ; GISEL-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: constant_false_inverse_ballot:
@@ -27,6 +29,8 @@ define amdgpu_cs void @constant_false_inverse_ballot(ptr addrspace(1) %out) {
 ; SDAG-NEXT:    v_mov_b32_e32 v3, s2
 ; SDAG-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 0)
@@ -44,6 +48,8 @@ define amdgpu_cs void @constant_true_inverse_ballot(ptr addrspace(1) %out) {
 ; GISEL-NEXT:    v_mov_b32_e32 v3, 0
 ; GISEL-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: constant_true_inverse_ballot:
@@ -53,6 +59,8 @@ define amdgpu_cs void @constant_true_inverse_ballot(ptr addrspace(1) %out) {
 ; SDAG-NEXT:    v_mov_b32_e32 v3, s2
 ; SDAG-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 u0xFFFFFFFFFFFFFFFF)
@@ -71,6 +79,8 @@ define amdgpu_cs void @constant_mask_inverse_ballot(ptr addrspace(1) %out) {
 ; GISEL-NEXT:    v_mov_b32_e32 v3, 0
 ; GISEL-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: constant_mask_inverse_ballot:
@@ -81,6 +91,8 @@ define amdgpu_cs void @constant_mask_inverse_ballot(ptr addrspace(1) %out) {
 ; SDAG-NEXT:    v_mov_b32_e32 v3, s2
 ; SDAG-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 u0x0040F8010000)
@@ -99,6 +111,8 @@ define amdgpu_cs void @vgpr_inverse_ballot(i64 %input, ptr addrspace(1) %out) {
 ; GISEL-NEXT:    v_mov_b32_e32 v5, 0
 ; GISEL-NEXT:    v_cndmask_b32_e64 v4, 0, 1, s[0:1]
 ; GISEL-NEXT:    global_store_b64 v[2:3], v[4:5], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: vgpr_inverse_ballot:
@@ -109,6 +123,8 @@ define amdgpu_cs void @vgpr_inverse_ballot(i64 %input, ptr addrspace(1) %out) {
 ; SDAG-NEXT:    v_mov_b32_e32 v1, s2
 ; SDAG-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s[0:1]
 ; SDAG-NEXT:    global_store_b64 v[2:3], v[0:1], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 %input)
@@ -123,6 +139,8 @@ define amdgpu_cs void @sgpr_inverse_ballot(i64 inreg %input, ptr addrspace(1) %o
 ; GISEL-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; GISEL-NEXT:    v_mov_b32_e32 v3, 0
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: sgpr_inverse_ballot:
@@ -132,6 +150,8 @@ define amdgpu_cs void @sgpr_inverse_ballot(i64 inreg %input, ptr addrspace(1) %o
 ; SDAG-NEXT:    s_waitcnt_depctr 0xfffe
 ; SDAG-NEXT:    v_mov_b32_e32 v3, s0
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 %input)
@@ -153,6 +173,8 @@ define amdgpu_cs void @phi_uniform(i64 inreg %s0_1, i64 inreg %s2, ptr addrspace
 ; GISEL-NEXT:    v_mov_b32_e32 v3, 0
 ; GISEL-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: phi_uniform:
@@ -167,6 +189,8 @@ define amdgpu_cs void @phi_uniform(i64 inreg %s0_1, i64 inreg %s2, ptr addrspace
 ; SDAG-NEXT:    v_cndmask_b32_e64 v2, 0, 1, s[0:1]
 ; SDAG-NEXT:    v_mov_b32_e32 v3, s2
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %cc = icmp ne i64 %s2, 0
@@ -202,6 +226,8 @@ define amdgpu_cs void @inverse_ballot_branch(i64 inreg %s0_1, i64 inreg %s2, ptr
 ; GISEL-NEXT:    v_mov_b32_e32 v3, s1
 ; GISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GISEL-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 ;
 ; SDAG-LABEL: inverse_ballot_branch:
@@ -218,6 +244,8 @@ define amdgpu_cs void @inverse_ballot_branch(i64 inreg %s0_1, i64 inreg %s2, ptr
 ; SDAG-NEXT:  ; %bb.2: ; %endif
 ; SDAG-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; SDAG-NEXT:    global_store_b64 v[0:1], v[2:3], off
+; SDAG-NEXT:    s_nop 0
+; SDAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; SDAG-NEXT:    s_endpgm
 entry:
   %ballot = call i1 @llvm.amdgcn.inverse.ballot.i64(i64 %s2)

@@ -14,7 +14,7 @@
 
 namespace LIBC_NAMESPACE_DECL {
 
-unsigned long long rpc_host_call(void *fn, void *buffer, size_t size);
+void rpc_host_call(void *fn, void *buffer, size_t size);
 
 } // namespace LIBC_NAMESPACE_DECL
 

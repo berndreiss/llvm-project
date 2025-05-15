@@ -238,7 +238,9 @@ bool YAMLProfileReader::parseFunctionProfile(
     BB.setExecutionCount(YamlBB.ExecCount);
 
     for (const yaml::bolt::CallSiteInfo &YamlCSI : YamlBB.CallSites) {
-      BinaryFunction *Callee = YamlProfileToFunction.lookup(YamlCSI.DestId);
+      BinaryFunction *Callee = YamlCSI.DestId < YamlProfileToFunction.size()
+                                   ? YamlProfileToFunction[YamlCSI.DestId]
+                                   : nullptr;
       bool IsFunction = Callee ? true : false;
       MCSymbol *CalleeSymbol = nullptr;
       if (IsFunction)
@@ -366,7 +368,6 @@ Error YAMLProfileReader::preprocessProfile(BinaryContext &BC) {
     return errorCodeToError(EC);
   }
   yaml::Input YamlInput(MB.get()->getBuffer());
-  YamlInput.setAllowUnknownKeys(true);
 
   // Consume YAML file.
   YamlInput >> YamlBP;
@@ -641,7 +642,11 @@ size_t YAMLProfileReader::matchWithNameSimilarity(BinaryContext &BC) {
     // equal number of blocks.
     if (NamespaceToProfiledBFSizesIt->second.count(BF->size()) == 0)
       continue;
-    NamespaceToBFs[Namespace].push_back(BF);
+    auto NamespaceToBFsIt = NamespaceToBFs.find(Namespace);
+    if (NamespaceToBFsIt == NamespaceToBFs.end())
+      NamespaceToBFs[Namespace] = {BF};
+    else
+      NamespaceToBFsIt->second.push_back(BF);
   }
 
   // Iterates through all profiled functions and binary functions belonging to
@@ -701,7 +706,7 @@ Error YAMLProfileReader::readProfile(BinaryContext &BC) {
       break;
     }
   }
-  YamlProfileToFunction.reserve(YamlBP.Functions.size());
+  YamlProfileToFunction.resize(YamlBP.Functions.size() + 1);
 
   // Computes hash for binary functions.
   if (opts::MatchProfileWithFunctionHash) {
@@ -754,7 +759,12 @@ Error YAMLProfileReader::readProfile(BinaryContext &BC) {
   NormalizeByCalls = usesEvent("branches");
   uint64_t NumUnused = 0;
   for (yaml::bolt::BinaryFunctionProfile &YamlBF : YamlBP.Functions) {
-    if (BinaryFunction *BF = YamlProfileToFunction.lookup(YamlBF.Id))
+    if (YamlBF.Id >= YamlProfileToFunction.size()) {
+      // Such profile was ignored.
+      ++NumUnused;
+      continue;
+    }
+    if (BinaryFunction *BF = YamlProfileToFunction[YamlBF.Id])
       parseFunctionProfile(*BF, YamlBF);
     else
       ++NumUnused;

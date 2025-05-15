@@ -40,3 +40,5 @@ class InitializerListTestCase(TestBase):
             "frame variable ils",
             substrs=['[4] = "surprise it is a long string!! yay!!"'],
         )
+
+        self.expect("image list", substrs=self.getLibcPlusPlusLibs())

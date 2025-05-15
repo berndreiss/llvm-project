@@ -23,7 +23,7 @@ class RewritePatternSet;
 /// Collect a set of patterns to convert memory-related operations from the
 /// MemRef dialect to the LLVM dialect.
 void populateFinalizeMemRefToLLVMConversionPatterns(
-    const LLVMTypeConverter &converter, RewritePatternSet &patterns);
+    LLVMTypeConverter &converter, RewritePatternSet &patterns);
 
 void registerConvertMemRefToLLVMInterface(DialectRegistry &registry);
 

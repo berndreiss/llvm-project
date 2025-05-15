@@ -56,6 +56,7 @@ std::string UUID::GetAsString(llvm::StringRef separator) const {
 
     os << llvm::format_hex_no_prefix(B.value(), 2, true);
   }
+  os.flush();
 
   return result;
 }

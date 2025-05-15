@@ -12,7 +12,6 @@
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Arith/Utils/Utils.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"
@@ -246,17 +245,6 @@ void transform::ApplyFoldUnitExtentDimsViaSlicesPatternsOp::populatePatterns(
 void transform::ApplyTilingCanonicalizationPatternsOp::populatePatterns(
     RewritePatternSet &patterns) {
   linalg::populateLinalgTilingCanonicalizationPatterns(patterns);
-}
-
-void transform::ApplyFoldAddIntoDestPatternsOp::populatePatterns(
-    RewritePatternSet &patterns) {
-  linalg::populateFoldAddIntoDestPatterns(patterns);
-}
-
-void transform::ApplyPadVectorizationPatternsOp::populatePatterns(
-    RewritePatternSet &patterns) {
-  linalg::populatePadOpVectorizationPatterns(patterns);
-  linalg::populateInsertSliceVectorizationPatterns(patterns);
 }
 
 //===----------------------------------------------------------------------===//
@@ -568,15 +556,6 @@ transform::FuseOp::apply(transform::TransformRewriter &rewriter,
   tilingOptions = tilingOptions.setTileSizes(tileSizesOfr);
   scf::SCFTileAndFuseOptions tileAndFuseOptions;
   tileAndFuseOptions.tilingOptions = tilingOptions;
-
-  if (getApplyCleanup()) {
-    MLIRContext *context = rewriter.getContext();
-    RewritePatternSet patterns(context);
-    tensor::ExtractSliceOp::getCanonicalizationPatterns(patterns, context);
-    tensor::populateMergeConsecutiveInsertExtractSlicePatterns(patterns);
-    tileAndFuseOptions.cleanupPatterns = std::move(patterns);
-  }
-
   LogicalResult result = applyTilingToAll(
       rewriter, getOperation(), state.getPayloadOps(getTarget()),
       tileSizes.size() - llvm::count(tileSizes, 0), transformResults,
@@ -1137,8 +1116,10 @@ transform::InterchangeOp::applyToOne(transform::TransformRewriter &rewriter,
            << ") different from the number of loops in the target operation ("
            << numLoops << ")";
   }
-  FailureOr<GenericOp> res = interchangeGenericOp(
-      rewriter, target, SmallVector<unsigned>(interchangeVector));
+  FailureOr<GenericOp> res =
+      interchangeGenericOp(rewriter, target,
+                           SmallVector<unsigned>(interchangeVector.begin(),
+                                                 interchangeVector.end()));
   if (failed(res))
     return emitDefiniteFailure() << "failed to apply";
   results.push_back(res->getOperation());
@@ -1733,7 +1714,7 @@ transform::PackTransposeOp::apply(transform::TransformRewriter &rewriter,
 void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                              ArrayRef<int64_t> paddingDimensions,
                              ArrayRef<int64_t> padToMultipleOf,
-                             ArrayRef<int64_t> nofoldFlags,
+                             ArrayRef<int64_t> packPaddings,
                              ArrayRef<Attribute> transposePaddings,
                              StringRef copyBackOp) {
   auto resultType = transform::AnyOpType::get(b.getContext());
@@ -1748,7 +1729,7 @@ void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                (padToMultipleOf.empty()
                     ? DenseI64ArrayAttr()
                     : b.getDenseI64ArrayAttr(padToMultipleOf)),
-               /*nofoldFlags=*/b.getI64ArrayAttr(nofoldFlags),
+               /*packPaddings=*/b.getI64ArrayAttr(packPaddings),
                /*transposePaddings=*/b.getArrayAttr(transposePaddings),
                /*copyBackOp=*/b.getStringAttr(copyBackOp));
 }
@@ -1756,7 +1737,7 @@ void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
 void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                              ArrayRef<int64_t> paddingDimensions,
                              ArrayRef<OpFoldResult> mixedPadToMultipleOf,
-                             ArrayRef<int64_t> nofoldFlags,
+                             ArrayRef<int64_t> packPaddings,
                              ArrayRef<Attribute> transposePaddings,
                              StringRef copyBackOp) {
   auto resultType = transform::AnyOpType::get(b.getContext());
@@ -1772,7 +1753,7 @@ void transform::PadOp::build(OpBuilder &b, OperationState &result, Value target,
                /*paddingDimensions=*/b.getI64ArrayAttr(paddingDimensions),
                /*padToMultipleOf=*/dynamicPadToMultipleOf,
                /*padToMultipleOf=*/staticPadToMultipleOf,
-               /*nofoldFlags=*/b.getI64ArrayAttr(nofoldFlags),
+               /*packPaddings=*/b.getI64ArrayAttr(packPaddings),
                /*transposePaddings=*/b.getArrayAttr(transposePaddings),
                /*copyBackOp=*/b.getStringAttr(copyBackOp));
 }
@@ -1806,10 +1787,10 @@ transform::PadOp::apply(transform::TransformRewriter &rewriter,
     }
 
     // Convert the integer packing flags to booleans.
-    SmallVector<bool> nofoldFlags;
+    SmallVector<bool> packPaddings;
     for (int64_t packPadding :
-         extractFromIntegerArrayAttr<int64_t>(getNofoldFlags()))
-      nofoldFlags.push_back(static_cast<bool>(packPadding));
+         extractFromIntegerArrayAttr<int64_t>(getPackPaddings()))
+      packPaddings.push_back(static_cast<bool>(packPadding));
 
     // Convert the padding values to attributes.
     SmallVector<Attribute> paddingValues;
@@ -1867,7 +1848,7 @@ transform::PadOp::apply(transform::TransformRewriter &rewriter,
 
     options.padToMultipleOf = padToMultipleOf;
     options.paddingValues = paddingValues;
-    options.nofoldFlags = nofoldFlags;
+    options.packPaddings = packPaddings;
     if (getCopyBackOp() ==
         bufferization::MaterializeInDestinationOp::getOperationName()) {
       options.copyBackOp = LinalgPaddingOptions::CopyBackOp::
@@ -1913,14 +1894,14 @@ transform::PadOp::apply(transform::TransformRewriter &rewriter,
 }
 
 LogicalResult transform::PadOp::verify() {
-  SmallVector<int64_t> nofoldFlags =
-      extractFromIntegerArrayAttr<int64_t>(getNofoldFlags());
-  if (any_of(nofoldFlags, [](int64_t packPadding) {
+  SmallVector<int64_t> packPaddings =
+      extractFromIntegerArrayAttr<int64_t>(getPackPaddings());
+  if (any_of(packPaddings, [](int64_t packPadding) {
         return packPadding != 0 && packPadding != 1;
       })) {
     return emitOpError()
-           << "expects nofold_flags to contain booleans (0/1), found "
-           << getNofoldFlags();
+           << "expects pack_paddings to contain booleans (0/1), found "
+           << getPackPaddings();
   }
 
   SmallVector<int64_t> paddingDimensions =
@@ -2020,7 +2001,7 @@ transform::HoistPadOp::applyToOne(transform::TransformRewriter &rewriter,
                                   transform::ApplyToEachResultList &results,
                                   transform::TransformState &state) {
   tensor::PadOp hoistedPadOp;
-  SmallVector<TransposeOp> transposeOps;
+  SmallVector<GenericOp> transposeOps;
   FailureOr<Value> result =
       hoistPaddingOnTensors(rewriter, target, getNumLoops(), getTranspose(),
                             hoistedPadOp, transposeOps);
@@ -3170,100 +3151,12 @@ void transform::TileUsingForallOp::build(OpBuilder &builder,
         /*mapping=*/mapping);
 }
 
-/// Given `lbs`, `ubs` and `steps` of loops, return (for each loop), the
-/// normalized upper bound.
-static SmallVector<OpFoldResult>
-normalizeUpperBounds(RewriterBase &rewriter, Location loc,
-                     ArrayRef<OpFoldResult> lbs, ArrayRef<OpFoldResult> ubs,
-                     ArrayRef<OpFoldResult> steps) {
-  AffineExpr s0, s1, s2;
-  bindSymbols(rewriter.getContext(), s0, s1, s2);
-  AffineExpr normalizedUbExpr = (s1 - s0).ceilDiv(s2);
-  SmallVector<OpFoldResult> normalizedUbs;
-  for (auto [lb, ub, step] : llvm::zip_equal(lbs, ubs, steps)) {
-    OpFoldResult normalizedUb = affine::makeComposedFoldedAffineApply(
-        rewriter, loc, normalizedUbExpr, {lb, ub, step});
-    normalizedUbs.push_back(normalizedUb);
-  }
-  return normalizedUbs;
-}
-
-/// When a loop is normalized, the uses of the induction variable within the
-/// loop need to replaced with `original_lb + old_iv * original_step`.
-static SmallVector<Value> denormalizeIndVar(RewriterBase &rewriter,
-                                            Location loc, ValueRange ivs,
-                                            ArrayRef<OpFoldResult> lbs,
-                                            ArrayRef<OpFoldResult> steps) {
-  AffineExpr s0, s1;
-  AffineExpr d0;
-  bindSymbols(rewriter.getContext(), s0, s1);
-  bindDims(rewriter.getContext(), d0);
-  AffineExpr denormExpr = s0 + d0 * s1;
-  SmallVector<Value> denormalizedIvs;
-
-  for (auto [iv, lb, step] : llvm::zip_equal(ivs, lbs, steps)) {
-    OpFoldResult denormValue = affine::makeComposedFoldedAffineApply(
-        rewriter, loc, denormExpr, ArrayRef<OpFoldResult>{iv, lb, step});
-    denormalizedIvs.push_back(
-        getValueOrCreateConstantIndexOp(rewriter, loc, denormValue));
-  }
-  return denormalizedIvs;
-}
-
-/// Given a `scf.forall` loop return a loop op with the loop bounds
-/// normalized.
-/// TODO: Replace this with a general utility to normalize `scf.forall`.
-/// At the time of writing, this wasnt done since adding this to `scf`
-/// dialect would disallow using of `affine.apply` operations due
-/// to cyclic dependencies. To avoid churn in lit tests
-/// with the change this was added with, defer that to a follow up.
-static scf::ForallOp normalizeForallLoopOp(RewriterBase &rewriter,
-                                           scf::ForallOp loop) {
-  SmallVector<OpFoldResult> lbs = loop.getMixedLowerBound();
-  SmallVector<OpFoldResult> ubs = loop.getMixedUpperBound();
-  SmallVector<OpFoldResult> steps = loop.getMixedStep();
-
-  if (llvm::all_of(
-          lbs, [](OpFoldResult ofr) { return isConstantIntValue(ofr, 0); }) &&
-      llvm::all_of(
-          steps, [](OpFoldResult ofr) { return isConstantIntValue(ofr, 1); })) {
-    return loop;
-  }
-
-  Location loc = loop.getLoc();
-  SmallVector<OpFoldResult> normalizedUbs =
-      normalizeUpperBounds(rewriter, loc, lbs, ubs, steps);
-  SmallVector<OpFoldResult> normalizedLbs(normalizedUbs.size(),
-                                          rewriter.getIndexAttr(0));
-  SmallVector<OpFoldResult> normalizedSteps(normalizedUbs.size(),
-                                            rewriter.getIndexAttr(1));
-
-  auto normalizedForallOp = rewriter.create<scf::ForallOp>(
-      loc, normalizedLbs, normalizedUbs, normalizedSteps, loop.getOutputs(),
-      loop.getMapping(), [](OpBuilder &, Location, ValueRange) {});
-
-  auto normalizedLoopIvs = normalizedForallOp.getInductionVars();
-  OpBuilder::InsertionGuard g(rewriter);
-  Block *normalizedLoopBlock = normalizedForallOp.getBody();
-  rewriter.setInsertionPointToStart(normalizedLoopBlock);
-
-  SmallVector<Value> argValues =
-      denormalizeIndVar(rewriter, loc, normalizedLoopIvs, lbs, steps);
-  argValues.append(normalizedForallOp.getRegionIterArgs().begin(),
-                   normalizedForallOp.getRegionIterArgs().end());
-  Block *origLoopBlock = loop.getBody();
-  rewriter.mergeBlocks(origLoopBlock, normalizedLoopBlock, argValues);
-
-  rewriter.replaceOp(loop, normalizedForallOp);
-  return normalizedForallOp;
-}
-
 DiagnosedSilenceableFailure transform::tileToForallOpImpl(
     RewriterBase &rewriter, transform::TransformState &state,
     TransformOpInterface transformOp, Operation *target,
     ArrayRef<OpFoldResult> mixedNumThreads,
     ArrayRef<OpFoldResult> mixedTileSizes, std::optional<ArrayAttr> mapping,
-    scf::SCFTilingResult &tilingResult) {
+    linalg::ForallTilingResult &tilingResult) {
   // Transform all targets one by one.
   auto tileableOp = dyn_cast<TilingInterface>(target);
   if (!tileableOp) {
@@ -3274,35 +3167,20 @@ DiagnosedSilenceableFailure transform::tileToForallOpImpl(
     return diag;
   }
   rewriter.setInsertionPoint(tileableOp);
-  scf::SCFTilingOptions options;
-  options.setLoopType(scf::SCFTilingOptions::LoopType::ForallOp);
+  FailureOr<linalg::ForallTilingResult> maybeTilingResult = failure();
   if (!mixedNumThreads.empty()) {
-    options.setNumThreads(mixedNumThreads);
+    maybeTilingResult =
+        linalg::tileToForallOp(rewriter, tileableOp, mixedNumThreads, mapping);
   } else {
-    options.setTileSizes(mixedTileSizes);
+    maybeTilingResult = linalg::tileToForallOpUsingTileSizes(
+        rewriter, tileableOp, mixedTileSizes, mapping);
   }
-  if (mapping) {
-    options.setMapping(mapping.value().getValue());
-  }
-  FailureOr<scf::SCFTilingResult> maybeTilingResult =
-      scf::tileUsingSCF(rewriter, tileableOp, options);
 
   if (failed(maybeTilingResult))
     return transformOp.emitDefaultSilenceableFailure(tileableOp);
-
-  rewriter.replaceOp(tileableOp, maybeTilingResult->replacements);
+  rewriter.replaceOp(tileableOp, maybeTilingResult->tileOp->getResults());
 
   tilingResult = *maybeTilingResult;
-
-  if (mixedNumThreads.empty()) {
-    auto generatedForallOp = cast<scf::ForallOp>(tilingResult.loops.front());
-    OpBuilder::InsertionGuard g(rewriter);
-    rewriter.setInsertionPoint(generatedForallOp);
-    scf::ForallOp normalizedForallOp =
-        normalizeForallLoopOp(rewriter, generatedForallOp);
-    tilingResult.loops.front() = normalizedForallOp;
-  }
-
   return DiagnosedSilenceableFailure::success();
 }
 
@@ -3336,14 +3214,14 @@ DiagnosedSilenceableFailure transform::TileUsingForallOp::apply(
     return status;
 
   for (Operation *target : state.getPayloadOps(getTarget())) {
-    scf::SCFTilingResult tilingResult;
+    linalg::ForallTilingResult tilingResult;
     DiagnosedSilenceableFailure diag = tileToForallOpImpl(
         rewriter, state, transformOp, target, mixedNumThreads, mixedTileSizes,
         getMapping(), tilingResult);
     if (!diag.succeeded())
       return diag;
-    tileOps.push_back(tilingResult.loops.front());
-    tiledOps.append(tilingResult.tiledOps);
+    tileOps.push_back(tilingResult.tileOp);
+    tiledOps.push_back(tilingResult.tiledOp);
   }
 
   transformResults.set(cast<OpResult>(getForallOp()), tileOps);
@@ -3431,11 +3309,11 @@ struct VectorizationPattern : public RewritePattern {
         flatten1DDepthwiseConv(flattenConv) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    if (!linalg::hasVectorizationImpl(op))
-      return rewriter.notifyMatchFailure(op,
-                                         "Unsupported Op, cannot vectorize");
-    return vectorize(rewriter, op, /*inputVectorSizes=*/{},
-                     /*inputScalableVecDims=*/{}, vectorizeNDExtract,
+    LinalgOp linalgOp = dyn_cast<LinalgOp>(op);
+    if (!linalgOp)
+      return rewriter.notifyMatchFailure(op, "expected Linalg Op");
+    return vectorize(rewriter, linalgOp, /*inputVectorSizes=*/{},
+                     /*scalableVecDims=*/{}, vectorizeNDExtract,
                      flatten1DDepthwiseConv);
   }
 
@@ -3472,7 +3350,7 @@ transform::VectorizeChildrenAndApplyPatternsOp::applyToOne(
   if (!getDisableMultiReductionToContractPatterns())
     vector::populateVectorReductionToContractPatterns(patterns);
 
-  vector::populateSinkVectorOpsPatterns(patterns);
+  vector::populateSinkVectorBroadcastPatterns(patterns);
 
   patterns.add<linalg::LinalgCopyVTRForwardingPattern,
                linalg::LinalgCopyVTWForwardingPattern>(ctx,
@@ -3483,12 +3361,8 @@ transform::VectorizeChildrenAndApplyPatternsOp::applyToOne(
 
   patterns.add<CopyVectorizationPattern>(ctx);
 
-  // Add misc. vectorization patterns (e.g. for tensor.insert_slice)
-  linalg::populateInsertSliceVectorizationPatterns(patterns);
-
   if (getVectorizePadding())
     linalg::populatePadOpVectorizationPatterns(patterns);
-  vector::populateVectorStepLoweringPatterns(patterns);
 
   TrackingListener listener(state, *this);
   GreedyRewriteConfig config;
@@ -3520,14 +3394,17 @@ DiagnosedSilenceableFailure transform::VectorizeOp::apply(
 
   // TODO: Check that the correct number of vectorSizes was provided.
   for (Operation *target : targets) {
-    if (!linalg::hasVectorizationImpl(target)) {
+    if (!isa<linalg::LinalgOp, tensor::PadOp, tensor::PackOp, tensor::UnPackOp>(
+            target)) {
       return mlir::emitSilenceableFailure(target->getLoc())
              << "Unsupported Op, cannot vectorize";
     }
 
     if (failed(linalg::vectorize(rewriter, target, vectorSizes,
                                  getScalableSizes(),
-                                 getVectorizeNdExtract().value_or(false)))) {
+                                 getVectorizeNdExtract().has_value()
+                                     ? getVectorizeNdExtract().value()
+                                     : false))) {
       return mlir::emitSilenceableFailure(target->getLoc())
              << "Attempted to vectorize, but failed";
     }
@@ -3568,7 +3445,7 @@ transform::HoistRedundantVectorTransfersOp::applyToOne(
   // WARNING: This hoisting does not model parallelism and is generally
   // incorrect when used on distributed loops with memref semantics!
   // TODO: obsolete and should be retired.
-  linalg::hoistRedundantVectorTransfers(target, getVerifyNonZeroTrip());
+  linalg::hoistRedundantVectorTransfers(target);
   results.push_back(target);
   return DiagnosedSilenceableFailure::success();
 }
@@ -3822,7 +3699,7 @@ DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
 
   // OpBuilder only used to compute attributes.
   OpBuilder b(getContext());
-  scf::SCFTilingResult tilingResult;
+  linalg::ForallTilingResult tilingResult;
   DiagnosedSilenceableFailure diag = tileToForallOpImpl(
       /*rewriter=*/rewriter,
       /*state=*/state,
@@ -3835,9 +3712,8 @@ DiagnosedSilenceableFailure transform::MapCopyToThreadsOp::applyToOne(
   if (!diag.succeeded())
     return diag;
 
-  results.push_back(tilingResult.loops.front());
-  for (auto op : tilingResult.tiledOps)
-    results.push_back(op);
+  results.push_back(tilingResult.tileOp);
+  results.push_back(tilingResult.tiledOp);
   return DiagnosedSilenceableFailure::success();
 }
 
@@ -3866,47 +3742,6 @@ DiagnosedSilenceableFailure transform::WinogradConv2DOp::applyToOne(
 
   if (supported && failed(maybeTransformed)) {
     return emitSilenceableError() << "apply Winograd Conv2D failed";
-  }
-
-  results.push_back(*maybeTransformed);
-  return DiagnosedSilenceableFailure::success();
-}
-
-DiagnosedSilenceableFailure transform::DecomposeWinogradOp::applyToOne(
-    transform::TransformRewriter &rewriter, Operation *target,
-    transform::ApplyToEachResultList &results,
-    transform::TransformState &state) {
-  rewriter.setInsertionPoint(target);
-  FailureOr<Operation *> maybeTransformed = failure();
-  bool supported =
-      TypeSwitch<Operation *, bool>(target)
-          .Case([&](linalg::WinogradFilterTransformOp op) {
-            maybeTransformed = decomposeWinogradFilterTransformOp(rewriter, op);
-            return true;
-          })
-          .Case([&](linalg::WinogradInputTransformOp op) {
-            maybeTransformed = decomposeWinogradInputTransformOp(rewriter, op);
-            return true;
-          })
-          .Case([&](linalg::WinogradOutputTransformOp op) {
-            maybeTransformed = decomposeWinogradOutputTransformOp(rewriter, op);
-            return true;
-          })
-          .Default([&](Operation *op) { return false; });
-
-  if (!supported) {
-    DiagnosedSilenceableFailure diag =
-        emitSilenceableError()
-        << "this operation is not supported to decompose into other operations";
-    diag.attachNote(target->getLoc()) << "target op";
-    return diag;
-  }
-
-  if (supported && failed(maybeTransformed)) {
-    DiagnosedSilenceableFailure diag =
-        emitSilenceableError() << "decompose Winograd operations failed";
-    diag.attachNote(target->getLoc()) << "target op";
-    return diag;
   }
 
   results.push_back(*maybeTransformed);

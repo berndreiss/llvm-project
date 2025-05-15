@@ -11,7 +11,6 @@
 #include "lldb/API/SBStream.h"
 #include "lldb/Utility/Instrumentation.h"
 #include "lldb/Utility/Status.h"
-#include "lldb/Utility/VASPrintf.h"
 
 #include <cstdarg>
 
@@ -23,8 +22,7 @@ SBError::SBError() { LLDB_INSTRUMENT_VA(this); }
 SBError::SBError(const SBError &rhs) {
   LLDB_INSTRUMENT_VA(this, rhs);
 
-  if (rhs.m_opaque_up)
-    m_opaque_up = std::make_unique<Status>(rhs.m_opaque_up->Clone());
+  m_opaque_up = clone(rhs.m_opaque_up);
 }
 
 SBError::SBError(const char *message) {
@@ -33,8 +31,8 @@ SBError::SBError(const char *message) {
   SetErrorString(message);
 }
 
-SBError::SBError(lldb_private::Status &&status)
-    : m_opaque_up(new Status(std::move(status))) {
+SBError::SBError(const lldb_private::Status &status)
+    : m_opaque_up(new Status(status)) {
   LLDB_INSTRUMENT_VA(this, status);
 }
 
@@ -44,9 +42,7 @@ const SBError &SBError::operator=(const SBError &rhs) {
   LLDB_INSTRUMENT_VA(this, rhs);
 
   if (this != &rhs)
-    if (rhs.m_opaque_up)
-      m_opaque_up = std::make_unique<Status>(rhs.m_opaque_up->Clone());
-
+    m_opaque_up = clone(rhs.m_opaque_up);
   return *this;
 }
 
@@ -111,48 +107,42 @@ void SBError::SetError(uint32_t err, ErrorType type) {
   LLDB_INSTRUMENT_VA(this, err, type);
 
   CreateIfNeeded();
-  *m_opaque_up = Status(err, type);
+  m_opaque_up->SetError(err, type);
 }
 
-void SBError::SetError(Status &&lldb_error) {
+void SBError::SetError(const Status &lldb_error) {
   CreateIfNeeded();
-  *m_opaque_up = std::move(lldb_error);
+  *m_opaque_up = lldb_error;
 }
 
 void SBError::SetErrorToErrno() {
   LLDB_INSTRUMENT_VA(this);
 
   CreateIfNeeded();
-  *m_opaque_up = Status::FromErrno();
+  m_opaque_up->SetErrorToErrno();
 }
 
 void SBError::SetErrorToGenericError() {
   LLDB_INSTRUMENT_VA(this);
 
   CreateIfNeeded();
-  *m_opaque_up = Status(std::string("generic error"));
+  m_opaque_up->SetErrorToGenericError();
 }
 
 void SBError::SetErrorString(const char *err_str) {
   LLDB_INSTRUMENT_VA(this, err_str);
 
   CreateIfNeeded();
-  *m_opaque_up = Status::FromErrorString(err_str);
+  m_opaque_up->SetErrorString(err_str);
 }
 
 int SBError::SetErrorStringWithFormat(const char *format, ...) {
   CreateIfNeeded();
-  std::string string;
   va_list args;
   va_start(args, format);
-  if (format != nullptr && format[0]) {
-    llvm::SmallString<1024> buf;
-    VASprintf(buf, format, args);
-    string = std::string(buf.str());
-    *m_opaque_up = Status(std::move(string));
-  }
+  int num_chars = m_opaque_up->SetErrorStringWithVarArg(format, args);
   va_end(args);
-  return string.size();
+  return num_chars;
 }
 
 bool SBError::IsValid() const {

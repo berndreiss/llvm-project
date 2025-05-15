@@ -117,8 +117,6 @@ add_header_library(
   wctype_utils
   HDRS
     wctype_utils.h
-  DEPENDS
-    libc.hdr.types.wint_t
 )
 
 add_header_library(
@@ -192,11 +190,10 @@ add_header_library(
     libc.src.__support.CPP.bit
     libc.src.__support.CPP.limits
     libc.src.__support.CPP.optional
+    libc.src.__support.FPUtil.dyadic_float
+    libc.src.__support.FPUtil.fenv_impl
     libc.src.__support.FPUtil.fp_bits
     libc.src.__support.FPUtil.rounding_mode
-    libc.src.__support.macros.config
-    libc.src.__support.macros.null_check
-    libc.src.__support.macros.optimization
     libc.src.errno.errno
 )
 
@@ -207,12 +204,6 @@ add_header_library(
   DEPENDS
     .uint128
     libc.src.__support.CPP.limits
-)
-
-add_header_library(
-  complex_type
-  HDRS
-    complex_type.h
 )
 
 add_header_library(
@@ -242,9 +233,6 @@ add_header_library(
   HDRS
     char_vector.h
   DEPENDS
-    libc.hdr.func.free
-    libc.hdr.func.malloc
-    libc.hdr.func.realloc
     libc.src.__support.common
 )
 
@@ -286,7 +274,6 @@ add_header_library(
   DEPENDS
     .integer_to_string
     libc.src.__support.OSUtil.osutil
-    libc.src.__support.macros.optimization
 )
 
 add_header_library(

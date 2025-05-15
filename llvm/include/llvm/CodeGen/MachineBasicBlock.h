@@ -157,8 +157,8 @@ private:
   Instructions Insts;
 
   /// Keep track of the predecessor / successor basic blocks.
-  SmallVector<MachineBasicBlock *, 4> Predecessors;
-  SmallVector<MachineBasicBlock *, 2> Successors;
+  std::vector<MachineBasicBlock *> Predecessors;
+  std::vector<MachineBasicBlock *> Successors;
 
   /// Keep track of the probabilities to the successors. This vector has the
   /// same order as Successors, or it is empty if we don't use it (disable
@@ -387,20 +387,18 @@ public:
   }
 
   // Machine-CFG iterators
-  using pred_iterator = SmallVectorImpl<MachineBasicBlock *>::iterator;
-  using const_pred_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::const_iterator;
-  using succ_iterator = SmallVectorImpl<MachineBasicBlock *>::iterator;
-  using const_succ_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::const_iterator;
+  using pred_iterator = std::vector<MachineBasicBlock *>::iterator;
+  using const_pred_iterator = std::vector<MachineBasicBlock *>::const_iterator;
+  using succ_iterator = std::vector<MachineBasicBlock *>::iterator;
+  using const_succ_iterator = std::vector<MachineBasicBlock *>::const_iterator;
   using pred_reverse_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::reverse_iterator;
+      std::vector<MachineBasicBlock *>::reverse_iterator;
   using const_pred_reverse_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::const_reverse_iterator;
+      std::vector<MachineBasicBlock *>::const_reverse_iterator;
   using succ_reverse_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::reverse_iterator;
+      std::vector<MachineBasicBlock *>::reverse_iterator;
   using const_succ_reverse_iterator =
-      SmallVectorImpl<MachineBasicBlock *>::const_reverse_iterator;
+      std::vector<MachineBasicBlock *>::const_reverse_iterator;
   pred_iterator        pred_begin()       { return Predecessors.begin(); }
   const_pred_iterator  pred_begin() const { return Predecessors.begin(); }
   pred_iterator        pred_end()         { return Predecessors.end();   }
@@ -478,11 +476,11 @@ public:
   Register addLiveIn(MCRegister PhysReg, const TargetRegisterClass *RC);
 
   /// Remove the specified register from the live in set.
-  void removeLiveIn(MCRegister Reg,
+  void removeLiveIn(MCPhysReg Reg,
                     LaneBitmask LaneMask = LaneBitmask::getAll());
 
   /// Return true if the specified register is in the live in set.
-  bool isLiveIn(MCRegister Reg,
+  bool isLiveIn(MCPhysReg Reg,
                 LaneBitmask LaneMask = LaneBitmask::getAll()) const;
 
   // Iteration support for live in sets.  These sets are kept in sorted
@@ -983,12 +981,6 @@ public:
     return SplitCriticalEdge(Succ, nullptr, &MFAM, LiveInSets);
   }
 
-  // Helper method for new pass manager migration.
-  MachineBasicBlock *
-  SplitCriticalEdge(MachineBasicBlock *Succ, Pass *P,
-                    MachineFunctionAnalysisManager *MFAM,
-                    std::vector<SparseBitVector<>> *LiveInSets);
-
   /// Check if the edge between this block and the given successor \p
   /// Succ, can be split. If this returns true a subsequent call to
   /// SplitCriticalEdge is guaranteed to return a valid basic block if
@@ -1262,6 +1254,12 @@ private:
   /// unless you know what you're doing, because it doesn't update Pred's
   /// successors list. Use Pred->removeSuccessor instead.
   void removePredecessor(MachineBasicBlock *Pred);
+
+  // Helper method for new pass manager migration.
+  MachineBasicBlock *
+  SplitCriticalEdge(MachineBasicBlock *Succ, Pass *P,
+                    MachineFunctionAnalysisManager *MFAM,
+                    std::vector<SparseBitVector<>> *LiveInSets);
 };
 
 raw_ostream& operator<<(raw_ostream &OS, const MachineBasicBlock &MBB);
@@ -1297,15 +1295,7 @@ template <> struct GraphTraits<MachineBasicBlock *> {
   static NodeRef getEntryNode(MachineBasicBlock *BB) { return BB; }
   static ChildIteratorType child_begin(NodeRef N) { return N->succ_begin(); }
   static ChildIteratorType child_end(NodeRef N) { return N->succ_end(); }
-
-  static unsigned getNumber(MachineBasicBlock *BB) {
-    assert(BB->getNumber() >= 0 && "negative block number");
-    return BB->getNumber();
-  }
 };
-
-static_assert(GraphHasNodeNumbers<MachineBasicBlock *>,
-              "GraphTraits getNumber() not detected");
 
 template <> struct GraphTraits<const MachineBasicBlock *> {
   using NodeRef = const MachineBasicBlock *;
@@ -1314,15 +1304,7 @@ template <> struct GraphTraits<const MachineBasicBlock *> {
   static NodeRef getEntryNode(const MachineBasicBlock *BB) { return BB; }
   static ChildIteratorType child_begin(NodeRef N) { return N->succ_begin(); }
   static ChildIteratorType child_end(NodeRef N) { return N->succ_end(); }
-
-  static unsigned getNumber(const MachineBasicBlock *BB) {
-    assert(BB->getNumber() >= 0 && "negative block number");
-    return BB->getNumber();
-  }
 };
-
-static_assert(GraphHasNodeNumbers<const MachineBasicBlock *>,
-              "GraphTraits getNumber() not detected");
 
 // Provide specializations of GraphTraits to be able to treat a
 // MachineFunction as a graph of MachineBasicBlocks and to walk it
@@ -1340,15 +1322,7 @@ template <> struct GraphTraits<Inverse<MachineBasicBlock*>> {
 
   static ChildIteratorType child_begin(NodeRef N) { return N->pred_begin(); }
   static ChildIteratorType child_end(NodeRef N) { return N->pred_end(); }
-
-  static unsigned getNumber(MachineBasicBlock *BB) {
-    assert(BB->getNumber() >= 0 && "negative block number");
-    return BB->getNumber();
-  }
 };
-
-static_assert(GraphHasNodeNumbers<Inverse<MachineBasicBlock *>>,
-              "GraphTraits getNumber() not detected");
 
 template <> struct GraphTraits<Inverse<const MachineBasicBlock*>> {
   using NodeRef = const MachineBasicBlock *;
@@ -1360,15 +1334,7 @@ template <> struct GraphTraits<Inverse<const MachineBasicBlock*>> {
 
   static ChildIteratorType child_begin(NodeRef N) { return N->pred_begin(); }
   static ChildIteratorType child_end(NodeRef N) { return N->pred_end(); }
-
-  static unsigned getNumber(const MachineBasicBlock *BB) {
-    assert(BB->getNumber() >= 0 && "negative block number");
-    return BB->getNumber();
-  }
 };
-
-static_assert(GraphHasNodeNumbers<Inverse<const MachineBasicBlock *>>,
-              "GraphTraits getNumber() not detected");
 
 // These accessors are handy for sharing templated code between IR and MIR.
 inline auto successors(const MachineBasicBlock *BB) { return BB->successors(); }

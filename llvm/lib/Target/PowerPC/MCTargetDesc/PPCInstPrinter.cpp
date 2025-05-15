@@ -47,7 +47,7 @@ FullRegNamesWithPercent("ppc-reg-with-percent-prefix", cl::Hidden,
 #define PRINT_ALIAS_INSTR
 #include "PPCGenAsmWriter.inc"
 
-void PPCInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) {
+void PPCInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
   const char *RegName = getRegisterName(Reg);
   OS << RegName;
 }

@@ -42,7 +42,9 @@ namespace ranges {
 template <class _InIter, class _OutIter>
 using set_difference_result = in_out_result<_InIter, _OutIter>;
 
-struct __set_difference {
+namespace __set_difference {
+
+struct __fn {
   template <input_iterator _InIter1,
             sentinel_for<_InIter1> _Sent1,
             input_iterator _InIter2,
@@ -91,8 +93,10 @@ struct __set_difference {
   }
 };
 
+} // namespace __set_difference
+
 inline namespace __cpo {
-inline constexpr auto set_difference = __set_difference{};
+inline constexpr auto set_difference = __set_difference::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

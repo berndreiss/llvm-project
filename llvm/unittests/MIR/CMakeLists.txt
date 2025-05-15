@@ -15,7 +15,6 @@ set(LLVM_LINK_COMPONENTS
 
 add_llvm_unittest(MIRTests
   MachineMetadata.cpp
-  MachineStableHashTest.cpp
   )
 
 target_link_libraries(MIRTests PRIVATE LLVMTestingSupport)

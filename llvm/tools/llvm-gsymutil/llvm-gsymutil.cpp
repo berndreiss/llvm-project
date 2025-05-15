@@ -95,7 +95,6 @@ static uint64_t SegmentSize;
 static bool Quiet;
 static std::vector<uint64_t> LookupAddresses;
 static bool LookupAddressesFromStdin;
-static bool StoreMergedFunctionInfo = false;
 
 static void parseArgs(int argc, char **argv) {
   GSYMUtilOptTable Tbl;
@@ -176,7 +175,6 @@ static void parseArgs(int argc, char **argv) {
   }
 
   LookupAddressesFromStdin = Args.hasArg(OPT_addresses_from_stdin);
-  StoreMergedFunctionInfo = Args.hasArg(OPT_merged_functions);
 }
 
 /// @}
@@ -358,13 +356,6 @@ static llvm::Error handleObjectFile(ObjectFile &Obj, const std::string &OutFile,
   // Convert all DWARF to GSYM.
   if (auto Err = DT.convert(ThreadCount, Out))
     return Err;
-
-  // If enabled, merge functions with identical address ranges as merged
-  // functions in the first FunctionInfo with that address range. Do this right
-  // after loading the DWARF data so we don't have to deal with functions from
-  // the symbol table.
-  if (StoreMergedFunctionInfo)
-    Gsym.prepareMergedFunctions(Out);
 
   // Get the UUID and convert symbol table to GSYM.
   if (auto Err = ObjectFileTransformer::convert(Obj, Out, Gsym))

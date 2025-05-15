@@ -67,7 +67,7 @@ void convertMemRefTypesAndAttrs(
 
 /// Appends to a pattern list additional patterns for translating MemRef ops
 /// to SPIR-V ops.
-void populateMemRefToSPIRVPatterns(const SPIRVTypeConverter &typeConverter,
+void populateMemRefToSPIRVPatterns(SPIRVTypeConverter &typeConverter,
                                    RewritePatternSet &patterns);
 
 } // namespace mlir

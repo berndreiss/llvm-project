@@ -26,7 +26,6 @@ class TestingConfig(object):
             "SYSTEMROOT",
             "TERM",
             "CLANG",
-            "CLANG_TOOLCHAIN_PROGRAM_TIMEOUT",
             "LLDB",
             "LD_PRELOAD",
             "LLVM_SYMBOLIZER_PATH",
@@ -41,7 +40,6 @@ class TestingConfig(object):
             "LSAN_OPTIONS",
             "HWASAN_OPTIONS",
             "MSAN_OPTIONS",
-            "RTSAN_OPTIONS",
             "TSAN_OPTIONS",
             "UBSAN_OPTIONS",
             "ADB",
@@ -64,8 +62,6 @@ class TestingConfig(object):
             "SOURCE_DATE_EPOCH",
             "GTEST_FILTER",
             "DFLTCC",
-            "QEMU_LD_PREFIX",
-            "QEMU_CPU",
         ]
 
         if sys.platform.startswith("aix"):

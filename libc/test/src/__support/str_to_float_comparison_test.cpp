@@ -8,7 +8,7 @@
 
 // #include "src/__support/str_float_conv_utils.h"
 
-#include <stdlib.h> // For string to float functions
+#include <stdlib.h>
 
 // #include "src/__support/FPUtil/FPBits.h"
 

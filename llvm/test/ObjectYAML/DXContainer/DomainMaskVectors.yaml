@@ -70,13 +70,12 @@ Parts:
       NumThreadsZ:     0
       ResourceStride:  24
       Resources:
-        - Type:            CBV
+        - Type:            2
           Space:           0
           LowerBound:      0
           UpperBound:      0
-          Kind:            CBuffer
-          Flags:
-            UsedByAtomic64:  true
+          Kind:            13
+          Flags:           0
       SigInputElements:
         - Name:            AAA_HSFoo
           Indices:         [ 0 ]

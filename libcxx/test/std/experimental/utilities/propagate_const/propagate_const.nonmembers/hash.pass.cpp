@@ -13,21 +13,24 @@
 // template <class T> struct hash<experimental::fundamentals_v2::propagate_const<T>>;
 
 #include <experimental/propagate_const>
-#include <cassert>
-#include <cstddef>
-#include <functional>
-
 #include "test_macros.h"
 #include "propagate_const_helpers.h"
+#include <cassert>
 
 using std::experimental::propagate_const;
 
-template <>
-struct std::hash<X> {
+namespace std {
+template <> struct hash<X>
+{
   typedef X first_argument_type;
 
-  std::size_t operator()(const first_argument_type&) const { return 99; }
+  std::size_t operator()(const first_argument_type&) const
+  {
+    return 99;
+  }
+
 };
+} // namespace std
 
 int main(int, char**) {
 

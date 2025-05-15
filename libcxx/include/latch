@@ -16,7 +16,7 @@
 namespace std
 {
 
-  class latch                                     // since C++20
+  class latch
   {
   public:
     static constexpr ptrdiff_t max() noexcept;
@@ -42,13 +42,13 @@ namespace std
 
 #include <__config>
 
-#if _LIBCPP_HAS_THREADS
+#if !defined(_LIBCPP_HAS_NO_THREADS)
 
 #  include <__assert>
 #  include <__atomic/atomic_base.h>
 #  include <__atomic/atomic_sync.h>
 #  include <__atomic/memory_order.h>
-#  include <__cstddef/ptrdiff_t.h>
+#  include <cstddef>
 #  include <limits>
 #  include <version>
 
@@ -59,11 +59,11 @@ namespace std
 _LIBCPP_PUSH_MACROS
 #  include <__undef_macros>
 
-#  if _LIBCPP_STD_VER >= 20
+#  if _LIBCPP_STD_VER >= 14
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-class latch {
+class _LIBCPP_DEPRECATED_ATOMIC_SYNC latch {
   __atomic_base<ptrdiff_t> __a_;
 
 public:
@@ -116,15 +116,14 @@ private:
 
 _LIBCPP_END_NAMESPACE_STD
 
-#  endif // _LIBCPP_STD_VER >= 20
+#  endif // _LIBCPP_STD_VER >= 14
 
 _LIBCPP_POP_MACROS
 
-#endif // _LIBCPP_HAS_THREADS
+#endif // !defined(_LIBCPP_HAS_NO_THREADS)
 
 #if !defined(_LIBCPP_REMOVE_TRANSITIVE_INCLUDES) && _LIBCPP_STD_VER <= 20
 #  include <atomic>
-#  include <cstddef>
 #endif
 
-#endif // _LIBCPP_LATCH
+#endif //_LIBCPP_LATCH

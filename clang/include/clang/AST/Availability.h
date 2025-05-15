@@ -97,10 +97,6 @@ struct AvailabilityInfo {
     return UnconditionallyUnavailable;
   }
 
-  /// Augments the existing information with additional constraints provided by
-  /// \c Other.
-  void mergeWith(AvailabilityInfo Other);
-
   AvailabilityInfo(StringRef Domain, VersionTuple I, VersionTuple D,
                    VersionTuple O, bool U, bool UD, bool UU)
       : Domain(Domain), Introduced(I), Deprecated(D), Obsoleted(O),

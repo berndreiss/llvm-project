@@ -129,6 +129,8 @@ bool ASTResultSynthesizer::SynthesizeFunctionResult(FunctionDecl *FunDecl) {
 
     function_decl->print(os);
 
+    os.flush();
+
     LLDB_LOGF(log, "Untransformed function AST:\n%s", s.c_str());
   }
 
@@ -142,6 +144,8 @@ bool ASTResultSynthesizer::SynthesizeFunctionResult(FunctionDecl *FunDecl) {
     raw_string_ostream os(s);
 
     function_decl->print(os);
+
+    os.flush();
 
     LLDB_LOGF(log, "Transformed function AST:\n%s", s.c_str());
   }
@@ -165,6 +169,8 @@ bool ASTResultSynthesizer::SynthesizeObjCMethodResult(
 
     MethodDecl->print(os);
 
+    os.flush();
+
     LLDB_LOGF(log, "Untransformed method AST:\n%s", s.c_str());
   }
 
@@ -182,6 +188,8 @@ bool ASTResultSynthesizer::SynthesizeObjCMethodResult(
     raw_string_ostream os(s);
 
     MethodDecl->print(os);
+
+    os.flush();
 
     LLDB_LOGF(log, "Transformed method AST:\n%s", s.c_str());
   }
@@ -468,6 +476,7 @@ void ASTResultSynthesizer::CommitPersistentDecls() {
         std::string s;
         llvm::raw_string_ostream ss(s);
         decl->dump(ss);
+        ss.flush();
 
         LLDB_LOGF(log, "Couldn't commit persistent  decl: %s\n", s.c_str());
       }

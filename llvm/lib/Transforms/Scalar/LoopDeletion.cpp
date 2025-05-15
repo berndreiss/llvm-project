@@ -404,9 +404,9 @@ breakBackedgeIfNotTaken(Loop *L, DominatorTree &DT, ScalarEvolution &SE,
   if (!L->getLoopLatch())
     return LoopDeletionResult::Unmodified;
 
-  const SCEV *BTCMax = SE.getConstantMaxBackedgeTakenCount(L);
+  auto *BTCMax = SE.getConstantMaxBackedgeTakenCount(L);
   if (!BTCMax->isZero()) {
-    const SCEV *BTC = SE.getBackedgeTakenCount(L);
+    auto *BTC = SE.getBackedgeTakenCount(L);
     if (!BTC->isZero()) {
       if (!isa<SCEVCouldNotCompute>(BTC) && SE.isKnownNonZero(BTC))
         return LoopDeletionResult::Unmodified;

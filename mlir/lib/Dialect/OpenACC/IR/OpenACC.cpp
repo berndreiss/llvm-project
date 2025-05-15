@@ -24,7 +24,6 @@ using namespace acc;
 
 #include "mlir/Dialect/OpenACC/OpenACCOpsDialect.cpp.inc"
 #include "mlir/Dialect/OpenACC/OpenACCOpsEnums.cpp.inc"
-#include "mlir/Dialect/OpenACC/OpenACCOpsInterfaces.cpp.inc"
 #include "mlir/Dialect/OpenACC/OpenACCTypeInterfaces.cpp.inc"
 #include "mlir/Dialect/OpenACCMPCommon/Interfaces/OpenACCMPOpsInterfaces.cpp.inc"
 
@@ -730,8 +729,8 @@ checkSymOperandList(Operation *op, std::optional<mlir::ArrayAttr> attributes,
 }
 
 unsigned ParallelOp::getNumDataOperands() {
-  return getReductionOperands().size() + getPrivateOperands().size() +
-         getFirstprivateOperands().size() + getDataClauseOperands().size();
+  return getReductionOperands().size() + getGangPrivateOperands().size() +
+         getGangFirstPrivateOperands().size() + getDataClauseOperands().size();
 }
 
 Value ParallelOp::getDataOperand(unsigned i) {
@@ -759,23 +758,20 @@ static LogicalResult verifyDeviceTypeAndSegmentCountMatch(
     Op op, OperandRange operands, DenseI32ArrayAttr segments,
     ArrayAttr deviceTypes, llvm::StringRef keyword, int32_t maxInSegment = 0) {
   std::size_t numOperandsInSegments = 0;
-  std::size_t nbOfSegments = 0;
 
-  if (segments) {
-    for (auto segCount : segments.asArrayRef()) {
-      if (maxInSegment != 0 && segCount > maxInSegment)
-        return op.emitOpError() << keyword << " expects a maximum of "
-                                << maxInSegment << " values per segment";
-      numOperandsInSegments += segCount;
-      ++nbOfSegments;
-    }
+  if (!segments)
+    return success();
+
+  for (auto segCount : segments.asArrayRef()) {
+    if (maxInSegment != 0 && segCount > maxInSegment)
+      return op.emitOpError() << keyword << " expects a maximum of "
+                              << maxInSegment << " values per segment";
+    numOperandsInSegments += segCount;
   }
-
-  if ((numOperandsInSegments != operands.size()) ||
-      (!deviceTypes && !operands.empty()))
+  if (numOperandsInSegments != operands.size())
     return op.emitOpError()
            << keyword << " operand count does not match count in segments";
-  if (deviceTypes && deviceTypes.getValue().size() != nbOfSegments)
+  if (deviceTypes.getValue().size() != (size_t)segments.size())
     return op.emitOpError()
            << keyword << " segment count does not match device_type count";
   return success();
@@ -783,12 +779,8 @@ static LogicalResult verifyDeviceTypeAndSegmentCountMatch(
 
 LogicalResult acc::ParallelOp::verify() {
   if (failed(checkSymOperandList<mlir::acc::PrivateRecipeOp>(
-          *this, getPrivatizations(), getPrivateOperands(), "private",
+          *this, getPrivatizations(), getGangPrivateOperands(), "private",
           "privatizations", /*checkOperandType=*/false)))
-    return failure();
-  if (failed(checkSymOperandList<mlir::acc::FirstprivateRecipeOp>(
-          *this, getFirstprivatizations(), getFirstprivateOperands(),
-          "firstprivate", "firstprivatizations", /*checkOperandType=*/false)))
     return failure();
   if (failed(checkSymOperandList<mlir::acc::ReductionRecipeOp>(
           *this, getReductionRecipes(), getReductionOperands(), "reduction",
@@ -1365,8 +1357,8 @@ printCombinedConstructsLoop(mlir::OpAsmPrinter &p, mlir::Operation *op,
 //===----------------------------------------------------------------------===//
 
 unsigned SerialOp::getNumDataOperands() {
-  return getReductionOperands().size() + getPrivateOperands().size() +
-         getFirstprivateOperands().size() + getDataClauseOperands().size();
+  return getReductionOperands().size() + getGangPrivateOperands().size() +
+         getGangFirstPrivateOperands().size() + getDataClauseOperands().size();
 }
 
 Value SerialOp::getDataOperand(unsigned i) {
@@ -1424,12 +1416,8 @@ mlir::Value SerialOp::getWaitDevnum(mlir::acc::DeviceType deviceType) {
 
 LogicalResult acc::SerialOp::verify() {
   if (failed(checkSymOperandList<mlir::acc::PrivateRecipeOp>(
-          *this, getPrivatizations(), getPrivateOperands(), "private",
+          *this, getPrivatizations(), getGangPrivateOperands(), "private",
           "privatizations", /*checkOperandType=*/false)))
-    return failure();
-  if (failed(checkSymOperandList<mlir::acc::FirstprivateRecipeOp>(
-          *this, getFirstprivatizations(), getFirstprivateOperands(),
-          "firstprivate", "firstprivatizations", /*checkOperandType=*/false)))
     return failure();
   if (failed(checkSymOperandList<mlir::acc::ReductionRecipeOp>(
           *this, getReductionRecipes(), getReductionOperands(), "reduction",
@@ -1801,8 +1789,9 @@ bool hasDuplicateDeviceTypes(
     return false;
   for (auto attr : *segments) {
     auto deviceTypeAttr = mlir::dyn_cast<mlir::acc::DeviceTypeAttr>(attr);
-    if (!deviceTypes.insert(deviceTypeAttr.getValue()).second)
+    if (deviceTypes.contains(deviceTypeAttr.getValue()))
       return true;
+    deviceTypes.insert(deviceTypeAttr.getValue());
   }
   return false;
 }
@@ -1817,8 +1806,9 @@ LogicalResult checkDeviceTypes(mlir::ArrayAttr deviceTypes) {
         mlir::dyn_cast_or_null<mlir::acc::DeviceTypeAttr>(attr);
     if (!deviceTypeAttr)
       return failure();
-    if (!crtDeviceTypes.insert(deviceTypeAttr.getValue()).second)
+    if (crtDeviceTypes.contains(deviceTypeAttr.getValue()))
       return failure();
+    crtDeviceTypes.insert(deviceTypeAttr.getValue());
   }
   return success();
 }

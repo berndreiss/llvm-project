@@ -77,15 +77,15 @@ class HexagonMCChecker {
 
   void init();
   void init(MCInst const &);
-  void initReg(MCInst const &, MCRegister, MCRegister &PredReg, bool &isTrue);
+  void initReg(MCInst const &, unsigned, unsigned &PredReg, bool &isTrue);
 
-  bool registerUsed(MCRegister Register);
+  bool registerUsed(unsigned Register);
 
   /// \return a tuple of: pointer to the producer instruction or nullptr if
   /// none was found, the operand index, and the PredicateInfo for the
   /// producer.
   std::tuple<MCInst const *, unsigned, HexagonMCInstrInfo::PredicateInfo>
-  registerProducer(MCRegister Register,
+  registerProducer(unsigned Register,
                    HexagonMCInstrInfo::PredicateInfo Predicated);
 
   // Checks performed.

@@ -40,7 +40,7 @@ void LiveVariable::print(raw_ostream &OS, const MCRegisterInfo &MRI) const {
   DWARFExpression Expression(Data, Unit->getAddressByteSize());
 
   auto GetRegName = [&MRI, &OS](uint64_t DwarfRegNum, bool IsEH) -> StringRef {
-    if (std::optional<MCRegister> LLVMRegNum =
+    if (std::optional<unsigned> LLVMRegNum =
             MRI.getLLVMRegNum(DwarfRegNum, IsEH))
       if (const char *RegName = MRI.getName(*LLVMRegNum))
         return StringRef(RegName);
@@ -344,8 +344,7 @@ bool SourcePrinter::cacheSource(const DILineInfo &LineInfo) {
   if (LineInfo.Source) {
     Buffer = MemoryBuffer::getMemBuffer(*LineInfo.Source);
   } else {
-    auto BufferOrError =
-        MemoryBuffer::getFile(LineInfo.FileName, /*IsText=*/true);
+    auto BufferOrError = MemoryBuffer::getFile(LineInfo.FileName);
     if (!BufferOrError) {
       if (MissingSources.insert(LineInfo.FileName).second)
         reportWarning("failed to find source " + LineInfo.FileName,

@@ -335,21 +335,3 @@ void ErrorHandler::fatal(const Twine &msg) {
   error(msg);
   exitLld(1);
 }
-
-SyncStream::~SyncStream() {
-  os.flush();
-  switch (level) {
-  case DiagLevel::Log:
-    e.log(buf);
-    break;
-  case DiagLevel::Warn:
-    e.warn(buf);
-    break;
-  case DiagLevel::Err:
-    e.error(buf);
-    break;
-  case DiagLevel::Fatal:
-    e.fatal(buf);
-    break;
-  }
-}

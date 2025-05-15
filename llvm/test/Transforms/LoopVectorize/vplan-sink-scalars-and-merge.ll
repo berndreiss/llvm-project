@@ -11,7 +11,6 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 
 ; CHECK-LABEL: LV: Checking a loop in 'sink1'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -27,7 +26,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT: Successor(s): pred.store
 
@@ -80,7 +79,6 @@ exit:
 
 ; CHECK-LABEL: LV: Checking a loop in 'sink2'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -96,7 +94,7 @@ exit:
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT: Successor(s): pred.load
 
@@ -165,7 +163,6 @@ exit:
 
 ; CHECK-LABEL: LV: Checking a loop in 'sink3'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -181,7 +178,7 @@ exit:
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT: Successor(s): pred.load
 
@@ -252,23 +249,22 @@ exit:
 define void @uniform_gep(i64 %k, ptr noalias %A, ptr noalias %B) {
 ; CHECK-LABEL: LV: Checking a loop in 'uniform_gep'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
 ; CHECK-NEXT: Live-in ir<11> = original trip-count
 ; CHECK-EMPTY:
 ; CHECK-NEXT: vector.ph:
-; CHECK-NEXT:   CLONE ir<%gep.A.uniform> = getelementptr inbounds ir<%A>, ir<0>
 ; CHECK-NEXT: Successor(s): vector loop
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 21, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 21, %iv.next, ir<1>
 ; CHECK-NEXT:   vp<[[DERIVED_IV:%.+]]> = DERIVED-IV ir<21> + vp<[[CAN_IV]]> * ir<1>
 ; CHECK-NEXT:   EMIT vp<[[WIDE_CAN_IV:%.+]]> = WIDEN-CANONICAL-INDUCTION vp<[[CAN_IV]]>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule vp<[[WIDE_CAN_IV]]>, vp<[[BTC]]>
+; CHECK-NEXT:   CLONE ir<%gep.A.uniform> = getelementptr inbounds ir<%A>, ir<0>
 ; CHECK-NEXT:   CLONE ir<%lv> = load ir<%gep.A.uniform>
 ; CHECK-NEXT:   WIDEN ir<%cmp> = icmp ult ir<%iv>, ir<%k>
 ; CHECK-NEXT:   EMIT vp<[[NOT2:%.+]]> = not ir<%cmp>
@@ -324,7 +320,6 @@ exit:
 define void @pred_cfg1(i32 %k, i32 %j) {
 ; CHECK-LABEL: LV: Checking a loop in 'pred_cfg1'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -340,7 +335,7 @@ define void @pred_cfg1(i32 %k, i32 %j) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK1:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT:   WIDEN ir<%c.1> = icmp ult ir<%iv>, ir<%j>
 ; CHECK-NEXT:   WIDEN ir<%mul> = mul ir<%iv>, ir<10>
@@ -422,7 +417,6 @@ exit:
 define void @pred_cfg2(i32 %k, i32 %j) {
 ; CHECK-LABEL: LV: Checking a loop in 'pred_cfg2'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -438,7 +432,7 @@ define void @pred_cfg2(i32 %k, i32 %j) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK1:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT:   WIDEN ir<%mul> = mul ir<%iv>, ir<10>
 ; CHECK-NEXT:   WIDEN ir<%c.0> = icmp ult ir<%iv>, ir<%j>
@@ -529,7 +523,6 @@ exit:
 define void @pred_cfg3(i32 %k, i32 %j) {
 ; CHECK-LABEL: LV: Checking a loop in 'pred_cfg3'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -545,7 +538,7 @@ define void @pred_cfg3(i32 %k, i32 %j) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK1:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT:   WIDEN ir<%mul> = mul ir<%iv>, ir<10>
 ; CHECK-NEXT:   WIDEN ir<%c.0> = icmp ult ir<%iv>, ir<%j>
@@ -636,7 +629,6 @@ exit:
 define void @merge_3_replicate_region(i32 %k, i32 %j) {
 ; CHECK-LABEL: LV: Checking a loop in 'merge_3_replicate_region'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -652,7 +644,7 @@ define void @merge_3_replicate_region(i32 %k, i32 %j) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   vp<[[STEPS:%.+]]> = SCALAR-STEPS vp<[[CAN_IV]]>, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT: Successor(s): pred.store
@@ -742,7 +734,6 @@ exit:
 define void @update_2_uses_in_same_recipe_in_merged_block(i32 %k) {
 ; CHECK-LABEL: LV: Checking a loop in 'update_2_uses_in_same_recipe_in_merged_block'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -758,7 +749,7 @@ define void @update_2_uses_in_same_recipe_in_merged_block(i32 %k) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
 ; CHECK-NEXT: Successor(s): pred.store
 ; CHECK-EMPTY:
@@ -808,7 +799,6 @@ exit:
 define void @recipe_in_merge_candidate_used_by_first_order_recurrence(i32 %k) {
 ; CHECK-LABEL: LV: Checking a loop in 'recipe_in_merge_candidate_used_by_first_order_recurrence'
 ; CHECK:      VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: Live-in vp<[[BTC:%.+]]> = backedge-taken count
@@ -824,7 +814,7 @@ define void @recipe_in_merge_candidate_used_by_first_order_recurrence(i32 %k) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT: vector.body:
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>, vp<[[VF]]>
+; CHECK-NEXT:   WIDEN-INDUCTION %iv = phi 0, %iv.next, ir<1>
 ; CHECK-NEXT:   FIRST-ORDER-RECURRENCE-PHI ir<%for> = phi ir<0>, vp<[[PRED:%.+]]>
 ; CHECK-NEXT:   vp<[[STEPS:%.+]]> = SCALAR-STEPS vp<[[CAN_IV]]>, ir<1>
 ; CHECK-NEXT:   EMIT vp<[[MASK:%.+]]> = icmp ule ir<%iv>, vp<[[BTC]]>
@@ -1077,17 +1067,6 @@ define void @merge_with_dead_gep_between_regions(i32 %n, ptr noalias %src, ptr n
 ; CHECK-NEXT: No successors
 ; CHECK-EMPTY:
 ; CHECK-NEXT: scalar.ph
-; CHECK-NEXT: Successor(s): ir-bb<loop>
-; CHECK-EMPTY:
-; CHECK-NEXT: ir-bb<loop>:
-; CHECK-NEXT:   IR   %iv = phi i32 [ %n, %entry ], [ %iv.next, %loop ]
-; CHECK-NEXT:   IR   %iv.next = add nsw i32 %iv, -1
-; CHECK-NEXT:   IR   %gep.src = getelementptr inbounds i32, ptr %src, i32 %iv
-; CHECK-NEXT:   IR   %l = load i32, ptr %gep.src, align 16
-; CHECK-NEXT:   IR   %dead_gep = getelementptr inbounds i32, ptr %dst, i64 1
-; CHECK-NEXT:   IR   %gep.dst = getelementptr inbounds i32, ptr %dst, i32 %iv
-; CHECK-NEXT:   IR   store i32 %l, ptr %gep.dst, align 16
-; CHECK-NEXT:   IR   %ec = icmp eq i32 %iv.next, 0
 ; CHECK-NEXT: No successors
 ; CHECK-NEXT: }
 ;
@@ -1112,7 +1091,6 @@ exit:
 define void @ptr_induction_remove_dead_recipe(ptr %start, ptr %end) {
 ; CHECK-LABEL: LV: Checking a loop in 'ptr_induction_remove_dead_recipe'
 ; CHECK:       VPlan 'Initial VPlan for VF={2},UF>=1' {
-; CHECK-NEXT: Live-in vp<[[VF:%.+]]> = VF
 ; CHECK-NEXT: Live-in vp<[[VFxUF:%.+]]> = VF * UF
 ; CHECK-NEXT: Live-in vp<[[VEC_TC:%.+]]> = vector-trip-count
 ; CHECK-NEXT: vp<[[TC:%.+]]> = original trip-count
@@ -1127,11 +1105,11 @@ define void @ptr_induction_remove_dead_recipe(ptr %start, ptr %end) {
 ; CHECK-NEXT: <x1> vector loop: {
 ; CHECK-NEXT:   vector.body:
 ; CHECK-NEXT:     EMIT vp<[[CAN_IV:%.+]]> = CANONICAL-INDUCTION
-; CHECK-NEXT:     vp<[[DEV_IV:%.+]]> = DERIVED-IV ir<0> + vp<[[CAN_IV]]> * ir<-1>
+; CHECK-NEXT:     vp<[[DEV_IV:%.+]]> = DERIVED-IV ir<0> + vp<%3> * ir<-1>
 ; CHECK-NEXT:     vp<[[STEPS:%.+]]> = SCALAR-STEPS vp<[[DEV_IV]]>, ir<-1>
 ; CHECK-NEXT:     EMIT vp<[[PTR_IV:%.+]]> = ptradd ir<%start>, vp<[[STEPS]]>
 ; CHECK-NEXT:     CLONE ir<%ptr.iv.next> = getelementptr inbounds vp<[[PTR_IV]]>, ir<-1>
-; CHECK-NEXT:     vp<[[VEC_PTR:%.+]]> = reverse-vector-pointer inbounds ir<%ptr.iv.next>, vp<[[VF]]>
+; CHECK-NEXT:     vp<[[VEC_PTR:%.+]]> = vector-pointer (reverse) ir<%ptr.iv.next>
 ; CHECK-NEXT:     WIDEN ir<%l> = load vp<[[VEC_PTR]]>
 ; CHECK-NEXT:     WIDEN ir<%c.1> = icmp eq ir<%l>, ir<0>
 ; CHECK-NEXT:     EMIT vp<[[NEG:%.+]]> = not ir<%c.1>
@@ -1168,13 +1146,6 @@ define void @ptr_induction_remove_dead_recipe(ptr %start, ptr %end) {
 ; CHECK-NEXT: No successors
 ; CHECK-EMPTY:
 ; CHECK-NEXT: scalar.ph:
-; CHECK-NEXT: Successor(s): ir-bb<loop.header>
-; CHECK-EMPTY:
-; CHECK-NEXT: ir-bb<loop.header>:
-; CHECK-NEXT:   IR   %ptr.iv = phi ptr [ %start, %entry ], [ %ptr.iv.next, %loop.latch ]
-; CHECK-NEXT:   IR   %ptr.iv.next = getelementptr inbounds i8, ptr %ptr.iv, i64 -1
-; CHECK-NEXT:   IR   %l = load i8, ptr %ptr.iv.next, align 1
-; CHECK-NEXT:   IR   %c.1 = icmp eq i8 %l, 0
 ; CHECK-NEXT: No successors
 ; CHECK-NEXT: }
 ;

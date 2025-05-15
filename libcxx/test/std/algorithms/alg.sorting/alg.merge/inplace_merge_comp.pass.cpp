@@ -15,21 +15,20 @@
 //   inplace_merge(Iter first, Iter middle, Iter last, Compare comp);
 
 #include <algorithm>
-#include <cassert>
 #include <functional>
 #include <random>
-#include <vector>
+#include <cassert>
 
 #include "test_macros.h"
 
 #if TEST_STD_VER >= 11
 #include <memory>
 
-struct indirect_less {
-  template <class P>
-  bool operator()(const P& x, const P& y) const {
-    return *x < *y;
-  }
+struct indirect_less
+{
+    template <class P>
+    bool operator()(const P& x, const P& y)
+        {return *x < *y;}
 };
 
 struct S {
@@ -120,7 +119,7 @@ test()
 
 struct less_by_first {
   template <typename Pair>
-  bool operator()(const Pair& lhs, const Pair& rhs) const {
+  bool operator()(const Pair& lhs, const Pair& rhs) {
     return std::less<typename Pair::first_type>()(lhs.first, rhs.first);
   }
 };

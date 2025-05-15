@@ -17,6 +17,7 @@
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include <memory>
 
 using namespace llvm;
 

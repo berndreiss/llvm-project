@@ -36,7 +36,6 @@
 using namespace clang;
 using namespace arcmt;
 using namespace ento;
-using llvm::RewriteBuffer;
 
 namespace {
 

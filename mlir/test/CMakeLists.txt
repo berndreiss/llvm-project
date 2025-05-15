@@ -115,7 +115,6 @@ set(MLIR_TEST_DEPENDS
   mlir-opt
   mlir-query
   mlir-reduce
-  mlir-rewrite
   mlir-tblgen
   mlir-translate
   tblgen-lsp-server
@@ -149,10 +148,6 @@ endif()
 
 if(MLIR_ENABLE_CUDA_RUNNER)
   list(APPEND MLIR_TEST_DEPENDS mlir_cuda_runtime)
-endif()
-
-if(MLIR_ENABLE_EXECUTION_ENGINE)
-  list(APPEND MLIR_TEST_DEPENDS mlir-capi-execution-engine-test)
 endif()
 
 if(MLIR_ENABLE_ROCM_RUNNER)
@@ -197,8 +192,10 @@ if(LLVM_BUILD_EXAMPLES)
 endif()
 
 if(MLIR_ENABLE_SPIRV_CPU_RUNNER)
+  add_subdirectory(mlir-spirv-cpu-runner)
   list(APPEND MLIR_TEST_DEPENDS
-    mlir_spirv_cpu_runtime
+    mlir-spirv-cpu-runner
+    mlir_test_spirv_cpu_runner_c_wrappers
   )
 endif()
 

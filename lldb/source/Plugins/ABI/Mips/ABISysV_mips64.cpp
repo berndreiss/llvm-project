@@ -14,6 +14,9 @@
 #include "lldb/Core/Module.h"
 #include "lldb/Core/PluginManager.h"
 #include "lldb/Core/Value.h"
+#include "lldb/Core/ValueObjectConstResult.h"
+#include "lldb/Core/ValueObjectMemory.h"
+#include "lldb/Core/ValueObjectRegister.h"
 #include "lldb/Symbol/UnwindPlan.h"
 #include "lldb/Target/Process.h"
 #include "lldb/Target/RegisterContext.h"
@@ -26,9 +29,6 @@
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/RegisterValue.h"
 #include "lldb/Utility/Status.h"
-#include "lldb/ValueObject/ValueObjectConstResult.h"
-#include "lldb/ValueObject/ValueObjectMemory.h"
-#include "lldb/ValueObject/ValueObjectRegister.h"
 #include <optional>
 
 using namespace lldb;
@@ -663,13 +663,13 @@ Status ABISysV_mips64::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
                                             lldb::ValueObjectSP &new_value_sp) {
   Status error;
   if (!new_value_sp) {
-    error = Status::FromErrorString("Empty value object for return value.");
+    error.SetErrorString("Empty value object for return value.");
     return error;
   }
 
   CompilerType compiler_type = new_value_sp->GetCompilerType();
   if (!compiler_type) {
-    error = Status::FromErrorString("Null clang type for return value.");
+    error.SetErrorString("Null clang type for return value.");
     return error;
   }
 
@@ -678,13 +678,13 @@ Status ABISysV_mips64::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
   RegisterContext *reg_ctx = thread->GetRegisterContext().get();
 
   if (!reg_ctx)
-    error = Status::FromErrorString("no registers are available");
+    error.SetErrorString("no registers are available");
 
   DataExtractor data;
   Status data_error;
   size_t num_bytes = new_value_sp->GetData(data, data_error);
   if (data_error.Fail()) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "Couldn't convert return value to raw data: %s",
         data_error.AsCString());
     return error;
@@ -702,7 +702,7 @@ Status ABISysV_mips64::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
           uint64_t raw_value = data.GetMaxU64(&offset, num_bytes);
 
           if (!reg_ctx->WriteRegisterFromUnsigned(r2_info, raw_value))
-            error = Status::FromErrorString("failed to write register r2");
+            error.SetErrorString("failed to write register r2");
         } else {
           uint64_t raw_value = data.GetMaxU64(&offset, 8);
           if (reg_ctx->WriteRegisterFromUnsigned(r2_info, raw_value)) {
@@ -711,21 +711,19 @@ Status ABISysV_mips64::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
             raw_value = data.GetMaxU64(&offset, num_bytes - offset);
 
             if (!reg_ctx->WriteRegisterFromUnsigned(r3_info, raw_value))
-              error = Status::FromErrorString("failed to write register r3");
+              error.SetErrorString("failed to write register r3");
           } else
-            error = Status::FromErrorString("failed to write register r2");
+            error.SetErrorString("failed to write register r2");
         }
       } else {
-        error = Status::FromErrorString(
-            "We don't support returning longer than 128 bit "
-            "integer values at present.");
+        error.SetErrorString("We don't support returning longer than 128 bit "
+                             "integer values at present.");
       }
     } else if (type_flags & eTypeIsFloat) {
-      error = Status::FromErrorString("TODO: Handle Float Types.");
+      error.SetErrorString("TODO: Handle Float Types.");
     }
   } else if (type_flags & eTypeIsVector) {
-    error =
-        Status::FromErrorString("returning vector values are not supported");
+    error.SetErrorString("returning vector values are not supported");
   }
 
   return error;

@@ -20,8 +20,8 @@
 // CHECK-LABEL: Testing : "_QMmPtest
 // CHECK: a#0 <-> func.region0#0: MayAlias
 
-// a's box cannot alias with raw reference to f32 (x)
-// CHECK: a#0 <-> func.region0#1: NoAlias
+// FIXME: a's box cannot alias with raw reference to f32 (x), so MayAlias below must be NoAlias:
+// CHECK: a#0 <-> func.region0#1: MayAlias
 
 // pointer_dummy's box cannot alias with raw reference to f32 (x)
 // CHECK: func.region0#0 <-> func.region0#1: NoAlias
@@ -46,7 +46,7 @@ func.func private @_QPtest2(!fir.ref<f32>)
 
 // -----
 
-// A composite with a pointer component does not alias with a dummy
+// A composite with a pointer component may alias with a dummy
 // argument of composite type with a pointer component:
 // module m
 //   type t
@@ -63,7 +63,7 @@ func.func private @_QPtest2(!fir.ref<f32>)
 // end module m
 
 // CHECK-LABEL: Testing : "_QMmPtest"
-// CHECK: a#0 <-> func.region0#0: NoAlias
+// CHECK: a#0 <-> func.region0#0: MayAlias
 
 fir.global @_QMmEa : !fir.type<_QMmTt{pointer_component:!fir.box<!fir.ptr<f32>>}> {
   %0 = fir.undefined !fir.type<_QMmTt{pointer_component:!fir.box<!fir.ptr<f32>>}>
@@ -88,7 +88,7 @@ func.func private @_QPtest2(!fir.ref<f32>)
 // -----
 
 // Two dummy arguments of composite type with a pointer component
-// do not alias each other:
+// may alias each other:
 // module m
 //   type t
 //      real, pointer :: pointer_component
@@ -103,7 +103,7 @@ func.func private @_QPtest2(!fir.ref<f32>)
 // end module m
 
 // CHECK-LABEL: Testing : "_QMmPtest"
-// CHECK: func.region0#0 <-> func.region0#1: NoAlias
+// CHECK: func.region0#0 <-> func.region0#1: MayAlias
 
 func.func @_QMmPtest(%arg0: !fir.ref<!fir.type<_QMmTt{pointer_component:!fir.box<!fir.ptr<f32>>}>> {fir.bindc_name = "a"}, %arg1: !fir.ref<!fir.type<_QMmTt{pointer_component:!fir.box<!fir.ptr<f32>>}>> {fir.bindc_name = "b"}, %arg2: !fir.ref<f32> {fir.bindc_name = "x", fir.target}) attributes {test.ptr = "func"} {
   %0 = fir.field_index pointer_component, !fir.type<_QMmTt{pointer_component:!fir.box<!fir.ptr<f32>>}>
@@ -137,7 +137,8 @@ func.func private @_QPtest2(!fir.ref<f32>)
 // end module m
 
 // CHECK-LABEL: Testing : "_QMmPtest"
-// CHECK: func.region0#0 <-> func.region0#1: NoAlias
+// FIXME: MayAlias must be NoAlias
+// CHECK: func.region0#0 <-> func.region0#1: MayAlias
 
 func.func @_QMmPtest(%arg0: !fir.ref<!fir.type<_QMmTt{allocatable_component:!fir.box<!fir.heap<f32>>}>> {fir.bindc_name = "a"}, %arg1: !fir.ref<!fir.type<_QMmTt{allocatable_component:!fir.box<!fir.heap<f32>>}>> {fir.bindc_name = "b"}) attributes {test.ptr = "func"} {
   %0 = fir.field_index allocatable_component, !fir.type<_QMmTt{allocatable_component:!fir.box<!fir.heap<f32>>}>

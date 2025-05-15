@@ -277,11 +277,29 @@ static bool runIPSCCP(
   // whether other functions are optimizable.
   SmallVector<ReturnInst*, 8> ReturnsToZap;
 
-  Solver.inferReturnAttributes();
-  Solver.inferArgAttributes();
-  for (const auto &[F, ReturnValue] : Solver.getTrackedRetVals()) {
-    assert(!F->getReturnType()->isVoidTy() &&
-           "should not track void functions");
+  for (const auto &I : Solver.getTrackedRetVals()) {
+    Function *F = I.first;
+    const ValueLatticeElement &ReturnValue = I.second;
+
+    // If there is a known constant range for the return value, add range
+    // attribute to the return value.
+    if (ReturnValue.isConstantRange() &&
+        !ReturnValue.getConstantRange().isSingleElement()) {
+      // Do not add range metadata if the return value may include undef.
+      if (ReturnValue.isConstantRangeIncludingUndef())
+        continue;
+
+      // Do not touch existing attribute for now.
+      // TODO: We should be able to take the intersection of the existing
+      // attribute and the inferred range.
+      if (F->hasRetAttribute(Attribute::Range))
+        continue;
+      auto &CR = ReturnValue.getConstantRange();
+      F->addRangeRetAttr(CR);
+      continue;
+    }
+    if (F->getReturnType()->isVoidTy())
+      continue;
     if (SCCPSolver::isConstant(ReturnValue) || ReturnValue.isUnknownOrUndef())
       findReturnsToZap(*F, ReturnsToZap, Solver);
   }
@@ -338,13 +356,9 @@ static bool runIPSCCP(
       continue;
     LLVM_DEBUG(dbgs() << "Found that GV '" << GV->getName()
                       << "' is constant!\n");
-    for (User *U : make_early_inc_range(GV->users())) {
-      // We can remove LoadInst here, because we already replaced its users
-      // with a constant.
-      assert((isa<StoreInst>(U) || isa<LoadInst>(U)) &&
-             "Only Store|Load Instruction can be user of GlobalVariable at "
-             "reaching here.");
-      cast<Instruction>(U)->eraseFromParent();
+    while (!GV->use_empty()) {
+      StoreInst *SI = cast<StoreInst>(GV->user_back());
+      SI->eraseFromParent();
     }
 
     // Try to create a debug constant expression for the global variable

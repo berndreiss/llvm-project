@@ -110,7 +110,7 @@ add_clang_library(clangCodeGen
   MacroPPCallbacks.cpp
   MicrosoftCXXABI.cpp
   ModuleBuilder.cpp
-  ObjectFilePCHContainerWriter.cpp
+  ObjectFilePCHContainerOperations.cpp
   PatternInit.cpp
   SanitizerMetadata.cpp
   SwiftCallingConv.cpp
@@ -122,7 +122,6 @@ add_clang_library(clangCodeGen
   Targets/AVR.cpp
   Targets/BPF.cpp
   Targets/CSKY.cpp
-  Targets/DirectX.cpp
   Targets/Hexagon.cpp
   Targets/Lanai.cpp
   Targets/LoongArch.cpp
@@ -144,7 +143,6 @@ add_clang_library(clangCodeGen
   VarBypassDetector.cpp
 
   DEPENDS
-  vt_gen
   intrinsics_gen
   ClangDriverOptions
   # These generated headers are included transitively.

@@ -14,7 +14,6 @@
 #include "lldb/API/SBData.h"
 #include "lldb/API/SBError.h"
 #include "lldb/API/SBEvent.h"
-#include "lldb/API/SBExecutionContext.h"
 #include "lldb/API/SBLaunchInfo.h"
 #include "lldb/API/SBMemoryRegionInfo.h"
 #include "lldb/API/SBStream.h"
@@ -177,19 +176,25 @@ public:
   virtual Status ExecuteMultipleLines(
       const char *in_string,
       const ExecuteScriptOptions &options = ExecuteScriptOptions()) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("not implemented");
+    return error;
   }
 
   virtual Status
   ExportFunctionDefinitionToInterpreter(StringList &function_def) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("not implemented");
+    return error;
   }
 
   virtual Status GenerateBreakpointCommandCallbackData(StringList &input,
                                                        std::string &output,
                                                        bool has_extra_args,
                                                        bool is_callback) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("not implemented");
+    return error;
   }
 
   virtual bool GenerateWatchpointCommandCallbackData(StringList &input,
@@ -247,11 +252,6 @@ public:
     return lldb::ValueObjectListSP();
   }
 
-  virtual bool ShouldHide(const StructuredData::ObjectSP &implementor,
-                          lldb::StackFrameSP frame_sp) {
-    return false;
-  }
-
   virtual StructuredData::GenericSP
   CreateScriptedBreakpointResolver(const char *class_name,
                                    const StructuredDataImpl &args_data,
@@ -272,6 +272,23 @@ public:
     return lldb::eSearchDepthModule;
   }
 
+  virtual StructuredData::GenericSP
+  CreateScriptedStopHook(lldb::TargetSP target_sp, const char *class_name,
+                         const StructuredDataImpl &args_data, Status &error) {
+    error.SetErrorString("Creating scripted stop-hooks with the current "
+                         "script interpreter is not supported.");
+    return StructuredData::GenericSP();
+  }
+
+  // This dispatches to the handle_stop method of the stop-hook class.  It
+  // returns a "should_stop" bool.
+  virtual bool
+  ScriptedStopHookHandleStop(StructuredData::GenericSP implementor_sp,
+                             ExecutionContext &exc_ctx,
+                             lldb::StreamSP stream_sp) {
+    return true;
+  }
+
   virtual StructuredData::ObjectSP
   LoadPluginModule(const FileSpec &file_spec, lldb_private::Status &error) {
     return StructuredData::ObjectSP();
@@ -286,7 +303,9 @@ public:
   virtual Status GenerateFunction(const char *signature,
                                   const StringList &input,
                                   bool is_callback) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("unimplemented");
+    return error;
   }
 
   virtual void CollectDataForBreakpointCommandCallback(
@@ -305,14 +324,18 @@ public:
   virtual Status SetBreakpointCommandCallback(BreakpointOptions &bp_options,
                                               const char *callback_text,
                                               bool is_callback) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("unimplemented");
+    return error;
   }
 
   /// This one is for deserialization:
   virtual Status SetBreakpointCommandCallback(
       BreakpointOptions &bp_options,
       std::unique_ptr<BreakpointOptions::CommandData> &data_up) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("unimplemented");
+    return error;
   }
 
   Status SetBreakpointCommandCallbackFunction(
@@ -324,7 +347,9 @@ public:
   SetBreakpointCommandCallbackFunction(BreakpointOptions &bp_options,
                                        const char *function_name,
                                        StructuredData::ObjectSP extra_args_sp) {
-    return Status::FromErrorString("not implemented");
+    Status error;
+    error.SetErrorString("unimplemented");
+    return error;
   }
 
   /// Set a one-liner as the callback for the watchpoint.
@@ -420,50 +445,36 @@ public:
     return std::nullopt;
   }
 
-  virtual StructuredData::DictionarySP
-  HandleArgumentCompletionForScriptedCommand(
-      StructuredData::GenericSP impl_obj_sp, std::vector<llvm::StringRef> &args,
-      size_t args_pos, size_t char_in_arg) {
-    return {};
-  }
-
-  virtual StructuredData::DictionarySP
-  HandleOptionArgumentCompletionForScriptedCommand(
-      StructuredData::GenericSP impl_obj_sp, llvm::StringRef &long_name,
-      size_t char_in_arg) {
-    return {};
-  }
-
   virtual bool RunScriptFormatKeyword(const char *impl_function,
                                       Process *process, std::string &output,
                                       Status &error) {
-    error = Status::FromErrorString("unimplemented");
+    error.SetErrorString("unimplemented");
     return false;
   }
 
   virtual bool RunScriptFormatKeyword(const char *impl_function, Thread *thread,
                                       std::string &output, Status &error) {
-    error = Status::FromErrorString("unimplemented");
+    error.SetErrorString("unimplemented");
     return false;
   }
 
   virtual bool RunScriptFormatKeyword(const char *impl_function, Target *target,
                                       std::string &output, Status &error) {
-    error = Status::FromErrorString("unimplemented");
+    error.SetErrorString("unimplemented");
     return false;
   }
 
   virtual bool RunScriptFormatKeyword(const char *impl_function,
                                       StackFrame *frame, std::string &output,
                                       Status &error) {
-    error = Status::FromErrorString("unimplemented");
+    error.SetErrorString("unimplemented");
     return false;
   }
 
   virtual bool RunScriptFormatKeyword(const char *impl_function,
                                       ValueObject *value, std::string &output,
                                       Status &error) {
-    error = Status::FromErrorString("unimplemented");
+    error.SetErrorString("unimplemented");
     return false;
   }
 
@@ -558,10 +569,6 @@ public:
     return {};
   }
 
-  virtual lldb::ScriptedStopHookInterfaceSP CreateScriptedStopHookInterface() {
-    return {};
-  }
-
   virtual StructuredData::ObjectSP
   CreateStructuredDataFromScriptObject(ScriptObject obj) {
     return {};
@@ -587,9 +594,6 @@ public:
 
   std::optional<MemoryRegionInfo> GetOpaqueTypeFromSBMemoryRegionInfo(
       const lldb::SBMemoryRegionInfo &mem_region) const;
-
-  lldb::ExecutionContextRefSP GetOpaqueTypeFromSBExecutionContext(
-      const lldb::SBExecutionContext &exe_ctx) const;
 
 protected:
   Debugger &m_debugger;

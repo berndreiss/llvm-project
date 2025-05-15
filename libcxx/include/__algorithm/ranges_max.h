@@ -36,7 +36,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __max {
+namespace __max {
+struct __fn {
   template <class _Tp,
             class _Proj                                                    = identity,
             indirect_strict_weak_order<projected<const _Tp*, _Proj>> _Comp = ranges::less>
@@ -86,9 +87,10 @@ struct __max {
     }
   }
 };
+} // namespace __max
 
 inline namespace __cpo {
-inline constexpr auto max = __max{};
+inline constexpr auto max = __max::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

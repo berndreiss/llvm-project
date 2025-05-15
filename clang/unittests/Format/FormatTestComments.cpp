@@ -362,19 +362,6 @@ TEST_F(FormatTestComments, KeepsParameterWithTrailingCommentsOnTheirOwnLine) {
             format("aaaaaaaaaa(aaaa(aaaa,\n"
                    "aaaa), //\n"
                    "aaaa, bbbbb);"));
-
-  FormatStyle BreakAlways = getLLVMStyle();
-  BreakAlways.BinPackParameters = FormatStyle::BPPS_AlwaysOnePerLine;
-  verifyFormat("int SomeFunction(a,\n"
-               "                 b, // comment\n"
-               "                 c,\n"
-               "                 d);",
-               BreakAlways);
-  verifyFormat("int SomeFunction(a,\n"
-               "                 b,\n"
-               "                 // comment\n"
-               "                 c);",
-               BreakAlways);
 }
 
 TEST_F(FormatTestComments, RemovesTrailingWhitespaceOfComments) {
@@ -416,27 +403,13 @@ TEST_F(FormatTestComments, UnderstandsBlockComments) {
   verifyFormat("f(/* aaaaaaaaaaaaaaaaaa = */\n"
                "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);");
 
-  verifyFormat(
-      "int aaaaaaaaaaaaa(/* 1st */ int bbbbbbbbbb, /* 2nd */ int ccccccccccc,\n"
-      "                  /* 3rd */ int dddddddddddd);");
-
-  auto Style = getLLVMStyle();
-  Style.BinPackParameters = FormatStyle::BPPS_OnePerLine;
+  FormatStyle NoBinPacking = getLLVMStyle();
+  NoBinPacking.BinPackParameters = false;
   verifyFormat("aaaaaaaa(/* parameter 1 */ aaaaaa,\n"
                "         /* parameter 2 */ aaaaaa,\n"
                "         /* parameter 3 */ aaaaaa,\n"
                "         /* parameter 4 */ aaaaaa);",
-               Style);
-  verifyFormat("int a(/* 1st */ int b, /* 2nd */ int c);", Style);
-  verifyFormat("int aaaaaaaaaaaaa(/* 1st */ int bbbbbbbbbb,\n"
-               "                  /* 2nd */ int ccccccccccc,\n"
-               "                  /* 3rd */ int dddddddddddd);",
-               Style);
-
-  Style.BinPackParameters = FormatStyle::BPPS_AlwaysOnePerLine;
-  verifyFormat("int a(/* 1st */ int b,\n"
-               "      /* 2nd */ int c);",
-               Style);
+               NoBinPacking);
 
   // Aligning block comments in macros.
   verifyGoogleFormat("#define A        \\\n"
@@ -520,36 +493,9 @@ TEST_F(FormatTestComments, AlignsBlockComments) {
 
 TEST_F(FormatTestComments, CommentReflowingCanBeTurnedOff) {
   FormatStyle Style = getLLVMStyleWithColumns(20);
-  Style.ReflowComments = FormatStyle::RCS_Never;
+  Style.ReflowComments = false;
   verifyFormat("// aaaaaaaaa aaaaaaaaaa aaaaaaaaaa", Style);
   verifyFormat("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa */", Style);
-  verifyNoChange("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-                 "aaaaaaaaa*/",
-                 Style);
-  verifyNoChange("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-                 "    aaaaaaaaa*/",
-                 Style);
-  verifyNoChange("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-                 " *    aaaaaaaaa*/",
-                 Style);
-}
-
-TEST_F(FormatTestComments, CommentReflowingCanApplyOnlyToIndents) {
-  FormatStyle Style = getLLVMStyleWithColumns(20);
-  Style.ReflowComments = FormatStyle::RCS_IndentOnly;
-  verifyFormat("// aaaaaaaaa aaaaaaaaaa aaaaaaaaaa", Style);
-  verifyFormat("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa */", Style);
-  verifyNoChange("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-                 "aaaaaaaaa*/",
-                 Style);
-  verifyNoChange("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-                 "    aaaaaaaaa*/",
-                 Style);
-  verifyFormat("/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-               " * aaaaaaaaa*/",
-               "/* aaaaaaaaa aaaaaaaaaa aaaaaaaaaa\n"
-               "      * aaaaaaaaa*/",
-               Style);
 }
 
 TEST_F(FormatTestComments, CorrectlyHandlesLengthOfBlockComments) {
@@ -2503,7 +2449,7 @@ TEST_F(FormatTestComments, BlockComments) {
                    getLLVMStyleWithColumns(50)));
 
   FormatStyle NoBinPacking = getLLVMStyle();
-  NoBinPacking.BinPackParameters = FormatStyle::BPPS_OnePerLine;
+  NoBinPacking.BinPackParameters = false;
   EXPECT_EQ("someFunction(1, /* comment 1 */\n"
             "             2, /* comment 2 */\n"
             "             3, /* comment 3 */\n"

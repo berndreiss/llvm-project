@@ -36,11 +36,7 @@ def FIRToLLVMLowering : Pass<"fir-to-llvm-ir", "mlir::ModuleOp"> {
     Option<"forcedTargetFeatures", "target-features", "std::string",
            /*default=*/"", "Override module's target features.">,
     Option<"applyTBAA", "apply-tbaa", "bool", /*default=*/"false",
-           "Attach TBAA tags to memory accessing operations.">,
-    Option<"typeDescriptorsRenamedForAssembly",
-           "type-descriptors-renamed-for-assembly", "bool", /*default=*/"false",
-           "Global variables created to describe derived types "
-           "have been renamed to avoid special symbols in their names.">
+           "Attach TBAA tags to memory accessing operations.">
   ];
 }
 
@@ -68,7 +64,7 @@ def TargetRewritePass : Pass<"target-rewrite", "mlir::ModuleOp"> {
       representations that may differ based on the target machine.
   }];
   let dependentDialects = [ "fir::FIROpsDialect", "mlir::func::FuncDialect",
-                            "mlir::DLTIDialect", "mlir::LLVM::LLVMDialect" ];
+                            "mlir::DLTIDialect" ];
   let options = [
     Option<"forcedTargetTriple", "target", "std::string", /*default=*/"",
            "Override module's target triple.">,

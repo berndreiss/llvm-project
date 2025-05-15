@@ -1,5 +1,6 @@
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+
+#include "../../../generic/lib/clcmacro.h"
 
 _CLC_OVERLOAD _CLC_DEF float rsqrt(float x)
 {

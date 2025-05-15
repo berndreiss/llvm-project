@@ -191,22 +191,16 @@ public:
   using SparseForwardDataFlowAnalysis::SparseForwardDataFlowAnalysis;
 
   /// The underlying value of the results of an operation are not known.
-  LogicalResult
-  visitOperation(Operation *op,
-                 ArrayRef<const UnderlyingValueLattice *> operands,
-                 ArrayRef<UnderlyingValueLattice *> results) override {
-    // Hook to test error propagation from visitOperation.
-    if (op->hasAttr("always_fail"))
-      return op->emitError("this op is always fails");
-
+  void visitOperation(Operation *op,
+                      ArrayRef<const UnderlyingValueLattice *> operands,
+                      ArrayRef<UnderlyingValueLattice *> results) override {
     setAllToEntryStates(results);
-    return success();
   }
 
   /// At an entry point, the underlying value of a value is itself.
   void setToEntryState(UnderlyingValueLattice *lattice) override {
     propagateIfChanged(lattice,
-                       lattice->join(UnderlyingValue{lattice->getAnchor()}));
+                       lattice->join(UnderlyingValue{lattice->getPoint()}));
   }
 
   /// Look for the most underlying value of a value.

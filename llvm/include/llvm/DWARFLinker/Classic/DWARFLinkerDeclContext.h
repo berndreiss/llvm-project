@@ -42,15 +42,15 @@ public:
 
     // If the ParentPath has not yet been resolved, resolve and cache it for
     // future look-ups.
-    auto [It, Inserted] = ResolvedPaths.try_emplace(ParentPath);
-    if (Inserted) {
+    if (!ResolvedPaths.count(ParentPath)) {
       SmallString<256> RealPath;
       sys::fs::real_path(ParentPath, RealPath);
-      It->second = std::string(RealPath);
+      ResolvedPaths.insert(
+          {ParentPath, std::string(RealPath.c_str(), RealPath.size())});
     }
 
     // Join the file name again with the resolved path.
-    SmallString<256> ResolvedPath(It->second);
+    SmallString<256> ResolvedPath(ResolvedPaths[ParentPath]);
     sys::path::append(ResolvedPath, FileName);
     return StringPool.internString(ResolvedPath);
   }

@@ -331,8 +331,7 @@ XCoreInstrInfo::removeBranch(MachineBasicBlock &MBB, int *BytesRemoved) const {
 void XCoreInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, MCRegister DestReg,
-                                 MCRegister SrcReg, bool KillSrc,
-                                 bool RenamableDest, bool RenamableSrc) const {
+                                 MCRegister SrcReg, bool KillSrc) const {
   bool GRDest = XCore::GRRegsRegClass.contains(DestReg);
   bool GRSrc  = XCore::GRRegsRegClass.contains(SrcReg);
 

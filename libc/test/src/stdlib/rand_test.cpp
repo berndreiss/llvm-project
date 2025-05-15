@@ -11,6 +11,7 @@
 #include "test/UnitTest/Test.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 
 TEST(LlvmLibcRandTest, UnsetSeed) {
   static int vals[1000];

@@ -159,8 +159,8 @@ void Parser::CheckForTemplateAndDigraph(Token &Next, ParsedType ObjectType,
 bool Parser::ParseOptionalCXXScopeSpecifier(
     CXXScopeSpec &SS, ParsedType ObjectType, bool ObjectHadErrors,
     bool EnteringContext, bool *MayBePseudoDestructor, bool IsTypename,
-    const IdentifierInfo **LastII, bool OnlyNamespace, bool InUsingDeclaration,
-    bool Disambiguation) {
+    const IdentifierInfo **LastII, bool OnlyNamespace,
+    bool InUsingDeclaration) {
   assert(getLangOpts().CPlusPlus &&
          "Call sites of this function should be guarded by checking for C++");
 
@@ -528,11 +528,13 @@ bool Parser::ParseOptionalCXXScopeSpecifier(
       UnqualifiedId TemplateName;
       TemplateName.setIdentifier(&II, Tok.getLocation());
       bool MemberOfUnknownSpecialization;
-      if (TemplateNameKind TNK = Actions.isTemplateName(
-              getCurScope(), SS,
-              /*hasTemplateKeyword=*/false, TemplateName, ObjectType,
-              EnteringContext, Template, MemberOfUnknownSpecialization,
-              Disambiguation)) {
+      if (TemplateNameKind TNK = Actions.isTemplateName(getCurScope(), SS,
+                                              /*hasTemplateKeyword=*/false,
+                                                        TemplateName,
+                                                        ObjectType,
+                                                        EnteringContext,
+                                                        Template,
+                                              MemberOfUnknownSpecialization)) {
         // If lookup didn't find anything, we treat the name as a template-name
         // anyway. C++20 requires this, and in prior language modes it improves
         // error recovery. But before we commit to this, check that we actually
@@ -555,8 +557,7 @@ bool Parser::ParseOptionalCXXScopeSpecifier(
         continue;
       }
 
-      if (MemberOfUnknownSpecialization && !Disambiguation &&
-          (ObjectType || SS.isSet()) &&
+      if (MemberOfUnknownSpecialization && (ObjectType || SS.isSet()) &&
           (IsTypename || isTemplateArgumentList(1) == TPResult::True)) {
         // If we had errors before, ObjectType can be dependent even without any
         // templates. Do not report missing template keyword in that case.
@@ -1344,13 +1345,9 @@ static void DiagnoseStaticSpecifierRestrictions(Parser &P,
 ExprResult Parser::ParseLambdaExpressionAfterIntroducer(
                      LambdaIntroducer &Intro) {
   SourceLocation LambdaBeginLoc = Intro.Range.getBegin();
-  if (getLangOpts().HLSL)
-    Diag(LambdaBeginLoc, diag::ext_hlsl_lambda) << /*HLSL*/ 1;
-  else
-    Diag(LambdaBeginLoc, getLangOpts().CPlusPlus11
-                             ? diag::warn_cxx98_compat_lambda
-                             : diag::ext_lambda)
-        << /*C++*/ 0;
+  Diag(LambdaBeginLoc, getLangOpts().CPlusPlus11
+                           ? diag::warn_cxx98_compat_lambda
+                           : diag::ext_lambda);
 
   PrettyStackTraceLoc CrashInfo(PP.getSourceManager(), LambdaBeginLoc,
                                 "lambda expression parsing");
@@ -1579,8 +1576,9 @@ ExprResult Parser::ParseLambdaExpressionAfterIntroducer(
                       DynamicExceptionRanges.data(), DynamicExceptions.size(),
                       NoexceptExpr.isUsable() ? NoexceptExpr.get() : nullptr,
                       /*ExceptionSpecTokens*/ nullptr,
-                      /*DeclsInPrototype=*/{}, LParenLoc, FunLocalRangeEnd, D,
-                      TrailingReturnType, TrailingReturnTypeLoc, &DS),
+                      /*DeclsInPrototype=*/std::nullopt, LParenLoc,
+                      FunLocalRangeEnd, D, TrailingReturnType,
+                      TrailingReturnTypeLoc, &DS),
                   std::move(Attributes), DeclEndLoc);
 
     // We have called ActOnLambdaClosureQualifiers for parentheses-less cases
@@ -2458,11 +2456,6 @@ void Parser::ParseCXXSimpleTypeSpecifier(DeclSpec &DS) {
                        Policy);                                                \
     break;
 #include "clang/Basic/OpenCLImageTypes.def"
-#define HLSL_INTANGIBLE_TYPE(Name, Id, SingletonId)                            \
-  case tok::kw_##Name:                                                         \
-    DS.SetTypeSpecType(DeclSpec::TST_##Name, Loc, PrevSpec, DiagID, Policy);   \
-    break;
-#include "clang/Basic/HLSLIntangibleTypes.def"
 
   case tok::annot_decltype:
   case tok::kw_decltype:

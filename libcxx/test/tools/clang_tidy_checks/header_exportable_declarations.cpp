@@ -77,10 +77,8 @@ header_exportable_declarations::header_exportable_declarations(
 
   list = Options.get("ExtraDeclarations");
   if (list)
-    for (auto decl : std::views::split(*list, ' ')) {
-      auto common = decl | std::views::common;
-      std::cout << "using ::" << std::string{common.begin(), common.end()} << ";\n";
-    }
+    for (auto decl : std::views::split(*list, ' '))
+      std::cout << "using ::" << std::string_view{decl.data(), decl.size()} << ";\n";
 }
 
 header_exportable_declarations::~header_exportable_declarations() {
@@ -122,9 +120,7 @@ void header_exportable_declarations::registerMatchers(clang::ast_matchers::Match
     [[fallthrough]];
   case FileType::ModulePartition:
   case FileType::CompatModulePartition:
-    finder->addMatcher(namedDecl(anyOf(isExpansionInFileMatching(filename_), isExpansionInFileMatching(extra_header_)))
-                           .bind("header_exportable_declarations"),
-                       this);
+    finder->addMatcher(namedDecl(isExpansionInFileMatching(filename_)).bind("header_exportable_declarations"), this);
     break;
   case FileType::Module:
   case FileType::CompatModule:

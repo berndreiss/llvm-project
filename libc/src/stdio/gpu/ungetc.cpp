@@ -18,13 +18,11 @@ LLVM_LIBC_FUNCTION(int, ungetc, (int c, ::FILE *stream)) {
   int ret;
   rpc::Client::Port port = rpc::client.open<RPC_UNGETC>();
   port.send_and_recv(
-      [=](rpc::Buffer *buffer, uint32_t) {
+      [=](rpc::Buffer *buffer) {
         buffer->data[0] = c;
         buffer->data[1] = file::from_stream(stream);
       },
-      [&](rpc::Buffer *buffer, uint32_t) {
-        ret = static_cast<int>(buffer->data[0]);
-      });
+      [&](rpc::Buffer *buffer) { ret = static_cast<int>(buffer->data[0]); });
   port.close();
   return ret;
 }

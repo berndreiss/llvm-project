@@ -53,11 +53,13 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/BinaryFormat/Dwarf.h"
@@ -112,7 +114,6 @@
 #include "llvm/IR/Value.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/AMDGPUAddrSpace.h"
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
@@ -490,14 +491,6 @@ private:
   /// Whether a metadata node is allowed to be, or contain, a DILocation.
   enum class AreDebugLocsAllowed { No, Yes };
 
-  /// Metadata that should be treated as a range, with slightly different
-  /// requirements.
-  enum class RangeLikeMetadataKind {
-    Range,           // MD_range
-    AbsoluteSymbol,  // MD_absolute_symbol
-    NoaliasAddrspace // MD_noalias_addrspace
-  };
-
   // Verification methods...
   void visitGlobalValue(const GlobalValue &GV);
   void visitGlobalVariable(const GlobalVariable &GV);
@@ -521,10 +514,9 @@ private:
   void visitModuleFlagCGProfileEntry(const MDOperand &MDO);
   void visitFunction(const Function &F);
   void visitBasicBlock(BasicBlock &BB);
-  void verifyRangeLikeMetadata(const Value &V, const MDNode *Range, Type *Ty,
-                               RangeLikeMetadataKind Kind);
+  void verifyRangeMetadata(const Value &V, const MDNode *Range, Type *Ty,
+                           bool IsAbsoluteSymbol);
   void visitRangeMetadata(Instruction &I, MDNode *Range, Type *Ty);
-  void visitNoaliasAddrspaceMetadata(Instruction &I, MDNode *Range, Type *Ty);
   void visitDereferenceableMetadata(Instruction &I, MDNode *MD);
   void visitProfMetadata(Instruction &I, MDNode *MD);
   void visitCallStackMetadata(MDNode *MD);
@@ -767,9 +759,8 @@ void Verifier::visitGlobalValue(const GlobalValue &GV) {
     // FIXME: Why is getMetadata on GlobalValue protected?
     if (const MDNode *AbsoluteSymbol =
             GO->getMetadata(LLVMContext::MD_absolute_symbol)) {
-      verifyRangeLikeMetadata(*GO, AbsoluteSymbol,
-                              DL.getIntPtrType(GO->getType()),
-                              RangeLikeMetadataKind::AbsoluteSymbol);
+      verifyRangeMetadata(*GO, AbsoluteSymbol, DL.getIntPtrType(GO->getType()),
+                          true);
     }
   }
 
@@ -1015,7 +1006,9 @@ void Verifier::visitGlobalIFunc(const GlobalIFunc &GI) {
   Check(isa<PointerType>(Resolver->getFunctionType()->getReturnType()),
         "IFunc resolver must return a pointer", &GI);
 
-  Check(ResolverTy == PointerType::get(Context, GI.getAddressSpace()),
+  const Type *ResolverFuncTy =
+      GlobalIFunc::getResolverFunctionType(GI.getValueType());
+  Check(ResolverTy == ResolverFuncTy->getPointerTo(GI.getAddressSpace()),
         "IFunc resolver has incorrect type", &GI);
 }
 
@@ -2010,7 +2003,7 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
           Attrs.hasAttribute(Attribute::ReadOnly)),
         "Attributes writable and readonly are incompatible!", V);
 
-  AttributeMask IncompatibleAttrs = AttributeFuncs::typeIncompatible(Ty, Attrs);
+  AttributeMask IncompatibleAttrs = AttributeFuncs::typeIncompatible(Ty);
   for (Attribute Attr : Attrs) {
     if (!Attr.isStringAttribute() &&
         IncompatibleAttrs.contains(Attr.getKindAsEnum())) {
@@ -2232,12 +2225,6 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
           "Attributes 'optdebug and optnone' are incompatible!", V);
   }
 
-  Check(!(Attrs.hasFnAttr(Attribute::SanitizeRealtime) &&
-          Attrs.hasFnAttr(Attribute::SanitizeRealtimeBlocking)),
-        "Attributes "
-        "'sanitize_realtime and sanitize_realtime_blocking' are incompatible!",
-        V);
-
   if (Attrs.hasFnAttr(Attribute::OptimizeForDebugging)) {
     Check(!Attrs.hasFnAttr(Attribute::OptimizeForSize),
           "Attributes 'optsize and optdebug' are incompatible!", V);
@@ -2398,19 +2385,6 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
     const std::optional<VFInfo> Info = VFABI::tryDemangleForVFABI(S, FT);
     if (!Info)
       CheckFailed("invalid name for a VFABI variant: " + S, V);
-  }
-
-  if (auto A = Attrs.getFnAttr("denormal-fp-math"); A.isValid()) {
-    StringRef S = A.getValueAsString();
-    if (!parseDenormalFPAttribute(S).isValid())
-      CheckFailed("invalid value for 'denormal-fp-math' attribute: " + S, V);
-  }
-
-  if (auto A = Attrs.getFnAttr("denormal-fp-math-f32"); A.isValid()) {
-    StringRef S = A.getValueAsString();
-    if (!parseDenormalFPAttribute(S).isValid())
-      CheckFailed("invalid value for 'denormal-fp-math-f32' attribute: " + S,
-                  V);
   }
 }
 
@@ -2804,10 +2778,6 @@ void Verifier::visitFunction(const Function &F) {
 
   Check(!Attrs.hasAttrSomewhere(Attribute::ElementType),
         "Attribute 'elementtype' can only be applied to a callsite.", &F);
-
-  if (Attrs.hasFnAttr(Attribute::Naked))
-    for (const Argument &Arg : F.args())
-      Check(Arg.use_empty(), "cannot use argument of naked function", &Arg);
 
   // Check that this function meets the restrictions on this calling convention.
   // Sometimes varargs is used for perfectly forwarding thunks, so some of these
@@ -4105,7 +4075,8 @@ void Verifier::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   Check(GEP.getSourceElementType()->isSized(), "GEP into unsized type!", &GEP);
 
   if (auto *STy = dyn_cast<StructType>(GEP.getSourceElementType())) {
-    Check(!STy->isScalableTy(),
+    SmallPtrSet<Type *, 4> Visited;
+    Check(!STy->containsScalableVectorType(&Visited),
           "getelementptr cannot target structure that contains scalable vector"
           "type",
           &GEP);
@@ -4119,9 +4090,8 @@ void Verifier::visitGetElementPtrInst(GetElementPtrInst &GEP) {
       GetElementPtrInst::getIndexedType(GEP.getSourceElementType(), Idxs);
   Check(ElTy, "Invalid indices for GEP pointer type!", &GEP);
 
-  PointerType *PtrTy = dyn_cast<PointerType>(GEP.getType()->getScalarType());
-
-  Check(PtrTy && GEP.getResultElementType() == ElTy,
+  Check(GEP.getType()->isPtrOrPtrVectorTy() &&
+            GEP.getResultElementType() == ElTy,
         "GEP is not of right type for indices!", &GEP, ElTy);
 
   if (auto *GEPVTy = dyn_cast<VectorType>(GEP.getType())) {
@@ -4143,8 +4113,10 @@ void Verifier::visitGetElementPtrInst(GetElementPtrInst &GEP) {
     }
   }
 
-  Check(GEP.getAddressSpace() == PtrTy->getAddressSpace(),
-        "GEP address space doesn't match type", &GEP);
+  if (auto *PTy = dyn_cast<PointerType>(GEP.getType())) {
+    Check(GEP.getAddressSpace() == PTy->getAddressSpace(),
+          "GEP address space doesn't match type", &GEP);
+  }
 
   visitInstruction(GEP);
 }
@@ -4155,8 +4127,8 @@ static bool isContiguous(const ConstantRange &A, const ConstantRange &B) {
 
 /// Verify !range and !absolute_symbol metadata. These have the same
 /// restrictions, except !absolute_symbol allows the full set.
-void Verifier::verifyRangeLikeMetadata(const Value &I, const MDNode *Range,
-                                       Type *Ty, RangeLikeMetadataKind Kind) {
+void Verifier::verifyRangeMetadata(const Value &I, const MDNode *Range,
+                                   Type *Ty, bool IsAbsoluteSymbol) {
   unsigned NumOperands = Range->getNumOperands();
   Check(NumOperands % 2 == 0, "Unfinished range!", Range);
   unsigned NumRanges = NumOperands / 2;
@@ -4170,17 +4142,9 @@ void Verifier::verifyRangeLikeMetadata(const Value &I, const MDNode *Range,
     ConstantInt *High =
         mdconst::dyn_extract<ConstantInt>(Range->getOperand(2 * i + 1));
     Check(High, "The upper limit must be an integer!", High);
-
-    Check(High->getType() == Low->getType(), "Range pair types must match!",
-          &I);
-
-    if (Kind == RangeLikeMetadataKind::NoaliasAddrspace) {
-      Check(High->getType()->isIntegerTy(32),
-            "noalias.addrspace type must be i32!", &I);
-    } else {
-      Check(High->getType() == Ty->getScalarType(),
-            "Range types must match instruction type!", &I);
-    }
+    Check(High->getType() == Low->getType() &&
+          High->getType() == Ty->getScalarType(),
+          "Range types must match instruction type!", &I);
 
     APInt HighV = High->getValue();
     APInt LowV = Low->getValue();
@@ -4191,9 +4155,7 @@ void Verifier::verifyRangeLikeMetadata(const Value &I, const MDNode *Range,
           "The upper and lower limits cannot be the same value", &I);
 
     ConstantRange CurRange(LowV, HighV);
-    Check(!CurRange.isEmptySet() &&
-              (Kind == RangeLikeMetadataKind::AbsoluteSymbol ||
-               !CurRange.isFullSet()),
+    Check(!CurRange.isEmptySet() && (IsAbsoluteSymbol || !CurRange.isFullSet()),
           "Range must not be empty!", Range);
     if (i != 0) {
       Check(CurRange.intersectWith(LastRange).isEmptySet(),
@@ -4221,15 +4183,7 @@ void Verifier::verifyRangeLikeMetadata(const Value &I, const MDNode *Range,
 void Verifier::visitRangeMetadata(Instruction &I, MDNode *Range, Type *Ty) {
   assert(Range && Range == I.getMetadata(LLVMContext::MD_range) &&
          "precondition violation");
-  verifyRangeLikeMetadata(I, Range, Ty, RangeLikeMetadataKind::Range);
-}
-
-void Verifier::visitNoaliasAddrspaceMetadata(Instruction &I, MDNode *Range,
-                                             Type *Ty) {
-  assert(Range && Range == I.getMetadata(LLVMContext::MD_noalias_addrspace) &&
-         "precondition violation");
-  verifyRangeLikeMetadata(I, Range, Ty,
-                          RangeLikeMetadataKind::NoaliasAddrspace);
+  verifyRangeMetadata(I, Range, Ty, false);
 }
 
 void Verifier::checkAtomicMemAccessSize(Type *Ty, const Instruction *I) {
@@ -5164,7 +5118,6 @@ void Verifier::visitInstruction(Instruction &I) {
                 F->getIntrinsicID() ==
                     Intrinsic::experimental_patchpoint_void ||
                 F->getIntrinsicID() == Intrinsic::experimental_patchpoint ||
-                F->getIntrinsicID() == Intrinsic::fake_use ||
                 F->getIntrinsicID() == Intrinsic::experimental_gc_statepoint ||
                 F->getIntrinsicID() == Intrinsic::wasm_rethrow ||
                 IsAttachedCallOperand(F, CBI, i),
@@ -5220,13 +5173,6 @@ void Verifier::visitInstruction(Instruction &I) {
     Check(isa<LoadInst>(I) || isa<CallInst>(I) || isa<InvokeInst>(I),
           "Ranges are only for loads, calls and invokes!", &I);
     visitRangeMetadata(I, Range, I.getType());
-  }
-
-  if (MDNode *Range = I.getMetadata(LLVMContext::MD_noalias_addrspace)) {
-    Check(isa<LoadInst>(I) || isa<StoreInst>(I) || isa<AtomicRMWInst>(I) ||
-              isa<AtomicCmpXchgInst>(I) || isa<CallInst>(I),
-          "noalias.addrspace are only for memory operations!", &I);
-    visitNoaliasAddrspaceMetadata(I, Range, I.getType());
   }
 
   if (I.hasMetadata(LLVMContext::MD_invariant_group)) {
@@ -6002,24 +5948,31 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     break;
   }
   case Intrinsic::lrint:
-  case Intrinsic::llrint:
+  case Intrinsic::llrint: {
+    Type *ValTy = Call.getArgOperand(0)->getType();
+    Type *ResultTy = Call.getType();
+    Check(
+        ValTy->isFPOrFPVectorTy() && ResultTy->isIntOrIntVectorTy(),
+        "llvm.lrint, llvm.llrint: argument must be floating-point or vector "
+        "of floating-points, and result must be integer or vector of integers",
+        &Call);
+    Check(ValTy->isVectorTy() == ResultTy->isVectorTy(),
+          "llvm.lrint, llvm.llrint: argument and result disagree on vector use",
+          &Call);
+    if (ValTy->isVectorTy()) {
+      Check(cast<VectorType>(ValTy)->getElementCount() ==
+                cast<VectorType>(ResultTy)->getElementCount(),
+            "llvm.lrint, llvm.llrint: argument must be same length as result",
+            &Call);
+    }
+    break;
+  }
   case Intrinsic::lround:
   case Intrinsic::llround: {
     Type *ValTy = Call.getArgOperand(0)->getType();
     Type *ResultTy = Call.getType();
-    auto *VTy = dyn_cast<VectorType>(ValTy);
-    auto *RTy = dyn_cast<VectorType>(ResultTy);
-    Check(ValTy->isFPOrFPVectorTy() && ResultTy->isIntOrIntVectorTy(),
-          ExpectedName + ": argument must be floating-point or vector "
-                         "of floating-points, and result must be integer or "
-                         "vector of integers",
-          &Call);
-    Check(ValTy->isVectorTy() == ResultTy->isVectorTy(),
-          ExpectedName + ": argument and result disagree on vector use", &Call);
-    if (VTy) {
-      Check(VTy->getElementCount() == RTy->getElementCount(),
-            ExpectedName + ": argument must be same length as result", &Call);
-    }
+    Check(!ValTy->isVectorTy() && !ResultTy->isVectorTy(),
+          "Intrinsic does not support vectors", &Call);
     break;
   }
   case Intrinsic::bswap: {
@@ -6141,11 +6094,11 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
           &Call);
     break;
   }
-  case Intrinsic::stepvector: {
+  case Intrinsic::experimental_stepvector: {
     VectorType *VecTy = dyn_cast<VectorType>(Call.getType());
     Check(VecTy && VecTy->getScalarType()->isIntegerTy() &&
               VecTy->getScalarSizeInBits() >= 8,
-          "stepvector only supported for vectors of integers "
+          "experimental_stepvector only supported for vectors of integers "
           "with a bitwidth of at least 8.",
           &Call);
     break;
@@ -6276,7 +6229,10 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
                   &Call);
       break;
     }
-    Check(llvm::is_contained(CBR->getIndirectDests(), LandingPadBB),
+    Check(llvm::any_of(CBR->getIndirectDests(),
+                       [LandingPadBB](const BasicBlock *IndDest) {
+                         return IndDest == LandingPadBB;
+                       }),
           "Intrinsic's corresponding callbr must have intrinsic's parent basic "
           "block in indirect destination list",
           &Call);
@@ -6330,13 +6286,6 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
           "Value for inactive lanes must be a VGPR function argument", &Call);
     break;
   }
-  case Intrinsic::amdgcn_s_prefetch_data: {
-    Check(
-        AMDGPU::isFlatGlobalAddrSpace(
-            Call.getArgOperand(0)->getType()->getPointerAddressSpace()),
-        "llvm.amdgcn.s.prefetch.data only supports global or constant memory");
-    break;
-  }
   case Intrinsic::nvvm_setmaxnreg_inc_sync_aligned_u32:
   case Intrinsic::nvvm_setmaxnreg_dec_sync_aligned_u32: {
     Value *V = Call.getArgOperand(0);
@@ -6381,14 +6330,6 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
           "llvm.threadlocal.address first argument must be a GlobalValue");
     Check(cast<GlobalValue>(Arg0).isThreadLocal(),
           "llvm.threadlocal.address operand isThreadLocal() must be true");
-    break;
-  }
-  case Intrinsic::nvvm_fence_proxy_tensormap_generic_acquire_cta:
-  case Intrinsic::nvvm_fence_proxy_tensormap_generic_acquire_cluster:
-  case Intrinsic::nvvm_fence_proxy_tensormap_generic_acquire_gpu:
-  case Intrinsic::nvvm_fence_proxy_tensormap_generic_acquire_sys: {
-    unsigned size = cast<ConstantInt>(Call.getArgOperand(1))->getZExtValue();
-    Check(size == 128, " The only supported value for size operand is 128");
     break;
   }
   };

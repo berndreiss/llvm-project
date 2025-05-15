@@ -23,6 +23,7 @@
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -135,7 +136,7 @@ class AppleAccelTableWriter : public AccelTableWriter {
     const SmallVector<Atom, 4> Atoms;
 
     HeaderData(ArrayRef<Atom> AtomList, uint32_t Offset = 0)
-        : DieOffsetBase(Offset), Atoms(AtomList) {}
+        : DieOffsetBase(Offset), Atoms(AtomList.begin(), AtomList.end()) {}
 
     void emit(AsmPrinter *Asm) const;
 #ifndef NDEBUG

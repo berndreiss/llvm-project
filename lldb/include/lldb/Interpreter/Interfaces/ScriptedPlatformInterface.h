@@ -31,18 +31,15 @@ public:
   }
 
   virtual Status AttachToProcess(lldb::ProcessAttachInfoSP attach_info) {
-    return Status::FromErrorString(
-        "ScriptedPlatformInterface cannot attach to a process");
+    return Status("ScriptedPlatformInterface cannot attach to a process");
   }
 
   virtual Status LaunchProcess(lldb::ProcessLaunchInfoSP launch_info) {
-    return Status::FromErrorString(
-        "ScriptedPlatformInterface cannot launch process");
+    return Status("ScriptedPlatformInterface cannot launch process");
   }
 
   virtual Status KillProcess(lldb::pid_t pid) {
-    return Status::FromErrorString(
-        "ScriptedPlatformInterface cannot kill process");
+    return Status("ScriptedPlatformInterface cannot kill process");
   }
 };
 } // namespace lldb_private

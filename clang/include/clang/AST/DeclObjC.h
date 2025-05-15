@@ -386,7 +386,7 @@ public:
   /// If the method is implicit (not coming from source) \p SelLocs is
   /// ignored.
   void setMethodParams(ASTContext &C, ArrayRef<ParmVarDecl *> Params,
-                       ArrayRef<SourceLocation> SelLocs = {});
+                       ArrayRef<SourceLocation> SelLocs = std::nullopt);
 
   // Iterator access to parameter types.
   struct GetTypeFn {
@@ -1747,7 +1747,6 @@ private:
   static bool isKnownExtension(ObjCCategoryDecl *Cat);
 
 public:
-  friend class ASTDeclMerger;
   friend class ASTDeclReader;
   friend class ASTDeclWriter;
   friend class ASTReader;
@@ -2135,7 +2134,6 @@ class ObjCProtocolDecl : public ObjCContainerDecl,
   void setHasODRHash(bool HasHash);
 
 public:
-  friend class ASTDeclMerger;
   friend class ASTDeclReader;
   friend class ASTDeclWriter;
   friend class ASTReader;

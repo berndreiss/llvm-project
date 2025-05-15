@@ -125,7 +125,6 @@ private:
   void CheckForDefinableVariable(const A &var, const std::string &s) const;
 
   void CheckForPureSubprogram() const;
-  void CheckForUselessIomsg() const;
 
   parser::Message *CheckForBadIoType(const evaluate::DynamicType &,
       common::DefinedIo, parser::CharBlock) const;

@@ -61,8 +61,8 @@ unsigned ARMWinCOFFObjectWriter::getRelocType(MCContext &Ctx,
 
   switch (FixupKind) {
   default: {
-    Ctx.reportError(Fixup.getLoc(), "unsupported relocation type");
-    return COFF::IMAGE_REL_ARM_ABSOLUTE;
+    const MCFixupKindInfo &Info = MAB.getFixupKindInfo(Fixup.getKind());
+    report_fatal_error(Twine("unsupported relocation type: ") + Info.Name);
   }
   case FK_Data_4:
     switch (Modifier) {

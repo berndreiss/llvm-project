@@ -10,17 +10,13 @@ class TestStopPCs(GDBRemoteTestBase):
     def test(self):
         class MyResponder(MockGDBServerResponder):
             def haltReason(self):
-                # lldb should treat the default halt reason, hwbreak and swbreak in the same way. Which is that it
-                # expects the stub to have corrected the PC already, so lldb should not modify it further.
-                return "T02thread:1ff0d;threads:1ff0d,2ff0d,3ff0d;thread-pcs:10001bc00,10002bc00,10003bc00;"
+                return "T02thread:1ff0d;threads:1ff0d,2ff0d;thread-pcs:10001bc00,10002bc00;"
 
             def threadStopInfo(self, threadnum):
                 if threadnum == 0x1FF0D:
-                    return "T02thread:1ff0d;threads:1ff0d,2ff0d,3ff0d;thread-pcs:10001bc00,10002bc00,10003bc00;"
+                    return "T02thread:1ff0d;threads:1ff0d,2ff0d;thread-pcs:10001bc00,10002bc00;"
                 if threadnum == 0x2FF0D:
-                    return "T00swbreak:;thread:2ff0d;threads:1ff0d,2ff0d,3ff0d;thread-pcs:10001bc00,10002bc00,10003bc00;"
-                if threadnum == 0x3FF0D:
-                    return "T00hwbreak:;thread:3ff0d;threads:1ff0d,2ff0d,3ff0d;thread-pcs:10001bc00,10002bc00,10003bc00;"
+                    return "T00thread:2ff0d;threads:1ff0d,2ff0d;thread-pcs:10001bc00,10002bc00;"
 
             def qXferRead(self, obj, annex, offset, length):
                 if annex == "target.xml":
@@ -44,13 +40,10 @@ class TestStopPCs(GDBRemoteTestBase):
             self.addTearDownHook(lambda: self.runCmd("log disable gdb-remote packets"))
         process = self.connect(target)
 
-        self.assertEqual(process.GetNumThreads(), 3)
+        self.assertEqual(process.GetNumThreads(), 2)
         th0 = process.GetThreadAtIndex(0)
         th1 = process.GetThreadAtIndex(1)
-        th2 = process.GetThreadAtIndex(2)
         self.assertEqual(th0.GetThreadID(), 0x1FF0D)
         self.assertEqual(th1.GetThreadID(), 0x2FF0D)
-        self.assertEqual(th2.GetThreadID(), 0x3FF0D)
         self.assertEqual(th0.GetFrameAtIndex(0).GetPC(), 0x10001BC00)
         self.assertEqual(th1.GetFrameAtIndex(0).GetPC(), 0x10002BC00)
-        self.assertEqual(th2.GetFrameAtIndex(0).GetPC(), 0x10003BC00)

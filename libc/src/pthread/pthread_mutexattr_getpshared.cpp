@@ -12,6 +12,8 @@
 #include "src/__support/common.h"
 #include "src/__support/macros/config.h"
 
+#include <errno.h>
+
 namespace LIBC_NAMESPACE_DECL {
 
 LLVM_LIBC_FUNCTION(int, pthread_mutexattr_getpshared,

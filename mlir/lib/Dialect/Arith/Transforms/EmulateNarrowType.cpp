@@ -40,19 +40,18 @@ arith::NarrowTypeEmulationConverter::NarrowTypeEmulationConverter(
   addConversion([this](FunctionType ty) -> std::optional<Type> {
     SmallVector<Type> inputs;
     if (failed(convertTypes(ty.getInputs(), inputs)))
-      return nullptr;
+      return std::nullopt;
 
     SmallVector<Type> results;
     if (failed(convertTypes(ty.getResults(), results)))
-      return nullptr;
+      return std::nullopt;
 
     return FunctionType::get(ty.getContext(), inputs, results);
   });
 }
 
 void arith::populateArithNarrowTypeEmulationPatterns(
-    const NarrowTypeEmulationConverter &typeConverter,
-    RewritePatternSet &patterns) {
+    NarrowTypeEmulationConverter &typeConverter, RewritePatternSet &patterns) {
   // Populate `func.*` conversion patterns.
   populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns,
                                                                  typeConverter);

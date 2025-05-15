@@ -43,28 +43,9 @@ MlirAttribute mlirGPUObjectAttrGet(MlirContext mlirCtx, MlirAttribute target,
   DictionaryAttr objectProps;
   if (mlirObjectProps.ptr != nullptr)
     objectProps = llvm::cast<DictionaryAttr>(unwrap(mlirObjectProps));
-  return wrap(gpu::ObjectAttr::get(
-      ctx, unwrap(target), static_cast<gpu::CompilationTarget>(format),
-      StringAttr::get(ctx, object), objectProps, nullptr));
-}
-
-MlirAttribute mlirGPUObjectAttrGetWithKernels(MlirContext mlirCtx,
-                                              MlirAttribute target,
-                                              uint32_t format,
-                                              MlirStringRef objectStrRef,
-                                              MlirAttribute mlirObjectProps,
-                                              MlirAttribute mlirKernelsAttr) {
-  MLIRContext *ctx = unwrap(mlirCtx);
-  llvm::StringRef object = unwrap(objectStrRef);
-  DictionaryAttr objectProps;
-  if (mlirObjectProps.ptr != nullptr)
-    objectProps = llvm::cast<DictionaryAttr>(unwrap(mlirObjectProps));
-  gpu::KernelTableAttr kernels;
-  if (mlirKernelsAttr.ptr != nullptr)
-    kernels = llvm::cast<gpu::KernelTableAttr>(unwrap(mlirKernelsAttr));
-  return wrap(gpu::ObjectAttr::get(
-      ctx, unwrap(target), static_cast<gpu::CompilationTarget>(format),
-      StringAttr::get(ctx, object), objectProps, kernels));
+  return wrap(gpu::ObjectAttr::get(ctx, unwrap(target),
+                                   static_cast<gpu::CompilationTarget>(format),
+                                   StringAttr::get(ctx, object), objectProps));
 }
 
 MlirAttribute mlirGPUObjectAttrGetTarget(MlirAttribute mlirObjectAttr) {
@@ -96,16 +77,4 @@ MlirAttribute mlirGPUObjectAttrGetProperties(MlirAttribute mlirObjectAttr) {
   gpu::ObjectAttr objectAttr =
       llvm::cast<gpu::ObjectAttr>(unwrap(mlirObjectAttr));
   return wrap(objectAttr.getProperties());
-}
-
-bool mlirGPUObjectAttrHasKernels(MlirAttribute mlirObjectAttr) {
-  gpu::ObjectAttr objectAttr =
-      llvm::cast<gpu::ObjectAttr>(unwrap(mlirObjectAttr));
-  return objectAttr.getKernels() != nullptr;
-}
-
-MlirAttribute mlirGPUObjectAttrGetKernels(MlirAttribute mlirObjectAttr) {
-  gpu::ObjectAttr objectAttr =
-      llvm::cast<gpu::ObjectAttr>(unwrap(mlirObjectAttr));
-  return wrap(objectAttr.getKernels());
 }

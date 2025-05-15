@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   FrontendOpenMP
   )
 
-add_clang_library(findAllSymbols STATIC
+add_clang_library(findAllSymbols
   FindAllSymbols.cpp
   FindAllSymbolsAction.cpp
   FindAllMacros.cpp

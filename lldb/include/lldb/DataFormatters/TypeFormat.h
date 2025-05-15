@@ -18,7 +18,7 @@
 #include "lldb/lldb-enumerations.h"
 #include "lldb/lldb-public.h"
 
-#include "lldb/ValueObject/ValueObject.h"
+#include "lldb/Core/ValueObject.h"
 
 namespace lldb_private {
 class TypeFormatImpl {

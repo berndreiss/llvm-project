@@ -87,6 +87,7 @@ define <vscale x 1 x float> @just_call(<vscale x 1 x float> %0) nounwind {
 ; CHECK-NEXT:    addi sp, sp, -48
 ; CHECK-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    sub sp, sp, a0
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vs1r.v v8, (a0) # Unknown-size Folded Spill
@@ -94,6 +95,7 @@ define <vscale x 1 x float> @just_call(<vscale x 1 x float> %0) nounwind {
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    add sp, sp, a0
 ; CHECK-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; CHECK-NEXT:    addi sp, sp, 48
@@ -104,6 +106,7 @@ define <vscale x 1 x float> @just_call(<vscale x 1 x float> %0) nounwind {
 ; UNOPT-NEXT:    addi sp, sp, -48
 ; UNOPT-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    sub sp, sp, a0
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vs1r.v v8, (a0) # Unknown-size Folded Spill
@@ -111,6 +114,7 @@ define <vscale x 1 x float> @just_call(<vscale x 1 x float> %0) nounwind {
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    add sp, sp, a0
 ; UNOPT-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; UNOPT-NEXT:    addi sp, sp, 48
@@ -126,6 +130,7 @@ define <vscale x 1 x float> @before_call1(<vscale x 1 x float> %0, <vscale x 1 x
 ; CHECK-NEXT:    addi sp, sp, -48
 ; CHECK-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; CHECK-NEXT:    csrr a1, vlenb
+; CHECK-NEXT:    slli a1, a1, 1
 ; CHECK-NEXT:    sub sp, sp, a1
 ; CHECK-NEXT:    fsrmi a1, 0
 ; CHECK-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
@@ -137,6 +142,7 @@ define <vscale x 1 x float> @before_call1(<vscale x 1 x float> %0, <vscale x 1 x
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    add sp, sp, a0
 ; CHECK-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; CHECK-NEXT:    addi sp, sp, 48
@@ -147,6 +153,7 @@ define <vscale x 1 x float> @before_call1(<vscale x 1 x float> %0, <vscale x 1 x
 ; UNOPT-NEXT:    addi sp, sp, -48
 ; UNOPT-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; UNOPT-NEXT:    csrr a1, vlenb
+; UNOPT-NEXT:    slli a1, a1, 1
 ; UNOPT-NEXT:    sub sp, sp, a1
 ; UNOPT-NEXT:    fsrmi a1, 0
 ; UNOPT-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
@@ -158,6 +165,7 @@ define <vscale x 1 x float> @before_call1(<vscale x 1 x float> %0, <vscale x 1 x
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    add sp, sp, a0
 ; UNOPT-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; UNOPT-NEXT:    addi sp, sp, 48
@@ -178,6 +186,7 @@ define <vscale x 1 x float> @before_call2(<vscale x 1 x float> %0, <vscale x 1 x
 ; CHECK-NEXT:    addi sp, sp, -48
 ; CHECK-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; CHECK-NEXT:    csrr a1, vlenb
+; CHECK-NEXT:    slli a1, a1, 1
 ; CHECK-NEXT:    sub sp, sp, a1
 ; CHECK-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; CHECK-NEXT:    vfadd.vv v8, v8, v9
@@ -187,6 +196,7 @@ define <vscale x 1 x float> @before_call2(<vscale x 1 x float> %0, <vscale x 1 x
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    add sp, sp, a0
 ; CHECK-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; CHECK-NEXT:    addi sp, sp, 48
@@ -197,6 +207,7 @@ define <vscale x 1 x float> @before_call2(<vscale x 1 x float> %0, <vscale x 1 x
 ; UNOPT-NEXT:    addi sp, sp, -48
 ; UNOPT-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; UNOPT-NEXT:    csrr a1, vlenb
+; UNOPT-NEXT:    slli a1, a1, 1
 ; UNOPT-NEXT:    sub sp, sp, a1
 ; UNOPT-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; UNOPT-NEXT:    vfadd.vv v8, v8, v9
@@ -206,6 +217,7 @@ define <vscale x 1 x float> @before_call2(<vscale x 1 x float> %0, <vscale x 1 x
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    add sp, sp, a0
 ; UNOPT-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; UNOPT-NEXT:    addi sp, sp, 48
@@ -226,6 +238,7 @@ define <vscale x 1 x float> @after_call1(<vscale x 1 x float> %0, <vscale x 1 x 
 ; CHECK-NEXT:    addi sp, sp, -48
 ; CHECK-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; CHECK-NEXT:    csrr a1, vlenb
+; CHECK-NEXT:    slli a1, a1, 1
 ; CHECK-NEXT:    sub sp, sp, a1
 ; CHECK-NEXT:    fsrmi a1, 0
 ; CHECK-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
@@ -237,6 +250,7 @@ define <vscale x 1 x float> @after_call1(<vscale x 1 x float> %0, <vscale x 1 x 
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    add sp, sp, a0
 ; CHECK-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; CHECK-NEXT:    addi sp, sp, 48
@@ -247,6 +261,7 @@ define <vscale x 1 x float> @after_call1(<vscale x 1 x float> %0, <vscale x 1 x 
 ; UNOPT-NEXT:    addi sp, sp, -48
 ; UNOPT-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; UNOPT-NEXT:    csrr a1, vlenb
+; UNOPT-NEXT:    slli a1, a1, 1
 ; UNOPT-NEXT:    sub sp, sp, a1
 ; UNOPT-NEXT:    fsrmi a1, 0
 ; UNOPT-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
@@ -258,6 +273,7 @@ define <vscale x 1 x float> @after_call1(<vscale x 1 x float> %0, <vscale x 1 x 
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    add sp, sp, a0
 ; UNOPT-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; UNOPT-NEXT:    addi sp, sp, 48
@@ -278,6 +294,7 @@ define <vscale x 1 x float> @after_call2(<vscale x 1 x float> %0, <vscale x 1 x 
 ; CHECK-NEXT:    addi sp, sp, -48
 ; CHECK-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; CHECK-NEXT:    csrr a1, vlenb
+; CHECK-NEXT:    slli a1, a1, 1
 ; CHECK-NEXT:    sub sp, sp, a1
 ; CHECK-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; CHECK-NEXT:    vfadd.vv v8, v8, v9
@@ -287,6 +304,7 @@ define <vscale x 1 x float> @after_call2(<vscale x 1 x float> %0, <vscale x 1 x 
 ; CHECK-NEXT:    addi a0, sp, 32
 ; CHECK-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; CHECK-NEXT:    csrr a0, vlenb
+; CHECK-NEXT:    slli a0, a0, 1
 ; CHECK-NEXT:    add sp, sp, a0
 ; CHECK-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; CHECK-NEXT:    addi sp, sp, 48
@@ -297,6 +315,7 @@ define <vscale x 1 x float> @after_call2(<vscale x 1 x float> %0, <vscale x 1 x 
 ; UNOPT-NEXT:    addi sp, sp, -48
 ; UNOPT-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; UNOPT-NEXT:    csrr a1, vlenb
+; UNOPT-NEXT:    slli a1, a1, 1
 ; UNOPT-NEXT:    sub sp, sp, a1
 ; UNOPT-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; UNOPT-NEXT:    vfadd.vv v8, v8, v9
@@ -306,6 +325,7 @@ define <vscale x 1 x float> @after_call2(<vscale x 1 x float> %0, <vscale x 1 x 
 ; UNOPT-NEXT:    addi a0, sp, 32
 ; UNOPT-NEXT:    vl1r.v v8, (a0) # Unknown-size Folded Reload
 ; UNOPT-NEXT:    csrr a0, vlenb
+; UNOPT-NEXT:    slli a0, a0, 1
 ; UNOPT-NEXT:    add sp, sp, a0
 ; UNOPT-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; UNOPT-NEXT:    addi sp, sp, 48
@@ -559,7 +579,7 @@ define <vscale x 1 x float> @after_fsrm3(<vscale x 1 x float> %0, <vscale x 1 x 
 ; CHECK-LABEL: after_fsrm3:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    fsrmi 4
-; CHECK-NEXT:    fsrmi a1, 3
+; CHECK-NEXT:    fsrmi a1, 5
 ; CHECK-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; CHECK-NEXT:    vfadd.vv v8, v8, v9
 ; CHECK-NEXT:    fsrm a1
@@ -568,7 +588,7 @@ define <vscale x 1 x float> @after_fsrm3(<vscale x 1 x float> %0, <vscale x 1 x 
 ; UNOPT-LABEL: after_fsrm3:
 ; UNOPT:       # %bb.0: # %entry
 ; UNOPT-NEXT:    fsrmi 4
-; UNOPT-NEXT:    fsrmi a1, 3
+; UNOPT-NEXT:    fsrmi a1, 5
 ; UNOPT-NEXT:    vsetvli zero, a0, e32, mf2, ta, ma
 ; UNOPT-NEXT:    vfadd.vv v8, v8, v9
 ; UNOPT-NEXT:    fsrm a1
@@ -579,7 +599,7 @@ entry:
     <vscale x 1 x float> undef,
     <vscale x 1 x float> %0,
     <vscale x 1 x float> %1,
-    i64 3, i64 %2)
+    i64 5, i64 %2)
   ret <vscale x 1 x float> %a
 }
 

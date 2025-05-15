@@ -586,7 +586,7 @@ static bool CheckConstraintSatisfaction(
   ArrayRef<TemplateArgument> TemplateArgs =
       TemplateArgsLists.getNumSubstitutedLevels() > 0
           ? TemplateArgsLists.getOutermost()
-          : ArrayRef<TemplateArgument>{};
+          : ArrayRef<TemplateArgument> {};
   Sema::InstantiatingTemplate Inst(S, TemplateIDRange.getBegin(),
       Sema::InstantiatingTemplate::ConstraintsCheck{},
       const_cast<NamedDecl *>(Template), TemplateArgs, TemplateIDRange);
@@ -716,8 +716,8 @@ bool Sema::addInstantiatedCapturesToScope(
   auto AddSingleCapture = [&](const ValueDecl *CapturedPattern,
                               unsigned Index) {
     ValueDecl *CapturedVar = LambdaClass->getCapture(Index)->getCapturedVar();
-    assert(CapturedVar->isInitCapture());
-    Scope.InstantiatedLocal(CapturedPattern, CapturedVar);
+    if (CapturedVar->isInitCapture())
+      Scope.InstantiatedLocal(CapturedPattern, CapturedVar);
   };
 
   for (const LambdaCapture &CapturePattern : LambdaPattern->captures()) {
@@ -725,22 +725,13 @@ bool Sema::addInstantiatedCapturesToScope(
       Instantiated++;
       continue;
     }
-    ValueDecl *CapturedPattern = CapturePattern.getCapturedVar();
-
-    if (!CapturedPattern->isInitCapture()) {
-      Instantiated++;
-      continue;
-    }
-
+    const ValueDecl *CapturedPattern = CapturePattern.getCapturedVar();
     if (!CapturedPattern->isParameterPack()) {
       AddSingleCapture(CapturedPattern, Instantiated++);
     } else {
       Scope.MakeInstantiatedLocalArgPack(CapturedPattern);
-      SmallVector<UnexpandedParameterPack, 2> Unexpanded;
-      SemaRef.collectUnexpandedParameterPacks(
-          dyn_cast<VarDecl>(CapturedPattern)->getInit(), Unexpanded);
-      auto NumArgumentsInExpansion =
-          getNumArgumentsInExpansionFromUnexpanded(Unexpanded, TemplateArgs);
+      std::optional<unsigned> NumArgumentsInExpansion =
+          getNumArgumentsInExpansion(CapturedPattern->getType(), TemplateArgs);
       if (!NumArgumentsInExpansion)
         continue;
       for (unsigned Arg = 0; Arg < *NumArgumentsInExpansion; ++Arg)
@@ -976,14 +967,11 @@ static const Expr *SubstituteConstraintExpressionWithoutSatisfaction(
   // parameters that the surrounding function hasn't been instantiated yet. Note
   // this may happen while we're comparing two templates' constraint
   // equivalence.
-  std::optional<LocalInstantiationScope> ScopeForParameters;
-  if (const NamedDecl *ND = DeclInfo.getDecl();
-      ND && ND->isFunctionOrFunctionTemplate()) {
-    ScopeForParameters.emplace(S, /*CombineWithOuterScope=*/true);
-    const FunctionDecl *FD = ND->getAsFunction();
+  LocalInstantiationScope ScopeForParameters(S, /*CombineWithOuterScope=*/true);
+  if (auto *FD = DeclInfo.getDecl()->getAsFunction())
     for (auto *PVD : FD->parameters()) {
       if (!PVD->isParameterPack()) {
-        ScopeForParameters->InstantiatedLocal(PVD, PVD);
+        ScopeForParameters.InstantiatedLocal(PVD, PVD);
         continue;
       }
       // This is hacky: we're mapping the parameter pack to a size-of-1 argument
@@ -1002,10 +990,9 @@ static const Expr *SubstituteConstraintExpressionWithoutSatisfaction(
       // that we can eliminate the Scope in the cases where the declarations are
       // not necessarily instantiated. It would also benefit the noexcept
       // specifier comparison.
-      ScopeForParameters->MakeInstantiatedLocalArgPack(PVD);
-      ScopeForParameters->InstantiatedLocalPackArg(PVD, PVD);
+      ScopeForParameters.MakeInstantiatedLocalArgPack(PVD);
+      ScopeForParameters.InstantiatedLocalPackArg(PVD, PVD);
     }
-  }
 
   std::optional<Sema::CXXThisScopeRAII> ThisScope;
 
@@ -1017,14 +1004,7 @@ static const Expr *SubstituteConstraintExpressionWithoutSatisfaction(
   // possible that e.g. constraints involving C<Class<T>> and C<Class> are
   // perceived identical.
   std::optional<Sema::ContextRAII> ContextScope;
-  const DeclContext *DC = [&] {
-    if (!DeclInfo.getDecl())
-      return DeclInfo.getDeclContext();
-    return DeclInfo.getDecl()->getFriendObjectKind()
-               ? DeclInfo.getLexicalDeclContext()
-               : DeclInfo.getDeclContext();
-  }();
-  if (auto *RD = dyn_cast<CXXRecordDecl>(DC)) {
+  if (auto *RD = dyn_cast<CXXRecordDecl>(DeclInfo.getDeclContext())) {
     ThisScope.emplace(S, const_cast<CXXRecordDecl *>(RD), Qualifiers());
     ContextScope.emplace(S, const_cast<DeclContext *>(cast<DeclContext>(RD)),
                          /*NewThisContext=*/false);
@@ -1503,8 +1483,8 @@ substituteParameterMappings(Sema &S, NormalizedConstraint &N,
           : ArgsAsWritten->arguments().front().getSourceRange().getEnd();
   Sema::InstantiatingTemplate Inst(
       S, InstLocBegin,
-      Sema::InstantiatingTemplate::ParameterMappingSubstitution{},
-      Atomic.ConstraintDecl, {InstLocBegin, InstLocEnd});
+      Sema::InstantiatingTemplate::ParameterMappingSubstitution{}, Concept,
+      {InstLocBegin, InstLocEnd});
   if (Inst.isInvalid())
     return true;
   if (S.SubstTemplateArguments(*Atomic.ParameterMapping, MLTAL, SubstArgs))
@@ -1678,7 +1658,7 @@ NormalizedConstraint::fromConstraintExpr(Sema &S, NamedDecl *D, const Expr *E) {
         Kind, std::move(*Sub), FE->getPattern()}};
   }
 
-  return NormalizedConstraint{new (S.Context) AtomicConstraint(E, D)};
+  return NormalizedConstraint{new (S.Context) AtomicConstraint(S, E)};
 }
 
 bool FoldExpandedConstraint::AreCompatibleForSubsumption(

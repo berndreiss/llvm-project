@@ -75,7 +75,7 @@ public:
   using DataFlowAnalysis::DataFlowAnalysis;
 
   LogicalResult initialize(Operation *top) override;
-  LogicalResult visit(ProgramPoint *point) override;
+  LogicalResult visit(ProgramPoint point) override;
 
 private:
   void visitBlock(Block *block);
@@ -100,8 +100,7 @@ LogicalResult FooAnalysis::initialize(Operation *top) {
     return top->emitError("expected at least one block in the region");
 
   // Initialize the top-level state.
-  (void)getOrCreate<FooState>(getProgramPointBefore(&top->getRegion(0).front()))
-      ->join(0);
+  (void)getOrCreate<FooState>(&top->getRegion(0).front())->join(0);
 
   // Visit all nested blocks and operations.
   for (Block &block : top->getRegion(0)) {
@@ -115,12 +114,16 @@ LogicalResult FooAnalysis::initialize(Operation *top) {
   return success();
 }
 
-LogicalResult FooAnalysis::visit(ProgramPoint *point) {
-  if (!point->isBlockStart())
-    visitOperation(point->getPrevOp());
-  else
-    visitBlock(point->getBlock());
-  return success();
+LogicalResult FooAnalysis::visit(ProgramPoint point) {
+  if (auto *op = llvm::dyn_cast_if_present<Operation *>(point)) {
+    visitOperation(op);
+    return success();
+  }
+  if (auto *block = llvm::dyn_cast_if_present<Block *>(point)) {
+    visitBlock(block);
+    return success();
+  }
+  return emitError(point.getLoc(), "unknown point kind");
 }
 
 void FooAnalysis::visitBlock(Block *block) {
@@ -128,26 +131,27 @@ void FooAnalysis::visitBlock(Block *block) {
     // This is the initial state. Let the framework default-initialize it.
     return;
   }
-  ProgramPoint *point = getProgramPointBefore(block);
-  FooState *state = getOrCreate<FooState>(point);
+  FooState *state = getOrCreate<FooState>(block);
   ChangeResult result = ChangeResult::NoChange;
   for (Block *pred : block->getPredecessors()) {
     // Join the state at the terminators of all predecessors.
-    const FooState *predState = getOrCreateFor<FooState>(
-        point, getProgramPointAfter(pred->getTerminator()));
+    const FooState *predState =
+        getOrCreateFor<FooState>(block, pred->getTerminator());
     result |= state->join(*predState);
   }
   propagateIfChanged(state, result);
 }
 
 void FooAnalysis::visitOperation(Operation *op) {
-  ProgramPoint *point = getProgramPointAfter(op);
-  FooState *state = getOrCreate<FooState>(point);
+  FooState *state = getOrCreate<FooState>(op);
   ChangeResult result = ChangeResult::NoChange;
 
   // Copy the state across the operation.
   const FooState *prevState;
-  prevState = getOrCreateFor<FooState>(point, getProgramPointBefore(op));
+  if (Operation *prev = op->getPrevNode())
+    prevState = getOrCreateFor<FooState>(op, prev);
+  else
+    prevState = getOrCreateFor<FooState>(op, op->getBlock());
   result |= state->set(*prevState);
 
   // Modify the state with the attribute, if specified.
@@ -172,8 +176,7 @@ void TestFooAnalysisPass::runOnOperation() {
     auto tag = op->getAttrOfType<StringAttr>("tag");
     if (!tag)
       return;
-    const FooState *state =
-        solver.lookupState<FooState>(solver.getProgramPointAfter(op));
+    const FooState *state = solver.lookupState<FooState>(op);
     assert(state && !state->isUninitialized());
     os << tag.getValue() << " -> " << state->getValue() << "\n";
   });

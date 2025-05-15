@@ -73,16 +73,11 @@ static bool isValidSwiftErrorResultType(QualType Ty) {
 }
 
 void SemaSwift::handleAttrAttr(Decl *D, const ParsedAttr &AL) {
-  if (AL.isInvalid() || AL.isUsedAsTypeAttr())
-    return;
-
   // Make sure that there is a string literal as the annotation's single
   // argument.
   StringRef Str;
-  if (!SemaRef.checkStringLiteralArgumentAttr(AL, 0, Str)) {
-    AL.setInvalid();
+  if (!SemaRef.checkStringLiteralArgumentAttr(AL, 0, Str))
     return;
-  }
 
   D->addAttr(::new (getASTContext()) SwiftAttrAttr(getASTContext(), AL, Str));
 }
@@ -729,9 +724,6 @@ void SemaSwift::AddParameterABIAttr(Decl *D, const AttributeCommonInfo &CI,
   }
 
   switch (abi) {
-  case ParameterABI::HLSLOut:
-  case ParameterABI::HLSLInOut:
-    llvm_unreachable("explicit attribute for non-swift parameter ABI?");
   case ParameterABI::Ordinary:
     llvm_unreachable("explicit attribute for ordinary parameter ABI?");
 

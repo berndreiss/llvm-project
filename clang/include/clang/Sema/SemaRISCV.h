@@ -13,21 +13,18 @@
 #ifndef LLVM_CLANG_SEMA_SEMARISCV_H
 #define LLVM_CLANG_SEMA_SEMARISCV_H
 
-#include "clang/AST/ASTFwd.h"
+#include "clang/AST/DeclBase.h"
+#include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
 #include "clang/Basic/SourceLocation.h"
+#include "clang/Basic/TargetInfo.h"
+#include "clang/Sema/RISCVIntrinsicManager.h"
 #include "clang/Sema/SemaBase.h"
 #include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/StringRef.h"
 #include <memory>
 
 namespace clang {
-namespace sema {
-class RISCVIntrinsicManager;
-} // namespace sema
-
 class ParsedAttr;
-class TargetInfo;
 
 class SemaRISCV : public SemaBase {
 public:
@@ -42,8 +39,7 @@ public:
   bool isValidRVVBitcast(QualType srcType, QualType destType);
 
   void handleInterruptAttr(Decl *D, const ParsedAttr &AL);
-  bool isAliasValid(unsigned BuiltinID, llvm::StringRef AliasName);
-  bool isValidFMVExtension(StringRef Ext);
+  bool isAliasValid(unsigned BuiltinID, StringRef AliasName);
 
   /// Indicate RISC-V vector builtin functions enabled or not.
   bool DeclareRVVBuiltins = false;

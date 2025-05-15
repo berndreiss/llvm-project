@@ -23,6 +23,8 @@
 
 #include "Plugins/TypeSystem/Clang/TypeSystemClang.h"
 #include "lldb/Core/Module.h"
+#include "lldb/Core/ValueObject.h"
+#include "lldb/Core/ValueObjectList.h"
 #include "lldb/Expression/IRExecutionUnit.h"
 #include "lldb/Interpreter/CommandReturnObject.h"
 #include "lldb/Symbol/Function.h"
@@ -38,8 +40,6 @@
 #include "lldb/Utility/LLDBLog.h"
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/State.h"
-#include "lldb/ValueObject/ValueObject.h"
-#include "lldb/ValueObject/ValueObjectList.h"
 
 using namespace lldb_private;
 

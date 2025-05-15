@@ -1,5 +1,5 @@
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+#include "../clcmacro.h"
 
 // From add_sat.ll
 _CLC_DECL char   __clc_add_sat_s8(char, char);

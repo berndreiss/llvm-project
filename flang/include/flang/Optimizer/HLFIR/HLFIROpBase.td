@@ -93,7 +93,7 @@ def AnyFortranVariable : Type<IsFortranVariablePred, "any HLFIR variable type">;
 
 def AnyFortranValue : TypeConstraint<Or<[AnyLogicalLike.predicate,
     AnyIntegerLike.predicate, AnyRealLike.predicate,
-    AnyFirComplexLike.predicate,
+    fir_ComplexType.predicate, AnyComplex.predicate,
     hlfir_ExprType.predicate]>, "any Fortran value type">;
 
 

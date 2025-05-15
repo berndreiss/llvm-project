@@ -39,17 +39,6 @@ int main() {
 " COMPILER_RT_TARGET_HAS_FCNTL_LCK)
 
 CHECK_CXX_SOURCE_COMPILES("
-#include <sys/file.h>
-
-int fd;
-int main() {
-  flock(fd, LOCK_EX);
-  return 0;
-}
-
-" COMPILER_RT_TARGET_HAS_FLOCK)
-
-CHECK_CXX_SOURCE_COMPILES("
 #include <sys/utsname.h>
 int main() {
  return 0;
@@ -104,13 +93,6 @@ if(FUCHSIA OR UNIX)
      -Wno-pedantic)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  set(EXTRA_FLAGS
-      ${EXTRA_FLAGS}
-      -D_WASI_EMULATED_MMAN
-      -D_WASI_EMULATED_GETPID)
-endif()
-
 if(COMPILER_RT_TARGET_HAS_ATOMICS)
  set(EXTRA_FLAGS
      ${EXTRA_FLAGS}
@@ -123,22 +105,10 @@ if(COMPILER_RT_TARGET_HAS_FCNTL_LCK)
      -DCOMPILER_RT_HAS_FCNTL_LCK=1)
 endif()
 
-if(COMPILER_RT_TARGET_HAS_FLOCK)
-  set(EXTRA_FLAGS
-      ${EXTRA_FLAGS}
-      -DCOMPILER_RT_HAS_FLOCK=1)
-endif()
-
 if(COMPILER_RT_TARGET_HAS_UNAME)
  set(EXTRA_FLAGS
      ${EXTRA_FLAGS}
      -DCOMPILER_RT_HAS_UNAME=1)
-endif()
-
-if(MSVC)
-  # profile historically has only been supported with the static runtime
-  # on windows
-  set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
 endif()
 
 # We don't use the C++ Standard Library here, so avoid including it by mistake.
@@ -162,8 +132,7 @@ if(APPLE)
     CFLAGS ${EXTRA_FLAGS}
     SOURCES ${PROFILE_SOURCES}
     ADDITIONAL_HEADERS ${PROFILE_HEADERS}
-    PARENT_TARGET profile
-    EXTENSIONS ON)
+    PARENT_TARGET profile)
 else()
   add_compiler_rt_runtime(clang_rt.profile
     STATIC
@@ -171,6 +140,5 @@ else()
     CFLAGS ${EXTRA_FLAGS}
     SOURCES ${PROFILE_SOURCES}
     ADDITIONAL_HEADERS ${PROFILE_HEADERS}
-    PARENT_TARGET profile
-    EXTENSIONS ON)
+    PARENT_TARGET profile)
 endif()

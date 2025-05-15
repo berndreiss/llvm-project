@@ -78,12 +78,9 @@ struct InlineScalarOperands : public OpRewritePattern<GenericOp> {
       for (auto idx : indices)
         indicesValues.emplace_back(
             rewriter.create<arith::ConstantIndexOp>(loc, idx));
-      Value scalarValue = opOperand->get();
-      if (isa<RankedTensorType>(scalarValue.getType())) {
-        scalarValue =
-            rewriter.create<tensor::ExtractOp>(loc, scalarValue, indicesValues);
-      }
-      body->getArgument(idx).replaceAllUsesWith(scalarValue);
+      Value extractedValue = rewriter.create<tensor::ExtractOp>(
+          loc, opOperand->get(), indicesValues);
+      body->getArgument(idx).replaceAllUsesWith(extractedValue);
       body->eraseArgument(idx);
     }
 

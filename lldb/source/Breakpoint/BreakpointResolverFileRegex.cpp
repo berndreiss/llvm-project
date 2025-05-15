@@ -34,7 +34,7 @@ BreakpointResolverSP BreakpointResolverFileRegex::CreateFromStructuredData(
   success = options_dict.GetValueForKeyAsString(
       GetKey(OptionNames::RegexString), regex_string);
   if (!success) {
-    error = Status::FromErrorString("BRFR::CFSD: Couldn't find regex entry.");
+    error.SetErrorString("BRFR::CFSD: Couldn't find regex entry.");
     return nullptr;
   }
   RegularExpression regex(regex_string);
@@ -43,8 +43,7 @@ BreakpointResolverSP BreakpointResolverFileRegex::CreateFromStructuredData(
   success = options_dict.GetValueForKeyAsBoolean(
       GetKey(OptionNames::ExactMatch), exact_match);
   if (!success) {
-    error =
-        Status::FromErrorString("BRFL::CFSD: Couldn't find exact match entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find exact match entry.");
     return nullptr;
   }
 
@@ -59,8 +58,8 @@ BreakpointResolverSP BreakpointResolverFileRegex::CreateFromStructuredData(
       std::optional<llvm::StringRef> maybe_name =
           names_array->GetItemAtIndexAsString(i);
       if (!maybe_name) {
-        error = Status::FromErrorStringWithFormatv(
-            "BRFR::CFSD: Malformed element {0} in the names array.", i);
+        error.SetErrorStringWithFormat(
+            "BRFR::CFSD: Malformed element %zu in the names array.", i);
         return nullptr;
       }
       names_set.insert(std::string(*maybe_name));
@@ -102,8 +101,7 @@ Searcher::CallbackReturn BreakpointResolverFileRegex::SearchCallback(
   FileSpec cu_file_spec = cu->GetPrimaryFile();
   std::vector<uint32_t> line_matches;
   context.target_sp->GetSourceManager().FindLinesMatchingRegex(
-      std::make_shared<SupportFile>(cu_file_spec), m_regex, 1, UINT32_MAX,
-      line_matches);
+      cu_file_spec, m_regex, 1, UINT32_MAX, line_matches);
 
   uint32_t num_matches = line_matches.size();
   for (uint32_t i = 0; i < num_matches; i++) {

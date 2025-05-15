@@ -25,7 +25,7 @@ namespace tosa {
 
 std::unique_ptr<Pass> createTosaToTensor();
 
-void populateTosaToTensorConversionPatterns(const TypeConverter &converter,
+void populateTosaToTensorConversionPatterns(TypeConverter &converter,
                                             RewritePatternSet *patterns);
 
 } // namespace tosa

@@ -126,25 +126,20 @@ static inline bool patchSled(const bool Enable, const uint32_t FuncId,
 
 bool patchFunctionEntry(const bool Enable, const uint32_t FuncId,
                         const XRaySledEntry &Sled,
-                        const XRayTrampolines &Trampolines,
-                        bool LogArgs) XRAY_NEVER_INSTRUMENT {
-  auto Trampoline =
-      LogArgs ? Trampolines.LogArgsTrampoline : Trampolines.EntryTrampoline;
+                        void (*Trampoline)()) XRAY_NEVER_INSTRUMENT {
   return patchSled(Enable, FuncId, Sled, Trampoline);
 }
 
-bool patchFunctionExit(
-    const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
-    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchSled(Enable, FuncId, Sled, Trampolines.ExitTrampoline);
+bool patchFunctionExit(const bool Enable, const uint32_t FuncId,
+                       const XRaySledEntry &Sled) XRAY_NEVER_INSTRUMENT {
+  return patchSled(Enable, FuncId, Sled, __xray_FunctionExit);
 }
 
-bool patchFunctionTailExit(
-    const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
-    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
+bool patchFunctionTailExit(const bool Enable, const uint32_t FuncId,
+                           const XRaySledEntry &Sled) XRAY_NEVER_INSTRUMENT {
   // TODO: In the future we'd need to distinguish between non-tail exits and
   // tail exits for better information preservation.
-  return patchSled(Enable, FuncId, Sled, Trampolines.ExitTrampoline);
+  return patchSled(Enable, FuncId, Sled, __xray_FunctionExit);
 }
 
 bool patchCustomEvent(const bool Enable, const uint32_t FuncId,
@@ -162,8 +157,4 @@ bool patchTypedEvent(const bool Enable, const uint32_t FuncId,
 
 extern "C" void __xray_ArgLoggerEntry() XRAY_NEVER_INSTRUMENT {
   // TODO: This will have to be implemented in the trampoline assembly file.
-}
-
-extern "C" void __xray_FunctionTailExit() XRAY_NEVER_INSTRUMENT {
-  // FIXME: this will have to be implemented in the trampoline assembly file
 }

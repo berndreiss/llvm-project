@@ -58,8 +58,7 @@ TEST_F(PlatformAndroidTest, DownloadModuleSliceWithAdbClientError) {
   EXPECT_CALL(*this, GetAdbClient(_))
       .Times(1)
       .WillOnce(DoAll(WithArg<0>([](auto &arg) {
-                        arg = Status::FromErrorString(
-                            "Failed to create AdbClient");
+                        arg = Status("Failed to create AdbClient");
                       }),
                       Return(ByMove(AdbClientUP()))));
 

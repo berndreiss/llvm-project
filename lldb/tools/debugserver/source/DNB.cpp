@@ -475,17 +475,9 @@ nub_process_t DNBProcessAttach(nub_process_t attach_pid,
         extern int communication_fd;
 
         if (communication_fd == -1) {
-          DNBLogError("Trying to attach to a translated process with the "
-                      "native debugserver, exiting...\n");
-          return INVALID_NUB_PROCESS_ARCH;
-        }
-
-        struct stat st;
-        if (::stat(translated_debugserver, &st) != 0) {
-          DNBLogError("Translated inferior process but Rosetta debugserver not "
-                      "found at %s",
-                      translated_debugserver);
-          return INVALID_NUB_PROCESS_ARCH;
+          fprintf(stderr, "Trying to attach to a translated process with the "
+                          "native debugserver, exiting...\n");
+          exit(1);
         }
 
         snprintf(fdstr, sizeof(fdstr), "--fd=%d", communication_fd);

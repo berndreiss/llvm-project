@@ -32,10 +32,7 @@ def MatchSparseInOut : Op<Transform_Dialect, "sparse_tensor.match.sparse_inout",
   let arguments = (ins TransformHandleTypeInterface:$target);
   let results = (outs TransformHandleTypeInterface:$result);
 
-  let assemblyFormat = [{
-    $target attr-dict `:`
-    custom<SemiFunctionType>(type($target), type($result), "false")
-  }];
+  let assemblyFormat = "$target attr-dict `:` custom<SemiFunctionType>(type($target), type($result))";
   let extraClassDeclaration = SingleOpMatcher.extraDeclaration # [{
     ::mlir::Value getOperandHandle() { return getTarget(); }
   }];

@@ -19,6 +19,8 @@ define amdgpu_ps void @buffer_store(<4 x i32> inreg, <4 x float>, <4 x float>, <
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v12, s[0:3], 0 idxen
 ; GFX11-NEXT:    buffer_store_b128 v[4:7], v12, s[0:3], 0 idxen glc
 ; GFX11-NEXT:    buffer_store_b128 v[8:11], v12, s[0:3], 0 idxen slc
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 0, i32 0, i32 0, i32 0)
@@ -38,6 +40,8 @@ define amdgpu_ps void @buffer_store_immoffs(<4 x i32> inreg, <4 x float>) {
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    v_mov_b32_e32 v4, 0
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v4, s[0:3], 0 idxen offset:42
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 0, i32 42, i32 0, i32 0)
@@ -53,6 +57,8 @@ define amdgpu_ps void @buffer_store_idx(<4 x i32> inreg, <4 x float>, i32) {
 ; GFX11-LABEL: buffer_store_idx:
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v4, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 %2, i32 0, i32 0, i32 0)
@@ -74,6 +80,8 @@ define amdgpu_ps void @buffer_store_ofs(<4 x i32> inreg, <4 x float>, i32) {
 ; GFX11-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GFX11-NEXT:    v_dual_mov_b32 v5, v4 :: v_dual_mov_b32 v4, s4
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v[4:5], s[0:3], 0 idxen offen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 0, i32 %2, i32 0, i32 0)
@@ -89,6 +97,8 @@ define amdgpu_ps void @buffer_store_both(<4 x i32> inreg, <4 x float>, i32, i32)
 ; GFX11-LABEL: buffer_store_both:
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v[4:5], s[0:3], 0 idxen offen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 %2, i32 %3, i32 0, i32 0)
@@ -106,6 +116,8 @@ define amdgpu_ps void @buffer_store_both_reversed(<4 x i32> inreg, <4 x float>, 
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    v_mov_b32_e32 v6, v4
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v[5:6], s[0:3], 0 idxen offen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 %3, i32 %2, i32 0, i32 0)
@@ -137,6 +149,8 @@ define amdgpu_ps void @buffer_store_wait(<4 x i32> inreg, <4 x float>, i32, i32,
 ; GFX11-NEXT:    buffer_load_b128 v[0:3], v5, s[0:3], 0 idxen
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v6, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4f32(<4 x float> %1, <4 x i32> %0, i32 %2, i32 0, i32 0, i32 0)
@@ -154,6 +168,8 @@ define amdgpu_ps void @buffer_store_x1(<4 x i32> inreg %rsrc, float %data, i32 %
 ; GFX11-LABEL: buffer_store_x1:
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    buffer_store_b32 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.f32(float %data, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
@@ -169,6 +185,8 @@ define amdgpu_ps void @buffer_store_x2(<4 x i32> inreg %rsrc, <2 x float> %data,
 ; GFX11-LABEL: buffer_store_x2:
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    buffer_store_b64 v[0:1], v2, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v2f32(<2 x float> %data, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
@@ -191,6 +209,8 @@ define amdgpu_ps void @buffer_store_int(<4 x i32> inreg, <4 x i32>, <2 x i32>, i
 ; GFX11-NEXT:    buffer_store_b128 v[0:3], v7, s[0:3], 0 idxen
 ; GFX11-NEXT:    buffer_store_b64 v[4:5], v7, s[0:3], 0 idxen glc
 ; GFX11-NEXT:    buffer_store_b32 v6, v7, s[0:3], 0 idxen slc
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   call void @llvm.amdgcn.struct.buffer.store.v4i32(<4 x i32> %1, <4 x i32> %0, i32 0, i32 0, i32 0, i32 0)
@@ -210,6 +230,8 @@ define amdgpu_ps void @struct_buffer_store_byte(<4 x i32> inreg %rsrc, float %v1
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    v_cvt_u32_f32_e32 v0, v0
 ; GFX11-NEXT:    buffer_store_b8 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   %v2 = fptoui float %v1 to i32
@@ -229,6 +251,8 @@ define amdgpu_ps void @struct_buffer_store_f16(<4 x i32> inreg %rsrc, float %v1,
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GFX11-NEXT:    buffer_store_b16 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
   %v2 = fptrunc float %v1 to half
   call void @llvm.amdgcn.struct.buffer.store.f16(half %v2, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
@@ -253,6 +277,8 @@ define amdgpu_ps void @struct_buffer_store_v2f16(<4 x i32> inreg %rsrc, <2 x hal
 ; GFX11-LABEL: struct_buffer_store_v2f16:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    buffer_store_b32 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
   call void @llvm.amdgcn.struct.buffer.store.v2f16(<2 x half> %v1, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
   ret void
@@ -280,6 +306,8 @@ define amdgpu_ps void @struct_buffer_store_v4f16(<4 x i32> inreg %rsrc, <4 x hal
 ; GFX11-LABEL: struct_buffer_store_v4f16:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    buffer_store_b64 v[0:1], v2, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
   call void @llvm.amdgcn.struct.buffer.store.v4f16(<4 x half> %v1, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
   ret void
@@ -296,6 +324,8 @@ define amdgpu_ps void @struct_buffer_store_i16(<4 x i32> inreg %rsrc, float %v1,
 ; GFX11:       ; %bb.0: ; %main_body
 ; GFX11-NEXT:    v_cvt_u32_f32_e32 v0, v0
 ; GFX11-NEXT:    buffer_store_b16 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 main_body:
   %v2 = fptoui float %v1 to i32
@@ -321,6 +351,8 @@ define amdgpu_ps void @struct_buffer_store_vif16(<4 x i32> inreg %rsrc, <2 x i16
 ; GFX11-LABEL: struct_buffer_store_vif16:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    buffer_store_b32 v0, v1, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
   call void @llvm.amdgcn.struct.buffer.store.v2i16(<2 x i16> %v1, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
   ret void
@@ -346,6 +378,8 @@ define amdgpu_ps void @struct_buffer_store_v4i16(<4 x i32> inreg %rsrc, <4 x i16
 ; GFX11-LABEL: struct_buffer_store_v4i16:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    buffer_store_b64 v[0:1], v2, s[0:3], 0 idxen
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
   call void @llvm.amdgcn.struct.buffer.store.v4i16(<4 x i16> %v1, <4 x i32> %rsrc, i32 %index, i32 0, i32 0, i32 0)
   ret void

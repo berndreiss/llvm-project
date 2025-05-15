@@ -10,9 +10,6 @@
 end program
 
 ! ALL: Pass statistics report
-! ALL: Fortran::lower::VerifierPass
-
-! ALL: Pass statistics report
 
 ! ALL: Fortran::lower::VerifierPass
 ! O2-NEXT: Canonicalizer
@@ -120,8 +117,7 @@ end program
 
 ! ALL-NEXT: CodeGenRewrite
 ! ALL-NEXT:   (S) 0 num-dce'd - Number of operations eliminated
-! ALL-NEXT: ExternalNameConversion
 ! ALL-NEXT: TargetRewrite
-! ALL-NEXT: CompilerGeneratedNamesConversion
+! ALL-NEXT: ExternalNameConversion
 ! ALL-NEXT: FIRToLLVMLowering
 ! ALL-NOT: LLVMIRLoweringPass

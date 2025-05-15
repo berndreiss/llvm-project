@@ -12,8 +12,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s1) = G_FPTOSI %0(s32)
@@ -32,8 +33,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s1) = G_FPTOUI %0(s32)
@@ -52,8 +54,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s8) = G_FPTOSI %0(s32)
@@ -72,8 +75,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s8) = G_FPTOUI %0(s32)
@@ -92,8 +96,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s16) = G_FPTOSI %0(s32)
@@ -112,8 +117,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s16) = G_FPTOUI %0(s32)
@@ -132,8 +138,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s32) = G_FPTOSI %0(s32)
@@ -152,8 +159,9 @@ body:             |
     ; CHECK: liveins: $f10_f
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $f10_f
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s32), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s32) = COPY $f10_f
     %1:_(s32) = G_FPTOUI %0(s32)
@@ -210,8 +218,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s1) = G_FPTOSI %0(s64)
@@ -230,8 +239,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s1) = G_FPTOUI %0(s64)
@@ -250,8 +260,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s8) = G_FPTOSI %0(s64)
@@ -270,8 +281,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s8) = G_FPTOUI %0(s64)
@@ -290,8 +302,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s16) = G_FPTOSI %0(s64)
@@ -310,8 +323,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s16) = G_FPTOUI %0(s64)
@@ -330,8 +344,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_W_RV64_:%[0-9]+]]:_(s64) = G_FCVT_W_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_W_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOSI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s32) = G_FPTOSI %0(s64)
@@ -350,8 +365,9 @@ body:             |
     ; CHECK: liveins: $f10_d
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $f10_d
-    ; CHECK-NEXT: [[FCVT_WU_RV64_:%[0-9]+]]:_(s64) = G_FCVT_WU_RV64 [[COPY]](s64), 1
-    ; CHECK-NEXT: $x10 = COPY [[FCVT_WU_RV64_]](s64)
+    ; CHECK-NEXT: [[FPTOUI:%[0-9]+]]:_(s32) = G_FPTOUI [[COPY]](s64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[FPTOUI]](s32)
+    ; CHECK-NEXT: $x10 = COPY [[ANYEXT]](s64)
     ; CHECK-NEXT: PseudoRET implicit $x10
     %0:_(s64) = COPY $f10_d
     %1:_(s32) = G_FPTOUI %0(s64)

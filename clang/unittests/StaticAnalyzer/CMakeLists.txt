@@ -20,7 +20,6 @@ add_clang_unittest(StaticAnalysisTests
   RegisterCustomCheckersTest.cpp
   StoreTest.cpp
   SymbolReaperTest.cpp
-  SValSimplifyerTest.cpp
   SValTest.cpp
   TestReturnValueUnderConstruction.cpp
   Z3CrosscheckOracleTest.cpp

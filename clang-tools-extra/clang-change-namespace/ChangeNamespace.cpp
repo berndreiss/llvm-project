@@ -606,8 +606,9 @@ void ChangeNamespaceTool::run(
                  Result.Nodes.getNodeAs<DeclRefExpr>("func_ref")) {
     // If this reference has been processed as a function call, we do not
     // process it again.
-    if (!ProcessedFuncRefs.insert(FuncRef).second)
+    if (ProcessedFuncRefs.count(FuncRef))
       return;
+    ProcessedFuncRefs.insert(FuncRef);
     const auto *Func = Result.Nodes.getNodeAs<FunctionDecl>("func_decl");
     assert(Func);
     const auto *Context = Result.Nodes.getNodeAs<Decl>("dc");

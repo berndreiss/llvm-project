@@ -51,13 +51,13 @@ Status CommandObjectDisassemble::CommandOptions::SetOptionValue(
 
   case 'C':
     if (option_arg.getAsInteger(0, num_lines_context))
-      error = Status::FromErrorStringWithFormat(
-          "invalid num context lines string: \"%s\"", option_arg.str().c_str());
+      error.SetErrorStringWithFormat("invalid num context lines string: \"%s\"",
+                                     option_arg.str().c_str());
     break;
 
   case 'c':
     if (option_arg.getAsInteger(0, num_instructions))
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "invalid num of instructions string: \"%s\"",
           option_arg.str().c_str());
     break;
@@ -114,9 +114,8 @@ Status CommandObjectDisassemble::CommandOptions::SetOptionValue(
                           llvm::Triple::x86_64)) {
       flavor_string.assign(std::string(option_arg));
     } else
-      error = Status::FromErrorStringWithFormat(
-          "Disassembler flavors are currently only "
-          "supported for x86 and x86_64 targets.");
+      error.SetErrorStringWithFormat("Disassembler flavors are currently only "
+                                     "supported for x86 and x86_64 targets.");
     break;
   }
 
@@ -228,7 +227,7 @@ llvm::Error CommandObjectDisassemble::CheckRangeSize(const AddressRange &range,
     return llvm::Error::success();
   StreamString msg;
   msg << "Not disassembling " << what << " because it is very large ";
-  range.Dump(&msg, &GetTarget(), Address::DumpStyleLoadAddress,
+  range.Dump(&msg, &GetSelectedTarget(), Address::DumpStyleLoadAddress,
              Address::DumpStyleFileAddress);
   msg << ". To disassemble specify an instruction count limit, start/stop "
          "addresses or use the --force option.";
@@ -253,7 +252,7 @@ CommandObjectDisassemble::GetContainingAddressRanges() {
     }
   };
 
-  Target &target = GetTarget();
+  Target &target = GetSelectedTarget();
   if (!target.GetSectionLoadList().IsEmpty()) {
     Address symbol_containing_address;
     if (target.GetSectionLoadList().ResolveLoadAddress(
@@ -352,8 +351,8 @@ CommandObjectDisassemble::GetNameRanges(CommandReturnObject &result) {
 
   // Find functions matching the given name.
   SymbolContextList sc_list;
-  GetTarget().GetImages().FindFunctions(name, eFunctionNameTypeAuto,
-                                        function_options, sc_list);
+  GetSelectedTarget().GetImages().FindFunctions(name, eFunctionNameTypeAuto,
+                                                function_options, sc_list);
 
   std::vector<AddressRange> ranges;
   llvm::Error range_errs = llvm::Error::success();
@@ -440,10 +439,10 @@ CommandObjectDisassemble::GetRangesForSelectedMode(
 
 void CommandObjectDisassemble::DoExecute(Args &command,
                                          CommandReturnObject &result) {
-  Target &target = GetTarget();
+  Target *target = &GetSelectedTarget();
 
   if (!m_options.arch.IsValid())
-    m_options.arch = target.GetArchitecture();
+    m_options.arch = target->GetArchitecture();
 
   if (!m_options.arch.IsValid()) {
     result.AppendError(
@@ -536,7 +535,7 @@ void CommandObjectDisassemble::DoExecute(Args &command,
       } else {
         result.AppendErrorWithFormat(
             "Failed to disassemble memory at 0x%8.8" PRIx64 ".\n",
-            cur_range.GetBaseAddress().GetLoadAddress(&target));
+            cur_range.GetBaseAddress().GetLoadAddress(target));
       }
     }
     if (print_sc_header)

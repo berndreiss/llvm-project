@@ -23,7 +23,7 @@ using namespace lld::elf;
 namespace {
 class SystemZ : public TargetInfo {
 public:
-  SystemZ(Ctx &);
+  SystemZ();
   int getTlsGdRelaxSkip(RelType type) const override;
   RelExpr getRelExpr(RelType type, const Symbol &s,
                      const uint8_t *loc) const override;
@@ -51,7 +51,7 @@ private:
 };
 } // namespace
 
-SystemZ::SystemZ(Ctx &ctx) : TargetInfo(ctx) {
+SystemZ::SystemZ() {
   copyRel = R_390_COPY;
   gotRel = R_390_GLOB_DAT;
   pltRel = R_390_JMP_SLOT;
@@ -170,8 +170,8 @@ RelExpr SystemZ::getRelExpr(RelType type, const Symbol &s,
     return R_GOT_PC;
 
   default:
-    Err(ctx) << getErrorLoc(ctx, loc) << "unknown relocation (" << Twine(type)
-             << ") against symbol " << &s;
+    error(getErrorLocation(loc) + "unknown relocation (" + Twine(type) +
+          ") against symbol " + toString(s));
     return R_NONE;
   }
 }
@@ -179,16 +179,16 @@ RelExpr SystemZ::getRelExpr(RelType type, const Symbol &s,
 void SystemZ::writeGotHeader(uint8_t *buf) const {
   // _GLOBAL_OFFSET_TABLE_[0] holds the value of _DYNAMIC.
   // _GLOBAL_OFFSET_TABLE_[1] and [2] are reserved.
-  write64be(buf, ctx.mainPart->dynamic->getVA());
+  write64be(buf, mainPart->dynamic->getVA());
 }
 
 void SystemZ::writeGotPlt(uint8_t *buf, const Symbol &s) const {
-  write64be(buf, s.getPltVA(ctx) + 14);
+  write64be(buf, s.getPltVA() + 14);
 }
 
 void SystemZ::writeIgotPlt(uint8_t *buf, const Symbol &s) const {
-  if (ctx.arg.writeAddends)
-    write64be(buf, s.getVA(ctx));
+  if (config->writeAddends)
+    write64be(buf, s.getVA());
 }
 
 void SystemZ::writePltHeader(uint8_t *buf) const {
@@ -203,15 +203,15 @@ void SystemZ::writePltHeader(uint8_t *buf) const {
       0x07, 0x00,                         // nopr
   };
   memcpy(buf, pltData, sizeof(pltData));
-  uint64_t got = ctx.in.got->getVA();
-  uint64_t plt = ctx.in.plt->getVA();
+  uint64_t got = in.got->getVA();
+  uint64_t plt = in.plt->getVA();
   write32be(buf + 8, (got - plt - 6) >> 1);
 }
 
 void SystemZ::addPltHeaderSymbols(InputSection &isec) const {
   // The PLT header needs a reference to _GLOBAL_OFFSET_TABLE_, so we
   // must ensure the .got section is created even if otherwise unused.
-  ctx.in.got->hasGotOffRel.store(true, std::memory_order_relaxed);
+  in.got->hasGotOffRel.store(true, std::memory_order_relaxed);
 }
 
 void SystemZ::writePlt(uint8_t *buf, const Symbol &sym,
@@ -227,9 +227,9 @@ void SystemZ::writePlt(uint8_t *buf, const Symbol &sym,
   };
   memcpy(buf, inst, sizeof(inst));
 
-  write32be(buf + 2, (sym.getGotPltVA(ctx) - pltEntryAddr) >> 1);
-  write32be(buf + 24, (ctx.in.plt->getVA() - pltEntryAddr - 22) >> 1);
-  write32be(buf + 28, ctx.in.relaPlt->entsize * sym.getPltIdx(ctx));
+  write32be(buf + 2, (sym.getGotPltVA() - pltEntryAddr) >> 1);
+  write32be(buf + 24, (in.plt->getVA() - pltEntryAddr - 22) >> 1);
+  write32be(buf + 28, in.relaPlt->entsize * sym.getPltIdx());
 }
 
 int64_t SystemZ::getImplicitAddend(const uint8_t *buf, RelType type) const {
@@ -261,7 +261,7 @@ int64_t SystemZ::getImplicitAddend(const uint8_t *buf, RelType type) const {
     // These relocations are defined as not having an implicit addend.
     return 0;
   default:
-    internalLinkerError(getErrorLoc(ctx, buf),
+    internalLinkerError(getErrorLocation(buf),
                         "cannot read addend for relocation " + toString(type));
     return 0;
   }
@@ -417,7 +417,7 @@ void SystemZ::relaxTlsLdToLe(uint8_t *loc, const Relocation &rel,
 RelExpr SystemZ::adjustGotPcExpr(RelType type, int64_t addend,
                                  const uint8_t *loc) const {
   // Only R_390_GOTENT with addend 2 can be relaxed.
-  if (!ctx.arg.relax || addend != 2 || type != R_390_GOTENT)
+  if (!config->relax || addend != 2 || type != R_390_GOTENT)
     return R_GOT_PC;
   const uint16_t op = read16be(loc - 2);
 
@@ -438,7 +438,7 @@ bool SystemZ::relaxOnce(int pass) const {
   // we need to validate the target symbol is in-range and aligned.
   SmallVector<InputSection *, 0> storage;
   bool changed = false;
-  for (OutputSection *osec : ctx.outputSections) {
+  for (OutputSection *osec : outputSections) {
     if (!(osec->flags & SHF_EXECINSTR))
       continue;
     for (InputSection *sec : getInputSections(*osec, storage)) {
@@ -447,12 +447,13 @@ bool SystemZ::relaxOnce(int pass) const {
           continue;
 
         uint64_t v = sec->getRelocTargetVA(
-            ctx, rel, sec->getOutputSection()->addr + rel.offset);
+            sec->file, rel.type, rel.addend,
+            sec->getOutputSection()->addr + rel.offset, *rel.sym, rel.expr);
         if (isInt<33>(v) && !(v & 1))
           continue;
         if (rel.sym->auxIdx == 0) {
-          rel.sym->allocateAux(ctx);
-          addGotEntry(ctx, *rel.sym);
+          rel.sym->allocateAux();
+          addGotEntry(*rel.sym);
           changed = true;
         }
         rel.expr = R_GOT_PC;
@@ -493,20 +494,20 @@ void SystemZ::relocate(uint8_t *loc, const Relocation &rel,
   }
   switch (rel.type) {
   case R_390_8:
-    checkIntUInt(ctx, loc, val, 8, rel);
+    checkIntUInt(loc, val, 8, rel);
     *loc = val;
     break;
   case R_390_12:
   case R_390_GOT12:
   case R_390_GOTPLT12:
   case R_390_TLS_GOTIE12:
-    checkUInt(ctx, loc, val, 12, rel);
+    checkUInt(loc, val, 12, rel);
     write16be(loc, (read16be(loc) & 0xF000) | val);
     break;
   case R_390_PC12DBL:
   case R_390_PLT12DBL:
-    checkInt(ctx, loc, val, 13, rel);
-    checkAlignment(ctx, loc, val, 2, rel);
+    checkInt(loc, val, 13, rel);
+    checkAlignment(loc, val, 2, rel);
     write16be(loc, (read16be(loc) & 0xF000) | ((val >> 1) & 0x0FFF));
     break;
   case R_390_16:
@@ -514,31 +515,31 @@ void SystemZ::relocate(uint8_t *loc, const Relocation &rel,
   case R_390_GOTPLT16:
   case R_390_GOTOFF16:
   case R_390_PLTOFF16:
-    checkIntUInt(ctx, loc, val, 16, rel);
+    checkIntUInt(loc, val, 16, rel);
     write16be(loc, val);
     break;
   case R_390_PC16:
-    checkInt(ctx, loc, val, 16, rel);
+    checkInt(loc, val, 16, rel);
     write16be(loc, val);
     break;
   case R_390_PC16DBL:
   case R_390_PLT16DBL:
-    checkInt(ctx, loc, val, 17, rel);
-    checkAlignment(ctx, loc, val, 2, rel);
+    checkInt(loc, val, 17, rel);
+    checkAlignment(loc, val, 2, rel);
     write16be(loc, val >> 1);
     break;
   case R_390_20:
   case R_390_GOT20:
   case R_390_GOTPLT20:
   case R_390_TLS_GOTIE20:
-    checkInt(ctx, loc, val, 20, rel);
+    checkInt(loc, val, 20, rel);
     write32be(loc, (read32be(loc) & 0xF00000FF) | ((val & 0xFFF) << 16) |
                        ((val & 0xFF000) >> 4));
     break;
   case R_390_PC24DBL:
   case R_390_PLT24DBL:
-    checkInt(ctx, loc, val, 25, rel);
-    checkAlignment(ctx, loc, val, 2, rel);
+    checkInt(loc, val, 25, rel);
+    checkAlignment(loc, val, 2, rel);
     loc[0] = val >> 17;
     loc[1] = val >> 9;
     loc[2] = val >> 1;
@@ -554,12 +555,12 @@ void SystemZ::relocate(uint8_t *loc, const Relocation &rel,
   case R_390_TLS_LDM32:
   case R_390_TLS_LDO32:
   case R_390_TLS_LE32:
-    checkIntUInt(ctx, loc, val, 32, rel);
+    checkIntUInt(loc, val, 32, rel);
     write32be(loc, val);
     break;
   case R_390_PC32:
   case R_390_PLT32:
-    checkInt(ctx, loc, val, 32, rel);
+    checkInt(loc, val, 32, rel);
     write32be(loc, val);
     break;
   case R_390_PC32DBL:
@@ -568,8 +569,8 @@ void SystemZ::relocate(uint8_t *loc, const Relocation &rel,
   case R_390_GOTENT:
   case R_390_GOTPLTENT:
   case R_390_TLS_IEENT:
-    checkInt(ctx, loc, val, 33, rel);
-    checkAlignment(ctx, loc, val, 2, rel);
+    checkInt(loc, val, 33, rel);
+    checkAlignment(loc, val, 2, rel);
     write32be(loc, val >> 1);
     break;
   case R_390_64:
@@ -600,4 +601,7 @@ void SystemZ::relocate(uint8_t *loc, const Relocation &rel,
   }
 }
 
-void elf::setSystemZTargetInfo(Ctx &ctx) { ctx.target.reset(new SystemZ(ctx)); }
+TargetInfo *elf::getSystemZTargetInfo() {
+  static SystemZ t;
+  return &t;
+}

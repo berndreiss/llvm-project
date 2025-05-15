@@ -210,9 +210,8 @@ const Symbol *GenericDetails::CheckSpecific() const {
 }
 Symbol *GenericDetails::CheckSpecific() {
   if (specific_ && !specific_->has<UseErrorDetails>()) {
-    const Symbol &ultimate{specific_->GetUltimate()};
     for (const Symbol &proc : specificProcs_) {
-      if (&proc.GetUltimate() == &ultimate) {
+      if (&proc == specific_) {
         return nullptr;
       }
     }
@@ -231,10 +230,11 @@ void GenericDetails::CopyFrom(const GenericDetails &from) {
     derivedType_ = from.derivedType_;
   }
   for (std::size_t i{0}; i < from.specificProcs_.size(); ++i) {
-    if (llvm::none_of(specificProcs_, [&](const Symbol &mySymbol) {
-          return &mySymbol.GetUltimate() ==
-              &from.specificProcs_[i]->GetUltimate();
-        })) {
+    if (std::find_if(specificProcs_.begin(), specificProcs_.end(),
+            [&](const Symbol &mySymbol) {
+              return &mySymbol.GetUltimate() ==
+                  &from.specificProcs_[i]->GetUltimate();
+            }) == specificProcs_.end()) {
       specificProcs_.push_back(from.specificProcs_[i]);
       bindingNames_.push_back(from.bindingNames_[i]);
     }
@@ -588,11 +588,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const Details &details) {
           },
           [&](const TypeParamDetails &x) {
             DumpOptional(os, "type", x.type());
-            if (auto attr{x.attr()}) {
-              os << ' ' << common::EnumToString(*attr);
-            } else {
-              os << " (no attr)";
-            }
+            os << ' ' << common::EnumToString(x.attr());
             DumpExpr(os, "init", x.init());
           },
           [&](const MiscDetails &x) {
@@ -743,16 +739,9 @@ const Symbol *DerivedTypeDetails::GetFinalForRank(int rank) const {
   return nullptr;
 }
 
-TypeParamDetails &TypeParamDetails::set_attr(common::TypeParamAttr attr) {
-  CHECK(!attr_);
-  attr_ = attr;
-  return *this;
-}
-
-TypeParamDetails &TypeParamDetails::set_type(const DeclTypeSpec &type) {
+void TypeParamDetails::set_type(const DeclTypeSpec &type) {
   CHECK(!type_);
   type_ = &type;
-  return *this;
 }
 
 bool GenericKind::IsIntrinsicOperator() const {

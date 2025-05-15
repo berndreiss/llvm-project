@@ -20,7 +20,7 @@ while args:
     elif arg == "-o":
         output = args.pop(0)
 
-if output is None:
+if output == None:
     print("No output file name!")
     sys.exit(1)
 

@@ -289,7 +289,7 @@ protected:
   using Pattern::Pattern;
 
 private:
-  /// Trait to check if T provides a `initialize` method.
+  /// Trait to check if T provides a `getOperationName` method.
   template <typename T, typename... Args>
   using has_initialize = decltype(std::declval<T>().initialize());
   template <typename T>
@@ -461,60 +461,54 @@ public:
   /// struct can be used as a base to create listener chains, so that multiple
   /// listeners can be notified of IR changes.
   struct ForwardingListener : public RewriterBase::Listener {
-    ForwardingListener(OpBuilder::Listener *listener)
-        : listener(listener),
-          rewriteListener(
-              dyn_cast_if_present<RewriterBase::Listener>(listener)) {}
+    ForwardingListener(OpBuilder::Listener *listener) : listener(listener) {}
 
     void notifyOperationInserted(Operation *op, InsertPoint previous) override {
-      if (listener)
-        listener->notifyOperationInserted(op, previous);
+      listener->notifyOperationInserted(op, previous);
     }
     void notifyBlockInserted(Block *block, Region *previous,
                              Region::iterator previousIt) override {
-      if (listener)
-        listener->notifyBlockInserted(block, previous, previousIt);
+      listener->notifyBlockInserted(block, previous, previousIt);
     }
     void notifyBlockErased(Block *block) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyBlockErased(block);
     }
     void notifyOperationModified(Operation *op) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyOperationModified(op);
     }
     void notifyOperationReplaced(Operation *op, Operation *newOp) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyOperationReplaced(op, newOp);
     }
     void notifyOperationReplaced(Operation *op,
                                  ValueRange replacement) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyOperationReplaced(op, replacement);
     }
     void notifyOperationErased(Operation *op) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyOperationErased(op);
     }
     void notifyPatternBegin(const Pattern &pattern, Operation *op) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyPatternBegin(pattern, op);
     }
     void notifyPatternEnd(const Pattern &pattern,
                           LogicalResult status) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyPatternEnd(pattern, status);
     }
     void notifyMatchFailure(
         Location loc,
         function_ref<void(Diagnostic &)> reasonCallback) override {
-      if (rewriteListener)
+      if (auto *rewriteListener = dyn_cast<RewriterBase::Listener>(listener))
         rewriteListener->notifyMatchFailure(loc, reasonCallback);
     }
 
   private:
     OpBuilder::Listener *listener;
-    RewriterBase::Listener *rewriteListener;
   };
 
   /// Move the blocks that belong to "region" before the given position in

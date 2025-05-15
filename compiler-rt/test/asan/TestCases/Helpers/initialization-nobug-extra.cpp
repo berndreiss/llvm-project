@@ -1,9 +1,9 @@
 // Linker initialized:
 int getAB();
-int ab = getAB();
+static int ab = getAB();
 // Function local statics:
 int countCalls();
-int one = countCalls();
+static int one = countCalls();
 // Trivial constructor, non-trivial destructor:
 int getStructWithDtorValue();
-int val = getStructWithDtorValue();
+static int val = getStructWithDtorValue();

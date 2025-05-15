@@ -20,7 +20,6 @@
 
 #include "make_string.h"
 #include "test_macros.h"
-#include "operator_hijacker.h"
 
 #define STR(S) MAKE_STRING(CharT, S)
 
@@ -32,22 +31,9 @@ static void test() {
     assert(ss.str() == STR("testing"));
   }
   {
-    std::basic_string<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>> s(STR("testing"));
-    const std::basic_istringstream<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>> ss(std::move(s));
-    assert((ss.str() ==
-            std::basic_string<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>>(STR("testing"))));
-  }
-  {
     std::basic_string<CharT> s(STR("testing"));
     const std::basic_istringstream<CharT> ss(std::move(s), std::ios_base::binary);
     assert(ss.str() == STR("testing"));
-  }
-  {
-    std::basic_string<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>> s(STR("testing"));
-    const std::basic_istringstream<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>> ss(
-        std::move(s), std::ios_base::binary);
-    assert((ss.str() ==
-            std::basic_string<CharT, std::char_traits<CharT>, operator_hijacker_allocator<CharT>>(STR("testing"))));
   }
 }
 

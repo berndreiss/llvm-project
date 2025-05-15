@@ -30,8 +30,7 @@ define i8 @single_store_maybe_poison(i1 %cond, i8 %x) {
 ; CHECK:       [[IF]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
 ; CHECK:       [[EXIT]]:
-; CHECK-NEXT:    [[A_0:%.*]] = phi i8 [ [[X]], %[[IF]] ], [ undef, [[TMP0:%.*]] ]
-; CHECK-NEXT:    ret i8 [[A_0]]
+; CHECK-NEXT:    ret i8 [[X]]
 ;
   %a = alloca i8, align 1
   br i1 %cond, label %if, label %exit

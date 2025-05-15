@@ -933,7 +933,7 @@ void DwarfStreamer::emitLineTablePrologueV5IncludeAndFileTable(
     LineSectionSize += MS->emitULEB128IntValue(StrForm);
 
     LineSectionSize += MS->emitULEB128IntValue(dwarf::DW_LNCT_directory_index);
-    LineSectionSize += MS->emitULEB128IntValue(dwarf::DW_FORM_udata);
+    LineSectionSize += MS->emitULEB128IntValue(dwarf::DW_FORM_data1);
 
     if (HasChecksums) {
       LineSectionSize += MS->emitULEB128IntValue(dwarf::DW_LNCT_MD5);
@@ -952,7 +952,8 @@ void DwarfStreamer::emitLineTablePrologueV5IncludeAndFileTable(
   // file_names (sequence of file name entries).
   for (auto File : P.FileNames) {
     emitLineTableString(P, File.Name, DebugStrPool, DebugLineStrPool);
-    LineSectionSize += MS->emitULEB128IntValue(File.DirIdx);
+    MS->emitInt8(File.DirIdx);
+    LineSectionSize += 1;
     if (HasChecksums) {
       MS->emitBinaryData(
           StringRef(reinterpret_cast<const char *>(File.Checksum.data()),

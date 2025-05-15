@@ -19,6 +19,8 @@
 
 #include "test/UnitTest/Test.h"
 
+#include <stdio.h>
+
 namespace scanf_test {
 #ifndef LIBC_COPT_STDIO_USE_SYSTEM_FILE
 using LIBC_NAMESPACE::fclose;

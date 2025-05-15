@@ -147,19 +147,19 @@ bool CXXTypeidExpr::isPotentiallyEvaluated() const {
   return false;
 }
 
-bool CXXTypeidExpr::isMostDerived(const ASTContext &Context) const {
+bool CXXTypeidExpr::isMostDerived(ASTContext &Context) const {
   assert(!isTypeOperand() && "Cannot call isMostDerived for typeid(type)");
   const Expr *E = getExprOperand()->IgnoreParenNoopCasts(Context);
   if (const auto *DRE = dyn_cast<DeclRefExpr>(E)) {
     QualType Ty = DRE->getDecl()->getType();
-    if (!Ty->isPointerOrReferenceType())
+    if (!Ty->isPointerType() && !Ty->isReferenceType())
       return true;
   }
 
   return false;
 }
 
-QualType CXXTypeidExpr::getTypeOperand(const ASTContext &Context) const {
+QualType CXXTypeidExpr::getTypeOperand(ASTContext &Context) const {
   assert(isTypeOperand() && "Cannot call getTypeOperand for typeid(expr)");
   Qualifiers Quals;
   return Context.getUnqualifiedArrayType(
@@ -1946,23 +1946,4 @@ CXXParenListInitExpr *CXXParenListInitExpr::CreateEmpty(ASTContext &C,
   void *Mem = C.Allocate(totalSizeToAlloc<Expr *>(NumExprs),
                          alignof(CXXParenListInitExpr));
   return new (Mem) CXXParenListInitExpr(Empty, NumExprs);
-}
-
-CXXFoldExpr::CXXFoldExpr(QualType T, UnresolvedLookupExpr *Callee,
-                                SourceLocation LParenLoc, Expr *LHS,
-                                BinaryOperatorKind Opcode,
-                                SourceLocation EllipsisLoc, Expr *RHS,
-                                SourceLocation RParenLoc,
-                                std::optional<unsigned> NumExpansions)
-    : Expr(CXXFoldExprClass, T, VK_PRValue, OK_Ordinary), LParenLoc(LParenLoc),
-      EllipsisLoc(EllipsisLoc), RParenLoc(RParenLoc),
-      NumExpansions(NumExpansions ? *NumExpansions + 1 : 0), Opcode(Opcode) {
-  // We rely on asserted invariant to distinguish left and right folds.
-  assert(((LHS && LHS->containsUnexpandedParameterPack()) !=
-          (RHS && RHS->containsUnexpandedParameterPack())) &&
-         "Exactly one of LHS or RHS should contain an unexpanded pack");
-  SubExprs[SubExpr::Callee] = Callee;
-  SubExprs[SubExpr::LHS] = LHS;
-  SubExprs[SubExpr::RHS] = RHS;
-  setDependence(computeDependence(this));
 }

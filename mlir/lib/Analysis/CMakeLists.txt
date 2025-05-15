@@ -29,7 +29,6 @@ add_mlir_library(MLIRAnalysis
   Liveness.cpp
   CFGLoopInfo.cpp
   SliceAnalysis.cpp
-  SliceWalk.cpp
   TopologicalSortUtils.cpp
 
   AliasAnalysis/LocalAliasAnalysis.cpp

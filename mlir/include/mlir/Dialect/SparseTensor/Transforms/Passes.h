@@ -150,11 +150,11 @@ std::unique_ptr<Pass> createLowerForeachToSCFPass();
 //===----------------------------------------------------------------------===//
 
 /// Type converter for iter_space and iterator.
-struct SparseIterationTypeConverter : public TypeConverter {
+struct SparseIterationTypeConverter : public OneToNTypeConverter {
   SparseIterationTypeConverter();
 };
 
-void populateLowerSparseIterationToSCFPatterns(const TypeConverter &converter,
+void populateLowerSparseIterationToSCFPatterns(TypeConverter &converter,
                                                RewritePatternSet &patterns);
 
 std::unique_ptr<Pass> createLowerSparseIterationToSCFPass();
@@ -170,7 +170,7 @@ public:
 };
 
 /// Sets up sparse tensor conversion rules.
-void populateSparseTensorConversionPatterns(const TypeConverter &typeConverter,
+void populateSparseTensorConversionPatterns(TypeConverter &typeConverter,
                                             RewritePatternSet &patterns);
 
 std::unique_ptr<Pass> createSparseTensorConversionPass();
@@ -186,7 +186,7 @@ public:
 };
 
 /// Sets up sparse tensor codegen rules.
-void populateSparseTensorCodegenPatterns(const TypeConverter &typeConverter,
+void populateSparseTensorCodegenPatterns(TypeConverter &typeConverter,
                                          RewritePatternSet &patterns,
                                          bool createSparseDeallocs,
                                          bool enableBufferInitialization);
@@ -244,7 +244,7 @@ public:
   StorageSpecifierToLLVMTypeConverter();
 };
 
-void populateStorageSpecifierToLLVMPatterns(const TypeConverter &converter,
+void populateStorageSpecifierToLLVMPatterns(TypeConverter &converter,
                                             RewritePatternSet &patterns);
 std::unique_ptr<Pass> createStorageSpecifierToLLVMPass();
 
@@ -263,8 +263,7 @@ std::unique_ptr<Pass> createSparsificationAndBufferizationPass(
     bool createSparseDeallocs, bool enableRuntimeLibrary,
     bool enableBufferInitialization, unsigned vectorLength,
     bool enableVLAVectorization, bool enableSIMDIndex32, bool enableGPULibgen,
-    SparseEmitStrategy emitStrategy,
-    SparseParallelizationStrategy parallelizationStrategy);
+    SparseEmitStrategy emitStrategy);
 
 //===----------------------------------------------------------------------===//
 // Sparse Iteration Transform Passes

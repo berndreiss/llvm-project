@@ -435,6 +435,7 @@ void TemplUses(T t, U u) {
   // CHECK-NEXT: CXXBoolLiteralExpr
   // CHECK-NEXT: CompoundStmt
 
+
   // CHECK-NEXT: DeclStmt
   // CHECK-NEXT: VarDecl{{.*}}EndMarker
   int EndMarker;
@@ -489,6 +490,7 @@ void TemplUses(T t, U u) {
   // CHECK-NEXT: CXXFunctionalCastExpr{{.*}} 'CorrectConvert' functional cast to struct CorrectConvert <NoOp>
   // CHECK-NEXT: InitListExpr{{.*}}'CorrectConvert'
   // CHECK-NEXT: WhileStmt
+  // CHECK-NEXT: ExprWithCleanups
   // CHECK-NEXT: CXXBoolLiteralExpr
   // CHECK-NEXT: CompoundStmt
 
@@ -501,6 +503,7 @@ void TemplUses(T t, U u) {
   // CHECK-NEXT: CXXFunctionalCastExpr{{.*}} 'HasInt' functional cast to struct HasInt <NoOp>
   // CHECK-NEXT: InitListExpr{{.*}}'HasInt'
   // CHECK-NEXT: WhileStmt
+  // CHECK-NEXT: ExprWithCleanups
   // CHECK-NEXT: CXXBoolLiteralExpr
   // CHECK-NEXT: CompoundStmt
 

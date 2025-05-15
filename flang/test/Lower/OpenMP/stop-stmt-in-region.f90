@@ -106,6 +106,7 @@ end
 ! CHECK:           ^bb3:
 ! CHECK:             omp.yield
 ! CHECK:           }
+! CHECK:           omp.terminator
 ! CHECK:         }
 ! CHECK:         cf.br ^bb1
 ! CHECK:       ^bb1:

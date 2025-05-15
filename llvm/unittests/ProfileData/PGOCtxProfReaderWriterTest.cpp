@@ -6,8 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/Bitcode/BitcodeAnalyzer.h"
+#include "llvm/Bitstream/BitstreamReader.h"
 #include "llvm/ProfileData/CtxInstrContextNode.h"
 #include "llvm/ProfileData/PGOCtxProfReader.h"
 #include "llvm/ProfileData/PGOCtxProfWriter.h"
@@ -25,12 +24,12 @@ class PGOCtxProfRWTest : public ::testing::Test {
   std::map<GUID, const ContextNode *> Roots;
 
 public:
-  ContextNode *createNode(GUID Guid, uint32_t NumCounters,
-                          uint32_t NumCallsites, ContextNode *Next = nullptr) {
-    auto AllocSize = ContextNode::getAllocSize(NumCounters, NumCallsites);
+  ContextNode *createNode(GUID Guid, uint32_t NrCounters, uint32_t NrCallsites,
+                          ContextNode *Next = nullptr) {
+    auto AllocSize = ContextNode::getAllocSize(NrCounters, NrCallsites);
     auto *Mem = Nodes.emplace_back(std::make_unique<char[]>(AllocSize)).get();
     std::memset(Mem, 0, AllocSize);
-    auto *Ret = new (Mem) ContextNode(Guid, NumCounters, NumCallsites, Next);
+    auto *Ret = new (Mem) ContextNode(Guid, NrCounters, NrCallsites, Next);
     return Ret;
   }
 
@@ -65,7 +64,7 @@ public:
   const std::map<GUID, const ContextNode *> &roots() const { return Roots; }
 };
 
-void checkSame(const ContextNode &Raw, const PGOCtxProfContext &Profile) {
+void checkSame(const ContextNode &Raw, const PGOContextualProfile &Profile) {
   EXPECT_EQ(Raw.guid(), Profile.guid());
   ASSERT_EQ(Raw.counters_size(), Profile.counters().size());
   for (auto I = 0U; I < Raw.counters_size(); ++I)
@@ -107,20 +106,8 @@ TEST_F(PGOCtxProfRWTest, RoundTrip) {
         MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-
-    // Check it's analyzable by the BCAnalyzer
-    BitcodeAnalyzer BA((*MB)->getBuffer());
-    std::string AnalyzerDump;
-    raw_string_ostream OS(AnalyzerDump);
-    BCDumpOptions Opts(OS);
-
-    // As in, expect no error.
-    EXPECT_FALSE(BA.analyze(Opts));
-    EXPECT_TRUE(AnalyzerDump.find("<Metadata BlockID") != std::string::npos);
-    EXPECT_TRUE(AnalyzerDump.find("<Context BlockID") != std::string::npos);
-    EXPECT_TRUE(AnalyzerDump.find("<CalleeIndex codeid") != std::string::npos);
-
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     ASSERT_TRUE(!!Expected);
     auto &Ctxes = *Expected;
@@ -156,7 +143,8 @@ TEST_F(PGOCtxProfRWTest, InvalidCounters) {
     auto MB = MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     EXPECT_FALSE(Expected);
     consumeError(Expected.takeError());
@@ -164,14 +152,16 @@ TEST_F(PGOCtxProfRWTest, InvalidCounters) {
 }
 
 TEST_F(PGOCtxProfRWTest, Empty) {
-  PGOCtxProfileReader Reader("");
+  BitstreamCursor Cursor("");
+  PGOCtxProfileReader Reader(Cursor);
   auto Expected = Reader.loadContexts();
   EXPECT_FALSE(Expected);
   consumeError(Expected.takeError());
 }
 
 TEST_F(PGOCtxProfRWTest, Invalid) {
-  PGOCtxProfileReader Reader("Surely this is not valid");
+  BitstreamCursor Cursor("Surely this is not valid");
+  PGOCtxProfileReader Reader(Cursor);
   auto Expected = Reader.loadContexts();
   EXPECT_FALSE(Expected);
   consumeError(Expected.takeError());
@@ -192,8 +182,8 @@ TEST_F(PGOCtxProfRWTest, ValidButEmpty) {
     auto MB = MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     EXPECT_TRUE(!!Expected);
     EXPECT_TRUE(Expected->empty());
@@ -214,8 +204,8 @@ TEST_F(PGOCtxProfRWTest, WrongVersion) {
     auto MB = MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     EXPECT_FALSE(Expected);
     consumeError(Expected.takeError());
@@ -238,7 +228,8 @@ TEST_F(PGOCtxProfRWTest, DuplicateRoots) {
     auto MB = MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     EXPECT_FALSE(Expected);
     consumeError(Expected.takeError());
@@ -264,7 +255,8 @@ TEST_F(PGOCtxProfRWTest, DuplicateTargets) {
     auto MB = MemoryBuffer::getFile(ProfileFile.path());
     ASSERT_TRUE(!!MB);
     ASSERT_NE(*MB, nullptr);
-    PGOCtxProfileReader Reader((*MB)->getBuffer());
+    BitstreamCursor Cursor((*MB)->getBuffer());
+    PGOCtxProfileReader Reader(Cursor);
     auto Expected = Reader.loadContexts();
     EXPECT_FALSE(Expected);
     consumeError(Expected.takeError());

@@ -12,12 +12,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Analysis/DomTreeUpdater.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/GenericDomTreeUpdaterImpl.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/GenericDomTree.h"
+#include <algorithm>
 #include <functional>
+#include <utility>
 
 namespace llvm {
 
@@ -39,8 +42,9 @@ bool DomTreeUpdater::forceFlushDeletedBB() {
     // delete only has an UnreachableInst inside.
     assert(BB->size() == 1 && isa<UnreachableInst>(BB->getTerminator()) &&
            "DelBB has been modified while awaiting deletion.");
+    BB->removeFromParent();
     eraseDelBBNode(BB);
-    BB->eraseFromParent();
+    delete BB;
   }
   DeletedBBs.clear();
   Callbacks.clear();
@@ -59,8 +63,9 @@ void DomTreeUpdater::deleteBB(BasicBlock *DelBB) {
     return;
   }
 
+  DelBB->removeFromParent();
   eraseDelBBNode(DelBB);
-  DelBB->eraseFromParent();
+  delete DelBB;
 }
 
 void DomTreeUpdater::callbackDeleteBB(
@@ -72,8 +77,8 @@ void DomTreeUpdater::callbackDeleteBB(
     return;
   }
 
-  eraseDelBBNode(DelBB);
   DelBB->removeFromParent();
+  eraseDelBBNode(DelBB);
   Callback(DelBB);
   delete DelBB;
 }

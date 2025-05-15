@@ -1,4 +1,4 @@
-add_clang_library(clangTidyPlugin STATIC
+add_clang_library(clangTidyPlugin
   ClangTidyPlugin.cpp
 
   LINK_LIBS

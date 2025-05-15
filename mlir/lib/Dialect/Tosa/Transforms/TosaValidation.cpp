@@ -405,28 +405,14 @@ private:
     if (level == TosaLevelEnum::EightK) {
       tosaLevel = TOSA_LEVEL_EIGHTK;
     }
-
-    if (!profile.empty()) {
-      for (std::string &prof : profile) {
-        auto profSymbol = symbolizeTosaProfileEnum(prof);
-        if (profSymbol) {
-          enabled_profiles.push_back(profSymbol.value());
-        }
-      }
-    }
   }
 
   bool CheckVariable(Operation *op);
   bool CheckVariableReadOrWrite(Operation *op);
 
   bool isValidElementType(Type type);
-  bool isEnabledProfile(TosaProfileEnum prof) {
-    return std::find(enabled_profiles.begin(), enabled_profiles.end(), prof) !=
-           std::end(enabled_profiles);
-  }
 
   SmallVector<std::function<LogicalResult(Operation *)>> constCheckers;
-  SmallVector<TosaProfileEnum, 3> enabled_profiles;
   TosaLevel tosaLevel;
   DenseMap<StringAttr, mlir::Type> variablesMap;
 };
@@ -521,7 +507,7 @@ LogicalResult TosaValidation::applyVariableCheck(Operation *op) {
 
 bool TosaValidation::isValidElementType(Type type) {
   if (isa<FloatType>(type)) {
-    if (!isEnabledProfile(TosaProfileEnum::MainInference))
+    if (profile == TosaProfileEnum::BaseInference)
       return false;
     return type.isF32() || type.isF16() || type.isBF16();
   }
@@ -543,6 +529,7 @@ bool TosaValidation::isValidElementType(Type type) {
       case 16:
       case 32:
       case 48:
+      case 64:
         return true;
       default:
         return false;

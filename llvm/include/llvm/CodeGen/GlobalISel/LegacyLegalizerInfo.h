@@ -318,8 +318,11 @@ private:
                         const unsigned AddressSpace,
                         const SizeAndActionsVec &SizeAndActions) {
     const unsigned OpcodeIdx = Opcode - FirstOp;
+    if (AddrSpace2PointerActions[OpcodeIdx].find(AddressSpace) ==
+        AddrSpace2PointerActions[OpcodeIdx].end())
+      AddrSpace2PointerActions[OpcodeIdx][AddressSpace] = {{}};
     SmallVector<SizeAndActionsVec, 1> &Actions =
-        AddrSpace2PointerActions[OpcodeIdx][AddressSpace];
+        AddrSpace2PointerActions[OpcodeIdx].find(AddressSpace)->second;
     setActions(TypeIndex, Actions, SizeAndActions);
   }
 
@@ -344,8 +347,11 @@ private:
                                  const unsigned ElementSize,
                                  const SizeAndActionsVec &SizeAndActions) {
     const unsigned OpcodeIdx = Opcode - FirstOp;
+    if (NumElements2Actions[OpcodeIdx].find(ElementSize) ==
+        NumElements2Actions[OpcodeIdx].end())
+      NumElements2Actions[OpcodeIdx][ElementSize] = {{}};
     SmallVector<SizeAndActionsVec, 1> &Actions =
-        NumElements2Actions[OpcodeIdx][ElementSize];
+        NumElements2Actions[OpcodeIdx].find(ElementSize)->second;
     setActions(TypeIndex, Actions, SizeAndActions);
   }
 

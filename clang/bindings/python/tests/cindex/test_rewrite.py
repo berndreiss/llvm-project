@@ -1,7 +1,13 @@
-import tempfile
 import unittest
+import tempfile
 
-from clang.cindex import File, Rewriter, SourceLocation, SourceRange, TranslationUnit
+from clang.cindex import (
+    Rewriter,
+    TranslationUnit,
+    File,
+    SourceLocation,
+    SourceRange,
+)
 
 
 class TestRewrite(unittest.TestCase):

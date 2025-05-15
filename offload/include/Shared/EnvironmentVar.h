@@ -28,7 +28,6 @@ struct StringParser {
 /// Class for reading and checking environment variables. Currently working with
 /// integer, floats, std::string and bool types.
 template <typename Ty> class Envar {
-  llvm::StringRef Name;
   Ty Data;
   bool IsPresent;
   bool Initialized;
@@ -54,7 +53,7 @@ public:
   /// take the value read from the environment variable, or the default if it
   /// was not set or not correct. This constructor is not fallible.
   Envar(llvm::StringRef Name, Ty Default = Ty())
-      : Name(Name), Data(Default), IsPresent(false), Initialized(true) {
+      : Data(Default), IsPresent(false), Initialized(true) {
 
     if (const char *EnvStr = getenv(Name.data())) {
       // Check whether the envar is defined and valid.
@@ -84,9 +83,6 @@ public:
 
   /// Get the definitive value.
   operator Ty() const { return get(); }
-
-  /// Return the environment variable name.
-  llvm::StringRef getName() const { return Name; }
 
   /// Indicate whether the environment variable was defined and valid.
   bool isPresent() const { return IsPresent; }

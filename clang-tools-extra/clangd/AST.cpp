@@ -144,13 +144,8 @@ getQualification(ASTContext &Context, const DeclContext *DestContext,
   // since we stored inner-most parent first.
   std::string Result;
   llvm::raw_string_ostream OS(Result);
-  for (const auto *Parent : llvm::reverse(Parents)) {
-    if (Parent != *Parents.rbegin() && Parent->isDependent() &&
-        Parent->getAsRecordDecl() &&
-        Parent->getAsRecordDecl()->getDescribedClassTemplate())
-      OS << "template ";
+  for (const auto *Parent : llvm::reverse(Parents))
     Parent->print(OS, Context.getPrintingPolicy());
-  }
   return OS.str();
 }
 
@@ -192,6 +187,7 @@ std::string printQualifiedName(const NamedDecl &ND) {
   // In clangd, context is usually available and paths are mostly noise.
   Policy.AnonymousTagLocations = false;
   ND.printQualifiedName(OS, Policy);
+  OS.flush();
   assert(!StringRef(QName).starts_with("::"));
   return QName;
 }
@@ -274,6 +270,7 @@ std::string printTemplateSpecializationArgs(const NamedDecl &ND) {
     // location information.
     printTemplateArgumentList(OS, Cls->getTemplateArgs().asArray(), Policy);
   }
+  OS.flush();
   return TemplateArgs;
 }
 
@@ -306,6 +303,7 @@ std::string printObjCMethod(const ObjCMethodDecl &Method) {
     OS << ", ...";
 
   OS << ']';
+  OS.flush();
   return Name;
 }
 
@@ -316,6 +314,7 @@ std::string printObjCContainer(const ObjCContainerDecl &C) {
     const ObjCInterfaceDecl *Class = Category->getClassInterface();
     OS << getNameOrErrForObjCInterface(Class) << '(' << Category->getName()
        << ')';
+    OS.flush();
     return Name;
   }
   if (const ObjCCategoryImplDecl *CID = dyn_cast<ObjCCategoryImplDecl>(&C)) {
@@ -323,6 +322,7 @@ std::string printObjCContainer(const ObjCContainerDecl &C) {
     llvm::raw_string_ostream OS(Name);
     const ObjCInterfaceDecl *Class = CID->getClassInterface();
     OS << getNameOrErrForObjCInterface(Class) << '(' << CID->getName() << ')';
+    OS.flush();
     return Name;
   }
   return C.getNameAsString();

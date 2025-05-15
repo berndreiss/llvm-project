@@ -16,9 +16,6 @@ add %edx, %edx
 # CHECK:      {
 # CHECK-NEXT:   "CodeRegions": [
 # CHECK-NEXT:     {
-# CHECK-NEXT:       "BottleneckAnalysis": {
-# CHECK-NEXT:         "PressureIncreaseCycles": 0
-# CHECK-NEXT:       },
 # CHECK-NEXT:       "DispatchStatistics": {
 # CHECK-NEXT:         "GROUP": 0,
 # CHECK-NEXT:         "LQ": 0,

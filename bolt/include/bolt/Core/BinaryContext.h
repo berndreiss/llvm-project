@@ -23,7 +23,6 @@
 #include "bolt/RuntimeLibs/RuntimeLibrary.h"
 #include "llvm/ADT/AddressRanges.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
@@ -71,15 +70,14 @@ struct SegmentInfo {
   uint64_t FileOffset;        /// Offset in the file.
   uint64_t FileSize;          /// Size in file.
   uint64_t Alignment;         /// Alignment of the segment.
-  bool IsExecutable;          /// Is the executable bit set on the Segment?
 
   void print(raw_ostream &OS) const {
-    OS << "SegmentInfo { Address: 0x" << Twine::utohexstr(Address)
-       << ", Size: 0x" << Twine::utohexstr(Size) << ", FileOffset: 0x"
+    OS << "SegmentInfo { Address: 0x"
+       << Twine::utohexstr(Address) << ", Size: 0x"
+       << Twine::utohexstr(Size) << ", FileOffset: 0x"
        << Twine::utohexstr(FileOffset) << ", FileSize: 0x"
        << Twine::utohexstr(FileSize) << ", Alignment: 0x"
-       << Twine::utohexstr(Alignment) << ", " << (IsExecutable ? "x" : " ")
-       << "}";
+       << Twine::utohexstr(Alignment) << "}";
   };
 };
 
@@ -242,10 +240,6 @@ class BinaryContext {
 
   /// Function fragments to skip.
   std::unordered_set<BinaryFunction *> FragmentsToSkip;
-
-  /// Fragment equivalence classes to query belonging to the same "family" in
-  /// presence of multiple fragments/multiple parents.
-  EquivalenceClasses<const BinaryFunction *> FragmentClasses;
 
   /// The runtime library.
   std::unique_ptr<RuntimeLibrary> RtLibrary;
@@ -1038,15 +1032,7 @@ public:
   ///   fragment_name == parent_name.cold(.\d+)?
   /// True if the Function is registered, false if the check failed.
   bool registerFragment(BinaryFunction &TargetFunction,
-                        BinaryFunction &Function);
-
-  /// Return true if two functions belong to the same "family": are fragments
-  /// of one another, or fragments of the same parent, or transitively fragment-
-  /// related.
-  bool areRelatedFragments(const BinaryFunction *LHS,
-                           const BinaryFunction *RHS) const {
-    return FragmentClasses.isEquivalent(LHS, RHS);
-  }
+                        BinaryFunction &Function) const;
 
   /// Add interprocedural reference for \p Function to \p Address
   void addInterproceduralReference(BinaryFunction *Function, uint64_t Address) {

@@ -74,6 +74,7 @@ std::string ClangUtil::DumpDecl(const clang::Decl *d) {
   bool deserialize = false;
   d->dump(stream, deserialize);
 
+  stream.flush();
   return result;
 }
 

@@ -37,8 +37,8 @@ Expected<FileCache> llvm::localCache(const Twine &CacheNameRef,
   TempFilePrefixRef.toVector(TempFilePrefix);
   CacheDirectoryPathRef.toVector(CacheDirectoryPath);
 
-  auto Func = [=](unsigned Task, StringRef Key,
-                  const Twine &ModuleName) -> Expected<AddStreamFn> {
+  return [=](unsigned Task, StringRef Key,
+             const Twine &ModuleName) -> Expected<AddStreamFn> {
     // This choice of file name allows the cache to be pruned (see pruneCache()
     // in include/llvm/Support/CachePruning.h).
     SmallString<64> EntryPath;
@@ -167,5 +167,4 @@ Expected<FileCache> llvm::localCache(const Twine &CacheNameRef,
           Task);
     };
   };
-  return FileCache(Func, CacheDirectoryPathRef.str());
 }

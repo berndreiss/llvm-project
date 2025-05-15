@@ -1,17 +1,8 @@
 import("//llvm/utils/TableGen/tablegen.gni")
 
-tablegen("SystemZGenGNUAsmWriter") {
+tablegen("SystemZGenAsmWriter") {
   visibility = [ ":MCTargetDesc" ]
   args = [ "-gen-asm-writer" ]
-  td_file = "../SystemZ.td"
-}
-
-tablegen("SystemZGenHLASMAsmWriter") {
-  visibility = [ ":MCTargetDesc" ]
-  args = [
-    "-gen-asm-writer",
-    "-asmwriternum=1",
-  ]
   td_file = "../SystemZ.td"
 }
 
@@ -51,8 +42,7 @@ static_library("MCTargetDesc") {
     ":SystemZGenSubtargetInfo",
   ]
   deps = [
-    ":SystemZGenGNUAsmWriter",
-    ":SystemZGenHLASMAsmWriter",
+    ":SystemZGenAsmWriter",
     ":SystemZGenMCCodeEmitter",
     "//llvm/lib/CodeGen",
     "//llvm/lib/MC",
@@ -62,10 +52,8 @@ static_library("MCTargetDesc") {
   include_dirs = [ ".." ]
   sources = [
     "SystemZELFObjectWriter.cpp",
-    "SystemZGNUInstPrinter.cpp",
     "SystemZGOFFObjectWriter.cpp",
-    "SystemZHLASMInstPrinter.cpp",
-    "SystemZInstPrinterCommon.cpp",
+    "SystemZInstPrinter.cpp",
     "SystemZMCAsmBackend.cpp",
     "SystemZMCAsmInfo.cpp",
     "SystemZMCCodeEmitter.cpp",

@@ -39,8 +39,8 @@ class VPRecipeBase;
 
 // This is the base class of the VPlan Def/Use graph, used for modeling the data
 // flow into, within and out of the VPlan. VPValues can stand for live-ins
-// coming from the input IR and instructions which VPlan will generate if
-// executed.
+// coming from the input IR, instructions which VPlan will generate if executed
+// and live-outs which the VPlan will need to fix accordingly.
 class VPValue {
   friend class VPBuilder;
   friend class VPDef;
@@ -135,7 +135,7 @@ public:
   }
 
   /// Returns true if the value has more than one unique user.
-  bool hasMoreThanOneUniqueUser() const {
+  bool hasMoreThanOneUniqueUser() {
     if (getNumUsers() == 0)
       return false;
 
@@ -180,8 +180,10 @@ public:
     return getUnderlyingValue();
   }
 
-  /// Returns true if the VPValue is defined outside any loop region.
-  bool isDefinedOutsideLoopRegions() const;
+  /// Returns true if the VPValue is defined outside any vector regions, i.e. it
+  /// is a live-in value.
+  /// TODO: Also handle recipes defined in pre-header blocks.
+  bool isDefinedOutsideVectorRegions() const { return !hasDefiningRecipe(); }
 
   // Set \p Val as the underlying Value of this VPValue.
   void setUnderlyingValue(Value *Val) {
@@ -198,7 +200,17 @@ raw_ostream &operator<<(raw_ostream &OS, const VPValue &V);
 /// This class augments VPValue with operands which provide the inverse def-use
 /// edges from VPValue's users to their defs.
 class VPUser {
+public:
+  /// Subclass identifier (for isa/dyn_cast).
+  enum class VPUserID {
+    Recipe,
+    LiveOut,
+  };
+
+private:
   SmallVector<VPValue *, 2> Operands;
+
+  VPUserID ID;
 
 protected:
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -206,15 +218,16 @@ protected:
   void printOperands(raw_ostream &O, VPSlotTracker &SlotTracker) const;
 #endif
 
-  VPUser(ArrayRef<VPValue *> Operands) {
+  VPUser(ArrayRef<VPValue *> Operands, VPUserID ID) : ID(ID) {
     for (VPValue *Operand : Operands)
       addOperand(Operand);
   }
 
-  VPUser(std::initializer_list<VPValue *> Operands)
-      : VPUser(ArrayRef<VPValue *>(Operands)) {}
+  VPUser(std::initializer_list<VPValue *> Operands, VPUserID ID)
+      : VPUser(ArrayRef<VPValue *>(Operands), ID) {}
 
-  template <typename IterT> VPUser(iterator_range<IterT> Operands) {
+  template <typename IterT>
+  VPUser(iterator_range<IterT> Operands, VPUserID ID) : ID(ID) {
     for (VPValue *Operand : Operands)
       addOperand(Operand);
   }
@@ -227,6 +240,8 @@ public:
     for (VPValue *Op : operands())
       Op->removeUser(*this);
   }
+
+  VPUserID getVPUserID() const { return ID; }
 
   void addOperand(VPValue *Operand) {
     Operands.push_back(Operand);
@@ -324,7 +339,6 @@ public:
     VPBranchOnMaskSC,
     VPDerivedIVSC,
     VPExpandSCEVSC,
-    VPIRInstructionSC,
     VPInstructionSC,
     VPInterleaveSC,
     VPReductionEVLSC,
@@ -333,21 +347,17 @@ public:
     VPScalarCastSC,
     VPScalarIVStepsSC,
     VPVectorPointerSC,
-    VPReverseVectorPointerSC,
     VPWidenCallSC,
     VPWidenCanonicalIVSC,
     VPWidenCastSC,
     VPWidenGEPSC,
-    VPWidenIntrinsicSC,
     VPWidenLoadEVLSC,
     VPWidenLoadSC,
     VPWidenStoreEVLSC,
     VPWidenStoreSC,
     VPWidenSC,
-    VPWidenEVLSC,
     VPWidenSelectSC,
     VPBlendSC,
-    VPHistogramSC,
     // START: Phi-like recipes. Need to be kept together.
     VPWidenPHISC,
     VPPredInstPHISC,

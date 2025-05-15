@@ -31,10 +31,9 @@
 #  include <sys/time.h> // for gettimeofday and timeval
 #endif
 
-// OpenBSD and GPU do not have a fully conformant suite of POSIX timers, but
+// OpenBSD does not have a fully conformant suite of POSIX timers, but
 // it does have clock_gettime and CLOCK_MONOTONIC which is all we need.
-#if defined(__APPLE__) || defined(__gnu_hurd__) || defined(__OpenBSD__) || defined(__AMDGPU__) ||                      \
-    defined(__NVPTX__) || (defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0)
+#if defined(__APPLE__) || defined(__gnu_hurd__) || defined(__OpenBSD__) || (defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0)
 #  define _LIBCPP_HAS_CLOCK_GETTIME
 #endif
 
@@ -152,7 +151,7 @@ system_clock::time_point system_clock::from_time_t(time_t t) noexcept { return s
 //  instead.
 //
 
-#if _LIBCPP_HAS_MONOTONIC_CLOCK
+#ifndef _LIBCPP_HAS_NO_MONOTONIC_CLOCK
 
 #  if defined(__APPLE__)
 
@@ -230,7 +229,7 @@ const bool steady_clock::is_steady;
 
 steady_clock::time_point steady_clock::now() noexcept { return __libcpp_steady_clock_now(); }
 
-#endif // _LIBCPP_HAS_MONOTONIC_CLOCK
+#endif // !_LIBCPP_HAS_NO_MONOTONIC_CLOCK
 
 } // namespace chrono
 

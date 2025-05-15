@@ -13,7 +13,6 @@
 #ifndef LLVM_FRONTEND_HLSL_HLSLRESOURCE_H
 #define LLVM_FRONTEND_HLSL_HLSLRESOURCE_H
 
-#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/DXILABI.h"
 
 namespace llvm {

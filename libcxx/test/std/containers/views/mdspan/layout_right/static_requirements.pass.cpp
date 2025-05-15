@@ -76,12 +76,10 @@
 //    Result: A constant expression ([expr.const]) of type bool.
 //    Returns: true only if m.is_strided() is true for all possible objects m of type M.
 
-#include <cassert>
-#include <cstddef>
 #include <mdspan>
-#include <span> // dynamic_extent
 #include <type_traits>
-#include <utility>
+#include <concepts>
+#include <cassert>
 
 #include "test_macros.h"
 

@@ -100,25 +100,19 @@ struct SIArgument {
   SIArgument() : IsRegister(false), StackOffset(0) {}
   SIArgument(const SIArgument &Other) {
     IsRegister = Other.IsRegister;
-    if (IsRegister)
-      new (&RegisterName) StringValue(Other.RegisterName);
-    else
+    if (IsRegister) {
+      ::new ((void *)std::addressof(RegisterName))
+          StringValue(Other.RegisterName);
+    } else
       StackOffset = Other.StackOffset;
     Mask = Other.Mask;
   }
   SIArgument &operator=(const SIArgument &Other) {
-    // Default-construct or destruct the old RegisterName in case of switching
-    // union members
-    if (IsRegister != Other.IsRegister) {
-      if (Other.IsRegister)
-        new (&RegisterName) StringValue();
-      else
-        RegisterName.~StringValue();
-    }
     IsRegister = Other.IsRegister;
-    if (IsRegister)
-      RegisterName = Other.RegisterName;
-    else
+    if (IsRegister) {
+      ::new ((void *)std::addressof(RegisterName))
+          StringValue(Other.RegisterName);
+    } else
       StackOffset = Other.StackOffset;
     Mask = Other.Mask;
     return *this;
@@ -275,7 +269,6 @@ struct SIMachineFunctionInfo final : public yaml::MachineFunctionInfo {
   // TODO: 10 may be a better default since it's the maximum.
   unsigned Occupancy = 0;
 
-  SmallVector<StringValue, 2> SpillPhysVGPRS;
   SmallVector<StringValue> WWMReservedRegs;
 
   StringValue ScratchRSrcReg = "$private_rsrc_reg";
@@ -295,8 +288,6 @@ struct SIMachineFunctionInfo final : public yaml::MachineFunctionInfo {
   StringValue VGPRForAGPRCopy;
   StringValue SGPRForEXECCopy;
   StringValue LongBranchReservedReg;
-
-  bool HasInitWholeWave = false;
 
   SIMachineFunctionInfo() = default;
   SIMachineFunctionInfo(const llvm::SIMachineFunctionInfo &,
@@ -337,7 +328,6 @@ template <> struct MappingTraits<SIMachineFunctionInfo> {
     YamlIO.mapOptional("highBitsOf32BitAddress",
                        MFI.HighBitsOf32BitAddress, 0u);
     YamlIO.mapOptional("occupancy", MFI.Occupancy, 0);
-    YamlIO.mapOptional("spillPhysVGPRs", MFI.SpillPhysVGPRS);
     YamlIO.mapOptional("wwmReservedRegs", MFI.WWMReservedRegs);
     YamlIO.mapOptional("scavengeFI", MFI.ScavengeFI);
     YamlIO.mapOptional("vgprForAGPRCopy", MFI.VGPRForAGPRCopy,
@@ -346,7 +336,6 @@ template <> struct MappingTraits<SIMachineFunctionInfo> {
                        StringValue()); // Don't print out when it's empty.
     YamlIO.mapOptional("longBranchReservedReg", MFI.LongBranchReservedReg,
                        StringValue());
-    YamlIO.mapOptional("hasInitWholeWave", MFI.HasInitWholeWave, false);
   }
 };
 
@@ -526,11 +515,6 @@ private:
   // the VGPR and its stack slot index.
   WWMSpillsMap WWMSpills;
 
-  // Before allocation, the VGPR registers are partitioned into two distinct
-  // sets, the first one for WWM-values and the second set for non-WWM values.
-  // The latter set should be reserved during WWM-regalloc.
-  BitVector NonWWMRegMask;
-
   using ReservedRegSet = SmallSetVector<Register, 8>;
   // To track the VGPRs reserved for WWM instructions. They get stack slots
   // later during PrologEpilogInserter and get added into the superset WWMSpills
@@ -597,10 +581,6 @@ public:
 
   void reserveWWMRegister(Register Reg) { WWMReservedRegs.insert(Reg); }
 
-  void updateNonWWMRegMask(BitVector &RegMask) { NonWWMRegMask = RegMask; }
-  BitVector getNonWWMRegMask() const { return NonWWMRegMask; }
-  void clearNonWWMRegAllocMask() { NonWWMRegMask.clear(); }
-
   SIModeRegisterDefaults getMode() const { return Mode; }
 
   ArrayRef<SIRegisterInfo::SpilledReg>
@@ -612,7 +592,6 @@ public:
   }
 
   ArrayRef<Register> getSGPRSpillVGPRs() const { return SpillVGPRs; }
-  ArrayRef<Register> getSGPRSpillPhysVGPRs() const { return SpillPhysVGPRs; }
 
   const WWMSpillsMap &getWWMSpills() const { return WWMSpills; }
   const ReservedRegSet &getWWMReservedRegs() const { return WWMReservedRegs; }
@@ -642,17 +621,15 @@ public:
   // Check if an entry created for \p Reg in PrologEpilogSGPRSpills. Return true
   // on success and false otherwise.
   bool hasPrologEpilogSGPRSpillEntry(Register Reg) const {
-    const auto *I = find_if(PrologEpilogSGPRSpills, [&Reg](const auto &Spill) {
-      return Spill.first == Reg;
-    });
+    auto I = find_if(PrologEpilogSGPRSpills,
+                     [&Reg](const auto &Spill) { return Spill.first == Reg; });
     return I != PrologEpilogSGPRSpills.end();
   }
 
   // Get the scratch SGPR if allocated to save/restore \p Reg.
   Register getScratchSGPRCopyDstReg(Register Reg) const {
-    const auto *I = find_if(PrologEpilogSGPRSpills, [&Reg](const auto &Spill) {
-      return Spill.first == Reg;
-    });
+    auto I = find_if(PrologEpilogSGPRSpills,
+                     [&Reg](const auto &Spill) { return Spill.first == Reg; });
     if (I != PrologEpilogSGPRSpills.end() &&
         I->second.getKind() == SGPRSaveKind::COPY_TO_SCRATCH_SGPR)
       return I->second.getReg();
@@ -681,9 +658,8 @@ public:
 
   const PrologEpilogSGPRSaveRestoreInfo &
   getPrologEpilogSGPRSaveRestoreInfo(Register Reg) const {
-    const auto *I = find_if(PrologEpilogSGPRSpills, [&Reg](const auto &Spill) {
-      return Spill.first == Reg;
-    });
+    auto I = find_if(PrologEpilogSGPRSpills,
+                     [&Reg](const auto &Spill) { return Spill.first == Reg; });
     assert(I != PrologEpilogSGPRSpills.end());
 
     return I->second;
@@ -744,11 +720,9 @@ public:
       I->second.IsDead = true;
   }
 
-  // To bring the allocated WWM registers in \p WWMVGPRs to the lowest available
-  // range.
-  void shiftWwmVGPRsToLowestRange(MachineFunction &MF,
-                                  SmallVectorImpl<Register> &WWMVGPRs,
-                                  BitVector &SavedVGPRs);
+  // To bring the Physical VGPRs in the highest range allocated for CSR SGPR
+  // spilling into the lowest available range.
+  void shiftSpillPhysVGPRsToLowestRange(MachineFunction &MF);
 
   bool allocateSGPRSpillToVGPRLane(MachineFunction &MF, int FI,
                                    bool SpillToPhysVGPRLane = false,
@@ -894,7 +868,7 @@ public:
   }
 
   MCRegister getPreloadedReg(AMDGPUFunctionArgInfo::PreloadedValue Value) const {
-    const auto *Arg = std::get<0>(ArgInfo.getPreloadedValue(Value));
+    auto Arg = std::get<0>(ArgInfo.getPreloadedValue(Value));
     return Arg ? Arg->getRegister() : MCRegister();
   }
 

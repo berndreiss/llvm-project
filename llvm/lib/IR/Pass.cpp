@@ -205,6 +205,19 @@ Pass *Pass::createPass(AnalysisID ID) {
 }
 
 //===----------------------------------------------------------------------===//
+//                  Analysis Group Implementation Code
+//===----------------------------------------------------------------------===//
+
+// RegisterAGBase implementation
+
+RegisterAGBase::RegisterAGBase(StringRef Name, const void *InterfaceID,
+                               const void *PassID, bool isDefault)
+    : PassInfo(Name, InterfaceID) {
+  PassRegistry::getPassRegistry()->registerAnalysisGroup(InterfaceID, PassID,
+                                                         *this, isDefault);
+}
+
+//===----------------------------------------------------------------------===//
 // PassRegistrationListener implementation
 //
 

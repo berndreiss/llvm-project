@@ -5,6 +5,10 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: no-threads
+// UNSUPPORTED: c++03
+// ALLOW_RETRIES: 2
 
 // <mutex>
 
@@ -13,42 +17,65 @@
 // void lock();
 
 #include <cassert>
+#include <chrono>
+#include <cstdlib>
 #include <mutex>
 #include <system_error>
+#include <thread>
 
-#include "checking_mutex.h"
+#include "make_test_thread.h"
 #include "test_macros.h"
 
-int main(int, char**) {
-  checking_mutex mux;
-  std::unique_lock<checking_mutex> lk(mux, std::defer_lock_t());
-  assert(mux.last_try == checking_mutex::none);
-  lk.lock();
-  assert(mux.current_state == checking_mutex::locked_via_lock);
-  mux.last_try = checking_mutex::none;
+std::mutex m;
 
+typedef std::chrono::system_clock Clock;
+typedef Clock::time_point time_point;
+typedef Clock::duration duration;
+typedef std::chrono::milliseconds ms;
+typedef std::chrono::nanoseconds ns;
+
+void f()
+{
+    std::unique_lock<std::mutex> lk(m, std::defer_lock);
+    time_point t0 = Clock::now();
+    lk.lock();
+    time_point t1 = Clock::now();
+    assert(lk.owns_lock() == true);
+    ns d = t1 - t0 - ms(250);
+    assert(d < ms(25));  // within 25ms
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  try {
-    mux.last_try = checking_mutex::none;
-    lk.lock();
-    assert(false);
-  } catch (std::system_error& e) {
-    assert(mux.last_try == checking_mutex::none);
-    assert(e.code() == std::errc::resource_deadlock_would_occur);
-  }
-
-  lk.unlock();
-  lk.release();
-
-  try {
-    mux.last_try = checking_mutex::none;
-    lk.lock();
-    assert(false);
-  } catch (std::system_error& e) {
-    assert(mux.last_try == checking_mutex::none);
-    assert(e.code() == std::errc::operation_not_permitted);
-  }
+    try
+    {
+        lk.lock();
+        assert(false);
+    }
+    catch (std::system_error& e)
+    {
+        assert(e.code().value() == EDEADLK);
+    }
 #endif
+    lk.unlock();
+    lk.release();
+#ifndef TEST_HAS_NO_EXCEPTIONS
+    try
+    {
+        lk.lock();
+        assert(false);
+    }
+    catch (std::system_error& e)
+    {
+        assert(e.code().value() == EPERM);
+    }
+#endif
+}
+
+int main(int, char**)
+{
+    m.lock();
+    std::thread t = support::make_test_thread(f);
+    std::this_thread::sleep_for(ms(250));
+    m.unlock();
+    t.join();
 
   return 0;
 }

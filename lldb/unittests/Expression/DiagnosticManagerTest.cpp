@@ -19,8 +19,8 @@ class FixItDiag : public Diagnostic {
 
 public:
   FixItDiag(llvm::StringRef msg, bool has_fixits)
-      : Diagnostic(DiagnosticOrigin::eDiagnosticOriginLLDB, custom_diag_id,
-                   DiagnosticDetail{{}, lldb::eSeverityError, msg.str(), {}}),
+      : Diagnostic(msg, lldb::eSeverityError,
+                   DiagnosticOrigin::eDiagnosticOriginLLDB, custom_diag_id),
         m_has_fixits(has_fixits) {}
   bool HasFixIts() const override { return m_has_fixits; }
 };
@@ -30,8 +30,8 @@ namespace {
 class TextDiag : public Diagnostic {
 public:
   TextDiag(llvm::StringRef msg, lldb::Severity severity)
-      : Diagnostic(DiagnosticOrigin::eDiagnosticOriginLLDB, custom_diag_id,
-                   DiagnosticDetail{{}, severity, msg.str(), msg.str()}) {}
+      : Diagnostic(msg, severity, DiagnosticOrigin::eDiagnosticOriginLLDB,
+                   custom_diag_id) {}
 };
 } // namespace
 
@@ -42,8 +42,8 @@ TEST(DiagnosticManagerTest, AddDiagnostic) {
   std::string msg = "foo bar has happened";
   lldb::Severity severity = lldb::eSeverityError;
   DiagnosticOrigin origin = DiagnosticOrigin::eDiagnosticOriginLLDB;
-  auto diag = std::make_unique<Diagnostic>(
-      origin, custom_diag_id, DiagnosticDetail{{}, severity, msg, {}});
+  auto diag =
+      std::make_unique<Diagnostic>(msg, severity, origin, custom_diag_id);
   mgr.AddDiagnostic(std::move(diag));
   EXPECT_EQ(1U, mgr.Diagnostics().size());
   const Diagnostic *got = mgr.Diagnostics().front().get();
@@ -72,25 +72,18 @@ TEST(DiagnosticManagerTest, HasFixits) {
   EXPECT_TRUE(mgr.HasFixIts());
 }
 
-static std::string toString(DiagnosticManager &mgr) {
-  // The error code doesn't really matter since we just convert the
-  // diagnostics to a string.
-  auto result = lldb::eExpressionCompleted;
-  return llvm::toString(mgr.GetAsError(result));
-}
-
 TEST(DiagnosticManagerTest, GetStringNoDiags) {
   DiagnosticManager mgr;
-  EXPECT_EQ("", toString(mgr));
+  EXPECT_EQ("", mgr.GetString());
   std::unique_ptr<Diagnostic> empty;
   mgr.AddDiagnostic(std::move(empty));
-  EXPECT_EQ("", toString(mgr));
+  EXPECT_EQ("", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, GetStringBasic) {
   DiagnosticManager mgr;
   mgr.AddDiagnostic(std::make_unique<TextDiag>("abc", lldb::eSeverityError));
-  EXPECT_EQ("error: abc\n", toString(mgr));
+  EXPECT_EQ("error: abc\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, GetStringMultiline) {
@@ -98,15 +91,15 @@ TEST(DiagnosticManagerTest, GetStringMultiline) {
 
   // Multiline diagnostics should only get one severity label.
   mgr.AddDiagnostic(std::make_unique<TextDiag>("b\nc", lldb::eSeverityError));
-  EXPECT_EQ("error: b\nc\n", toString(mgr));
+  EXPECT_EQ("error: b\nc\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, GetStringMultipleDiags) {
   DiagnosticManager mgr;
   mgr.AddDiagnostic(std::make_unique<TextDiag>("abc", lldb::eSeverityError));
-  EXPECT_EQ("error: abc\n", toString(mgr));
+  EXPECT_EQ("error: abc\n", mgr.GetString());
   mgr.AddDiagnostic(std::make_unique<TextDiag>("def", lldb::eSeverityError));
-  EXPECT_EQ("error: abc\nerror: def\n", toString(mgr));
+  EXPECT_EQ("error: abc\nerror: def\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, GetStringSeverityLabels) {
@@ -117,7 +110,7 @@ TEST(DiagnosticManagerTest, GetStringSeverityLabels) {
   mgr.AddDiagnostic(std::make_unique<TextDiag>("bar", lldb::eSeverityWarning));
   // Remarks have no labels.
   mgr.AddDiagnostic(std::make_unique<TextDiag>("baz", lldb::eSeverityInfo));
-  EXPECT_EQ("error: foo\nwarning: bar\nbaz\n", toString(mgr));
+  EXPECT_EQ("error: foo\nwarning: bar\nbaz\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, GetStringPreserveOrder) {
@@ -127,7 +120,7 @@ TEST(DiagnosticManagerTest, GetStringPreserveOrder) {
   mgr.AddDiagnostic(std::make_unique<TextDiag>("baz", lldb::eSeverityInfo));
   mgr.AddDiagnostic(std::make_unique<TextDiag>("bar", lldb::eSeverityWarning));
   mgr.AddDiagnostic(std::make_unique<TextDiag>("foo", lldb::eSeverityError));
-  EXPECT_EQ("baz\nwarning: bar\nerror: foo\n", toString(mgr));
+  EXPECT_EQ("baz\nwarning: bar\nerror: foo\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, AppendMessageNoDiag) {
@@ -146,7 +139,7 @@ TEST(DiagnosticManagerTest, AppendMessageAttachToLastDiag) {
   // This should append to 'bar' and not to 'foo'.
   mgr.AppendMessageToDiagnostic("message text");
 
-  EXPECT_EQ("error: foo\nerror: bar\nmessage text\n", toString(mgr));
+  EXPECT_EQ("error: foo\nerror: bar\nmessage text\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, AppendMessageSubsequentDiags) {
@@ -157,7 +150,7 @@ TEST(DiagnosticManagerTest, AppendMessageSubsequentDiags) {
   // Pushing another diag after the message should work fine.
   mgr.AddDiagnostic(std::make_unique<TextDiag>("foo", lldb::eSeverityError));
 
-  EXPECT_EQ("error: bar\nmessage text\nerror: foo\n", toString(mgr));
+  EXPECT_EQ("error: bar\nmessage text\nerror: foo\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, PutString) {
@@ -166,7 +159,7 @@ TEST(DiagnosticManagerTest, PutString) {
   mgr.PutString(lldb::eSeverityError, "foo");
   EXPECT_EQ(1U, mgr.Diagnostics().size());
   EXPECT_EQ(eDiagnosticOriginLLDB, mgr.Diagnostics().front()->getKind());
-  EXPECT_EQ("error: foo\n", toString(mgr));
+  EXPECT_EQ("error: foo\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, PutStringMultiple) {
@@ -176,7 +169,7 @@ TEST(DiagnosticManagerTest, PutStringMultiple) {
   mgr.PutString(lldb::eSeverityError, "foo");
   mgr.PutString(lldb::eSeverityError, "bar");
   EXPECT_EQ(2U, mgr.Diagnostics().size());
-  EXPECT_EQ("error: foo\nerror: bar\n", toString(mgr));
+  EXPECT_EQ("error: foo\nerror: bar\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, PutStringSeverities) {
@@ -187,7 +180,7 @@ TEST(DiagnosticManagerTest, PutStringSeverities) {
   mgr.PutString(lldb::eSeverityError, "foo");
   mgr.PutString(lldb::eSeverityWarning, "bar");
   EXPECT_EQ(2U, mgr.Diagnostics().size());
-  EXPECT_EQ("error: foo\nwarning: bar\n", toString(mgr));
+  EXPECT_EQ("error: foo\nwarning: bar\n", mgr.GetString());
 }
 
 TEST(DiagnosticManagerTest, FixedExpression) {
@@ -203,14 +196,4 @@ TEST(DiagnosticManagerTest, FixedExpression) {
   // Setting the fixed expression again should also change it.
   mgr.SetFixedExpression("bar");
   EXPECT_EQ("bar", mgr.GetFixedExpression());
-}
-
-TEST(DiagnosticManagerTest, StatusConversion) {
-  DiagnosticManager mgr;
-  mgr.AddDiagnostic(std::make_unique<TextDiag>("abc", lldb::eSeverityError));
-  mgr.AddDiagnostic(std::make_unique<TextDiag>("def", lldb::eSeverityWarning));
-  Status status =
-      Status::FromError(mgr.GetAsError(lldb::eExpressionParseError));
-  EXPECT_EQ(std::string("error: abc\nwarning: def\n"),
-            std::string(status.AsCString()));
 }

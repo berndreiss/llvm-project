@@ -151,8 +151,7 @@ Thumb2InstrInfo::optimizeSelect(MachineInstr &MI,
 void Thumb2InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
-                                  MCRegister SrcReg, bool KillSrc,
-                                  bool RenamableDest, bool RenamableSrc) const {
+                                  MCRegister SrcReg, bool KillSrc) const {
   // Handle SPR, DPR, and QPR copies.
   if (!ARM::GPRRegClass.contains(DestReg, SrcReg))
     return ARMBaseInstrInfo::copyPhysReg(MBB, I, DL, DestReg, SrcReg, KillSrc);
@@ -264,11 +263,8 @@ void Thumb2InstrInfo::expandLoadStackGuard(
   }
 
   const auto *GV = cast<GlobalValue>((*MI->memoperands_begin())->getValue());
-  const ARMSubtarget &Subtarget = MF.getSubtarget<ARMSubtarget>();
-  if (Subtarget.isTargetELF() && !GV->isDSOLocal())
+  if (MF.getSubtarget<ARMSubtarget>().isTargetELF() && !GV->isDSOLocal())
     expandLoadStackGuardBase(MI, ARM::t2LDRLIT_ga_pcrel, ARM::t2LDRi12);
-  else if (!Subtarget.useMovt())
-    expandLoadStackGuardBase(MI, ARM::tLDRLIT_ga_abs, ARM::t2LDRi12);
   else if (MF.getTarget().isPositionIndependent())
     expandLoadStackGuardBase(MI, ARM::t2MOV_ga_pcrel, ARM::t2LDRi12);
   else

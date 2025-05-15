@@ -190,16 +190,5 @@ std::optional<SVal> getPointeeVal(SVal PtrSVal, ProgramStateRef State) {
   return std::nullopt;
 }
 
-bool isWithinStdNamespace(const Decl *D) {
-  const DeclContext *DC = D->getDeclContext();
-  while (DC) {
-    if (const auto *NS = dyn_cast<NamespaceDecl>(DC);
-        NS && NS->isStdNamespace())
-      return true;
-    DC = DC->getParent();
-  }
-  return false;
-}
-
 } // namespace ento
 } // namespace clang

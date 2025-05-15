@@ -1,7 +1,6 @@
 #include <cassert>
 #include <iostream>
 #include <thread>
-thread_local size_t lf = 42;
 
 void g() { assert(false); }
 

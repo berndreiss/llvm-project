@@ -30,7 +30,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __clamp {
+namespace __clamp {
+struct __fn {
   template <class _Type,
             class _Proj                                                      = identity,
             indirect_strict_weak_order<projected<const _Type*, _Proj>> _Comp = ranges::less>
@@ -49,9 +50,10 @@ struct __clamp {
       return __value;
   }
 };
+} // namespace __clamp
 
 inline namespace __cpo {
-inline constexpr auto clamp = __clamp{};
+inline constexpr auto clamp = __clamp::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

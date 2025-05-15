@@ -54,7 +54,6 @@
 #include "Plugins/ExpressionParser/Clang/ClangUserExpression.h"
 #include "Plugins/ExpressionParser/Clang/ClangUtil.h"
 #include "Plugins/ExpressionParser/Clang/ClangUtilityFunction.h"
-#include "lldb/Core/Debugger.h"
 #include "lldb/Core/DumpDataExtractor.h"
 #include "lldb/Core/Module.h"
 #include "lldb/Core/PluginManager.h"
@@ -698,20 +697,6 @@ void TypeSystemClang::CreateASTContext() {
   TargetInfo *target_info = getTargetInfo();
   if (target_info)
     m_ast_up->InitBuiltinTypes(*target_info);
-  else {
-    std::string err =
-        llvm::formatv(
-            "Failed to initialize builtin ASTContext types for target '{0}'. "
-            "Printing variables may behave unexpectedly.",
-            m_target_triple)
-            .str();
-
-    LLDB_LOG(GetLog(LLDBLog::Expressions), err.c_str());
-
-    static std::once_flag s_uninitialized_target_warning;
-    Debugger::ReportWarning(std::move(err), /*debugger_id=*/std::nullopt,
-                            &s_uninitialized_target_warning);
-  }
 
   GetASTMap().Insert(m_ast_up.get(), this);
 
@@ -760,10 +745,6 @@ CompilerType
 TypeSystemClang::GetBuiltinTypeForEncodingAndBitSize(Encoding encoding,
                                                      size_t bit_size) {
   ASTContext &ast = getASTContext();
-
-  if (!ast.VoidPtrTy)
-    return {};
-
   switch (encoding) {
   case eEncodingInvalid:
     if (QualTypeMatchesBitSize(bit_size, ast, ast.VoidPtrTy))
@@ -905,9 +886,6 @@ CompilerType TypeSystemClang::GetBasicType(lldb::BasicType basic_type) {
 CompilerType TypeSystemClang::GetBuiltinTypeForDWARFEncodingAndBitSize(
     llvm::StringRef type_name, uint32_t dw_ate, uint32_t bit_size) {
   ASTContext &ast = getASTContext();
-
-  if (!ast.VoidPtrTy)
-    return {};
 
   switch (dw_ate) {
   default:
@@ -1242,8 +1220,7 @@ TypeSystemClang::GetOrCreateClangModule(llvm::StringRef name,
 CompilerType TypeSystemClang::CreateRecordType(
     clang::DeclContext *decl_ctx, OptionalClangModuleID owning_module,
     AccessType access_type, llvm::StringRef name, int kind,
-    LanguageType language, std::optional<ClangASTMetadata> metadata,
-    bool exports_symbols) {
+    LanguageType language, ClangASTMetadata *metadata, bool exports_symbols) {
   ASTContext &ast = getASTContext();
 
   if (decl_ctx == nullptr)
@@ -1251,8 +1228,10 @@ CompilerType TypeSystemClang::CreateRecordType(
 
   if (language == eLanguageTypeObjC ||
       language == eLanguageTypeObjC_plus_plus) {
+    bool isForwardDecl = true;
     bool isInternal = false;
-    return CreateObjCClass(name, decl_ctx, owning_module, isInternal, metadata);
+    return CreateObjCClass(name, decl_ctx, owning_module, isForwardDecl,
+                           isInternal, metadata);
   }
 
   // NOTE: Eventually CXXRecordDecl will be merged back into RecordDecl and
@@ -1808,8 +1787,8 @@ bool TypeSystemClang::RecordHasFields(const RecordDecl *record_decl) {
   // -flimit-debug-info instead of just seeing nothing if this is a base class
   // (since we were hiding empty base classes), or nothing when you turn open
   // an valiable whose type was incomplete.
-  if (std::optional<ClangASTMetadata> meta_data = GetMetadata(record_decl);
-      meta_data && meta_data->IsForcefullyCompleted())
+  ClangASTMetadata *meta_data = GetMetadata(record_decl);
+  if (meta_data && meta_data->IsForcefullyCompleted())
     return true;
 
   return false;
@@ -1819,8 +1798,8 @@ bool TypeSystemClang::RecordHasFields(const RecordDecl *record_decl) {
 
 CompilerType TypeSystemClang::CreateObjCClass(
     llvm::StringRef name, clang::DeclContext *decl_ctx,
-    OptionalClangModuleID owning_module, bool isInternal,
-    std::optional<ClangASTMetadata> metadata) {
+    OptionalClangModuleID owning_module, bool isForwardDecl, bool isInternal,
+    ClangASTMetadata *metadata) {
   ASTContext &ast = getASTContext();
   assert(!name.empty());
   if (!decl_ctx)
@@ -1830,6 +1809,7 @@ CompilerType TypeSystemClang::CreateObjCClass(
       ObjCInterfaceDecl::CreateDeserialized(ast, GlobalDeclID());
   decl->setDeclContext(decl_ctx);
   decl->setDeclName(&ast.Idents.get(name));
+  /*isForwardDecl,*/
   decl->setImplicit(isInternal);
   SetOwningModule(decl, owning_module);
 
@@ -2253,31 +2233,30 @@ TypeSystemClang::CreateBlockPointerType(const CompilerType &function_type) {
 
 #pragma mark Array Types
 
-CompilerType
-TypeSystemClang::CreateArrayType(const CompilerType &element_type,
-                                 std::optional<size_t> element_count,
-                                 bool is_vector) {
-  if (!element_type.IsValid())
-    return {};
+CompilerType TypeSystemClang::CreateArrayType(const CompilerType &element_type,
+                                              size_t element_count,
+                                              bool is_vector) {
+  if (element_type.IsValid()) {
+    ASTContext &ast = getASTContext();
 
-  ASTContext &ast = getASTContext();
+    if (is_vector) {
+      return GetType(ast.getExtVectorType(ClangUtil::GetQualType(element_type),
+                                          element_count));
+    } else {
 
-  // Unknown number of elements; this is an incomplete array
-  // (e.g., variable length array with non-constant bounds, or
-  // a flexible array member).
-  if (!element_count)
-    return GetType(
-        ast.getIncompleteArrayType(ClangUtil::GetQualType(element_type),
-                                   clang::ArraySizeModifier::Normal, 0));
-
-  if (is_vector)
-    return GetType(ast.getExtVectorType(ClangUtil::GetQualType(element_type),
-                                        *element_count));
-
-  llvm::APInt ap_element_count(64, *element_count);
-  return GetType(ast.getConstantArrayType(ClangUtil::GetQualType(element_type),
-                                          ap_element_count, nullptr,
-                                          clang::ArraySizeModifier::Normal, 0));
+      llvm::APInt ap_element_count(64, element_count);
+      if (element_count == 0) {
+        return GetType(
+            ast.getIncompleteArrayType(ClangUtil::GetQualType(element_type),
+                                       clang::ArraySizeModifier::Normal, 0));
+      } else {
+        return GetType(ast.getConstantArrayType(
+            ClangUtil::GetQualType(element_type), ap_element_count, nullptr,
+            clang::ArraySizeModifier::Normal, 0));
+      }
+    }
+  }
+  return CompilerType();
 }
 
 CompilerType TypeSystemClang::CreateStructForIdentifier(
@@ -2353,9 +2332,6 @@ CompilerType TypeSystemClang::GetIntTypeFromBitSize(size_t bit_size,
                                                     bool is_signed) {
   clang::ASTContext &ast = getASTContext();
 
-  if (!ast.VoidPtrTy)
-    return {};
-
   if (is_signed) {
     if (bit_size == ast.getTypeSize(ast.SignedCharTy))
       return GetType(ast.SignedCharTy);
@@ -2397,9 +2373,6 @@ CompilerType TypeSystemClang::GetIntTypeFromBitSize(size_t bit_size,
 }
 
 CompilerType TypeSystemClang::GetPointerSizedIntType(bool is_signed) {
-  if (!getASTContext().VoidPtrTy)
-    return {};
-
   return GetIntTypeFromBitSize(
       getASTContext().getTypeSize(getASTContext().VoidPtrTy), is_signed);
 }
@@ -2491,31 +2464,27 @@ void TypeSystemClang::SetMetadataAsUserID(const clang::Type *type,
 }
 
 void TypeSystemClang::SetMetadata(const clang::Decl *object,
-                                  ClangASTMetadata metadata) {
+                                  ClangASTMetadata &metadata) {
   m_decl_metadata[object] = metadata;
 }
 
 void TypeSystemClang::SetMetadata(const clang::Type *object,
-                                  ClangASTMetadata metadata) {
+                                  ClangASTMetadata &metadata) {
   m_type_metadata[object] = metadata;
 }
 
-std::optional<ClangASTMetadata>
-TypeSystemClang::GetMetadata(const clang::Decl *object) {
+ClangASTMetadata *TypeSystemClang::GetMetadata(const clang::Decl *object) {
   auto It = m_decl_metadata.find(object);
   if (It != m_decl_metadata.end())
-    return It->second;
-
-  return std::nullopt;
+    return &It->second;
+  return nullptr;
 }
 
-std::optional<ClangASTMetadata>
-TypeSystemClang::GetMetadata(const clang::Type *object) {
+ClangASTMetadata *TypeSystemClang::GetMetadata(const clang::Type *object) {
   auto It = m_type_metadata.find(object);
   if (It != m_type_metadata.end())
-    return It->second;
-
-  return std::nullopt;
+    return &It->second;
+  return nullptr;
 }
 
 void TypeSystemClang::SetCXXRecordDeclAccess(const clang::CXXRecordDecl *object,
@@ -2771,9 +2740,6 @@ static bool GetCompleteQualType(clang::ASTContext *ast,
         ast, llvm::cast<clang::AttributedType>(qual_type)->getModifiedType(),
         allow_completion);
 
-  case clang::Type::MemberPointer:
-    return !qual_type.getTypePtr()->isIncompleteType();
-
   default:
     break;
   }
@@ -2967,10 +2933,9 @@ bool TypeSystemClang::IsRuntimeGeneratedType(
   clang::ObjCInterfaceDecl *result_iface_decl =
       llvm::dyn_cast<clang::ObjCInterfaceDecl>(decl_ctx);
 
-  std::optional<ClangASTMetadata> ast_metadata = GetMetadata(result_iface_decl);
+  ClangASTMetadata *ast_metadata = GetMetadata(result_iface_decl);
   if (!ast_metadata)
     return false;
-
   return (ast_metadata->GetISAPtr() != 0);
 }
 
@@ -3656,8 +3621,8 @@ bool TypeSystemClang::IsPossibleDynamicType(lldb::opaque_compiler_type_t type,
             if (is_complete)
               success = cxx_record_decl->isDynamicClass();
             else {
-              if (std::optional<ClangASTMetadata> metadata =
-                      GetMetadata(cxx_record_decl))
+              ClangASTMetadata *metadata = GetMetadata(cxx_record_decl);
+              if (metadata)
                 success = metadata->GetIsDynamicCXXType();
               else {
                 is_complete = GetType(pointee_qual_type).GetCompleteType();
@@ -4268,9 +4233,6 @@ TypeSystemClang::GetTypeClass(lldb::opaque_compiler_type_t type) {
   // We don't handle pack indexing yet
   case clang::Type::PackIndexing:
     break;
-
-  case clang::Type::HLSLAttributedResource:
-    break;
   }
   // We don't know hot to display this type...
   return lldb::eTypeClassOther;
@@ -4764,68 +4726,66 @@ TypeSystemClang::GetFloatTypeSemantics(size_t byte_size) {
 }
 
 std::optional<uint64_t>
-TypeSystemClang::GetObjCBitSize(QualType qual_type,
-                                ExecutionContextScope *exe_scope) {
-  assert(qual_type->isObjCObjectOrInterfaceType());
-  ExecutionContext exe_ctx(exe_scope);
-  if (Process *process = exe_ctx.GetProcessPtr()) {
-    if (ObjCLanguageRuntime *objc_runtime =
-            ObjCLanguageRuntime::Get(*process)) {
-      if (std::optional<uint64_t> bit_size =
-              objc_runtime->GetTypeBitSize(GetType(qual_type)))
-        return *bit_size;
-    }
-  } else {
-    static bool g_printed = false;
-    if (!g_printed) {
-      StreamString s;
-      DumpTypeDescription(qual_type.getAsOpaquePtr(), s);
-
-      llvm::outs() << "warning: trying to determine the size of type ";
-      llvm::outs() << s.GetString() << "\n";
-      llvm::outs() << "without a valid ExecutionContext. this is not "
-                      "reliable. please file a bug against LLDB.\n";
-      llvm::outs() << "backtrace:\n";
-      llvm::sys::PrintStackTrace(llvm::outs());
-      llvm::outs() << "\n";
-      g_printed = true;
-    }
-  }
-
-  return getASTContext().getTypeSize(qual_type) +
-         getASTContext().getTypeSize(getASTContext().ObjCBuiltinClassTy);
-}
-
-std::optional<uint64_t>
 TypeSystemClang::GetBitSize(lldb::opaque_compiler_type_t type,
                             ExecutionContextScope *exe_scope) {
-  if (!GetCompleteType(type))
-    return std::nullopt;
+  if (GetCompleteType(type)) {
+    clang::QualType qual_type(GetCanonicalQualType(type));
+    const clang::Type::TypeClass type_class = qual_type->getTypeClass();
+    switch (type_class) {
+    case clang::Type::Record:
+      if (GetCompleteType(type))
+        return getASTContext().getTypeSize(qual_type);
+      else
+        return std::nullopt;
+      break;
 
-  clang::QualType qual_type(GetCanonicalQualType(type));
-  const clang::Type::TypeClass type_class = qual_type->getTypeClass();
-  switch (type_class) {
-  case clang::Type::ConstantArray:
-  case clang::Type::FunctionProto:
-  case clang::Type::Record:
-    return getASTContext().getTypeSize(qual_type);
-  case clang::Type::ObjCInterface:
-  case clang::Type::ObjCObject:
-    return GetObjCBitSize(qual_type, exe_scope);
-  case clang::Type::IncompleteArray: {
-    const uint64_t bit_size = getASTContext().getTypeSize(qual_type);
-    if (bit_size == 0)
-      return getASTContext().getTypeSize(
-          qual_type->getArrayElementTypeNoTypeQual()
-              ->getCanonicalTypeUnqualified());
+    case clang::Type::ObjCInterface:
+    case clang::Type::ObjCObject: {
+      ExecutionContext exe_ctx(exe_scope);
+      Process *process = exe_ctx.GetProcessPtr();
+      if (process) {
+        if (ObjCLanguageRuntime *objc_runtime =
+                ObjCLanguageRuntime::Get(*process)) {
+          if (std::optional<uint64_t> bit_size =
+                  objc_runtime->GetTypeBitSize(GetType(qual_type)))
+            return *bit_size;
+        }
+      } else {
+        static bool g_printed = false;
+        if (!g_printed) {
+          StreamString s;
+          DumpTypeDescription(type, s);
 
-    return bit_size;
+          llvm::outs() << "warning: trying to determine the size of type ";
+          llvm::outs() << s.GetString() << "\n";
+          llvm::outs() << "without a valid ExecutionContext. this is not "
+                          "reliable. please file a bug against LLDB.\n";
+          llvm::outs() << "backtrace:\n";
+          llvm::sys::PrintStackTrace(llvm::outs());
+          llvm::outs() << "\n";
+          g_printed = true;
+        }
+      }
+    }
+      [[fallthrough]];
+    default:
+      const uint32_t bit_size = getASTContext().getTypeSize(qual_type);
+      if (bit_size == 0) {
+        if (qual_type->isIncompleteArrayType())
+          return getASTContext().getTypeSize(
+              qual_type->getArrayElementTypeNoTypeQual()
+                  ->getCanonicalTypeUnqualified());
+      }
+      if (qual_type->isObjCObjectOrInterfaceType())
+        return bit_size +
+               getASTContext().getTypeSize(getASTContext().ObjCBuiltinClassTy);
+      // Function types actually have a size of 0, that's not an error.
+      if (qual_type->isFunctionProtoType())
+        return bit_size;
+      if (bit_size)
+        return bit_size;
+    }
   }
-  default:
-    if (const uint64_t bit_size = getASTContext().getTypeSize(qual_type))
-      return bit_size;
-  }
-
   return std::nullopt;
 }
 
@@ -5003,7 +4963,6 @@ lldb::Encoding TypeSystemClang::GetEncoding(lldb::opaque_compiler_type_t type,
     case clang::BuiltinType::Kind::OCLQueue:
     case clang::BuiltinType::Kind::OCLReserveID:
     case clang::BuiltinType::Kind::OCLSampler:
-    case clang::BuiltinType::Kind::HLSLResource:
     case clang::BuiltinType::Kind::ArraySection:
     case clang::BuiltinType::Kind::OMPArrayShaping:
     case clang::BuiltinType::Kind::OMPIterator:
@@ -5032,8 +4991,58 @@ lldb::Encoding TypeSystemClang::GetEncoding(lldb::opaque_compiler_type_t type,
       break;
 
     // ARM -- Scalable Vector Extension
-#define SVE_TYPE(Name, Id, SingletonId) case clang::BuiltinType::Id:
-#include "clang/Basic/AArch64SVEACLETypes.def"
+    case clang::BuiltinType::SveBool:
+    case clang::BuiltinType::SveBoolx2:
+    case clang::BuiltinType::SveBoolx4:
+    case clang::BuiltinType::SveCount:
+    case clang::BuiltinType::SveInt8:
+    case clang::BuiltinType::SveInt8x2:
+    case clang::BuiltinType::SveInt8x3:
+    case clang::BuiltinType::SveInt8x4:
+    case clang::BuiltinType::SveInt16:
+    case clang::BuiltinType::SveInt16x2:
+    case clang::BuiltinType::SveInt16x3:
+    case clang::BuiltinType::SveInt16x4:
+    case clang::BuiltinType::SveInt32:
+    case clang::BuiltinType::SveInt32x2:
+    case clang::BuiltinType::SveInt32x3:
+    case clang::BuiltinType::SveInt32x4:
+    case clang::BuiltinType::SveInt64:
+    case clang::BuiltinType::SveInt64x2:
+    case clang::BuiltinType::SveInt64x3:
+    case clang::BuiltinType::SveInt64x4:
+    case clang::BuiltinType::SveUint8:
+    case clang::BuiltinType::SveUint8x2:
+    case clang::BuiltinType::SveUint8x3:
+    case clang::BuiltinType::SveUint8x4:
+    case clang::BuiltinType::SveUint16:
+    case clang::BuiltinType::SveUint16x2:
+    case clang::BuiltinType::SveUint16x3:
+    case clang::BuiltinType::SveUint16x4:
+    case clang::BuiltinType::SveUint32:
+    case clang::BuiltinType::SveUint32x2:
+    case clang::BuiltinType::SveUint32x3:
+    case clang::BuiltinType::SveUint32x4:
+    case clang::BuiltinType::SveUint64:
+    case clang::BuiltinType::SveUint64x2:
+    case clang::BuiltinType::SveUint64x3:
+    case clang::BuiltinType::SveUint64x4:
+    case clang::BuiltinType::SveFloat16:
+    case clang::BuiltinType::SveBFloat16:
+    case clang::BuiltinType::SveBFloat16x2:
+    case clang::BuiltinType::SveBFloat16x3:
+    case clang::BuiltinType::SveBFloat16x4:
+    case clang::BuiltinType::SveFloat16x2:
+    case clang::BuiltinType::SveFloat16x3:
+    case clang::BuiltinType::SveFloat16x4:
+    case clang::BuiltinType::SveFloat32:
+    case clang::BuiltinType::SveFloat32x2:
+    case clang::BuiltinType::SveFloat32x3:
+    case clang::BuiltinType::SveFloat32x4:
+    case clang::BuiltinType::SveFloat64:
+    case clang::BuiltinType::SveFloat64x2:
+    case clang::BuiltinType::SveFloat64x3:
+    case clang::BuiltinType::SveFloat64x4:
       break;
 
     // RISC-V V builtin types.
@@ -5052,8 +5061,7 @@ lldb::Encoding TypeSystemClang::GetEncoding(lldb::opaque_compiler_type_t type,
       break;
 
     // AMD GPU builtin types.
-#define AMDGPU_TYPE(Name, Id, SingletonId, Width, Align)                       \
-  case clang::BuiltinType::Id:
+#define AMDGPU_TYPE(Name, Id, SingletonId) case clang::BuiltinType::Id:
 #include "clang/Basic/AMDGPUTypes.def"
       break;
     }
@@ -5128,9 +5136,6 @@ lldb::Encoding TypeSystemClang::GetEncoding(lldb::opaque_compiler_type_t type,
 
   // We don't handle pack indexing yet
   case clang::Type::PackIndexing:
-    break;
-
-  case clang::Type::HLSLAttributedResource:
     break;
   }
   count = 0;
@@ -5293,9 +5298,6 @@ lldb::Format TypeSystemClang::GetFormat(lldb::opaque_compiler_type_t type) {
   // We don't handle pack indexing yet
   case clang::Type::PackIndexing:
     break;
-
-  case clang::Type::HLSLAttributedResource:
-    break;
   }
   // We don't know hot to display this type...
   return lldb::eFormatBytes;
@@ -5320,8 +5322,7 @@ GetDynamicArrayInfo(TypeSystemClang &ast, SymbolFile *sym_file,
                     clang::QualType qual_type,
                     const ExecutionContext *exe_ctx) {
   if (qual_type->isIncompleteArrayType())
-    if (std::optional<ClangASTMetadata> metadata =
-            ast.GetMetadata(qual_type.getTypePtr()))
+    if (auto *metadata = ast.GetMetadata(qual_type.getTypePtr()))
       return sym_file->GetDynamicArrayInfoForUID(metadata->GetUserID(),
                                                  exe_ctx);
   return std::nullopt;
@@ -5455,9 +5456,9 @@ TypeSystemClang::GetNumChildren(lldb::opaque_compiler_type_t type,
   case clang::Type::IncompleteArray:
     if (auto array_info =
             GetDynamicArrayInfo(*this, GetSymbolFile(), qual_type, exe_ctx))
-      // FIXME: Only 1-dimensional arrays are supported.
+      // Only 1-dimensional arrays are supported.
       num_children = array_info->element_orders.size()
-                         ? array_info->element_orders.back().value_or(0)
+                         ? array_info->element_orders.back()
                          : 0;
     break;
 
@@ -6087,7 +6088,6 @@ uint32_t TypeSystemClang::GetNumPointeeChildren(clang::QualType type) {
     case clang::BuiltinType::OCLImage3dWO:
     case clang::BuiltinType::OCLImage3dRW:
     case clang::BuiltinType::OCLSampler:
-    case clang::BuiltinType::HLSLResource:
       return 0;
     case clang::BuiltinType::Bool:
     case clang::BuiltinType::Char_U:
@@ -7431,13 +7431,6 @@ clang::FieldDecl *TypeSystemClang::AddFieldToRecordType(
 
   clang::Expr *bit_width = nullptr;
   if (bitfield_bit_size != 0) {
-    if (clang_ast.IntTy.isNull()) {
-      LLDB_LOG(
-          GetLog(LLDBLog::Expressions),
-          "{0} failed: builtin ASTContext types have not been initialized");
-      return nullptr;
-    }
-
     llvm::APInt bitfield_bit_size_apint(clang_ast.getTypeSize(clang_ast.IntTy),
                                         bitfield_bit_size);
     bit_width = new (clang_ast)
@@ -7982,7 +7975,7 @@ bool TypeSystemClang::AddObjCClassProperty(
     const CompilerType &type, const char *property_name,
     const CompilerType &property_clang_type, clang::ObjCIvarDecl *ivar_decl,
     const char *property_setter_name, const char *property_getter_name,
-    uint32_t property_attributes, ClangASTMetadata metadata) {
+    uint32_t property_attributes, ClangASTMetadata *metadata) {
   if (!type || !property_clang_type.IsValid() || property_name == nullptr ||
       property_name[0] == '\0')
     return false;
@@ -8026,7 +8019,8 @@ bool TypeSystemClang::AddObjCClassProperty(
   if (!property_decl)
     return false;
 
-  ast->SetMetadata(property_decl, metadata);
+  if (metadata)
+    ast->SetMetadata(property_decl, *metadata);
 
   class_interface_decl->addDecl(property_decl);
 
@@ -8118,7 +8112,8 @@ bool TypeSystemClang::AddObjCClassProperty(
     SetMemberOwningModule(getter, class_interface_decl);
 
     if (getter) {
-      ast->SetMetadata(getter, metadata);
+      if (metadata)
+        ast->SetMetadata(getter, *metadata);
 
       getter->setMethodParams(clang_ast, llvm::ArrayRef<clang::ParmVarDecl *>(),
                               llvm::ArrayRef<clang::SourceLocation>());
@@ -8160,7 +8155,8 @@ bool TypeSystemClang::AddObjCClassProperty(
     SetMemberOwningModule(setter, class_interface_decl);
 
     if (setter) {
-      ast->SetMetadata(setter, metadata);
+      if (metadata)
+        ast->SetMetadata(setter, *metadata);
 
       llvm::SmallVector<clang::ParmVarDecl *, 1> params;
       params.push_back(clang::ParmVarDecl::Create(
@@ -8867,7 +8863,8 @@ void TypeSystemClang::DumpTypeDescription(lldb::opaque_compiler_type_t type,
 
   CompilerType ct(weak_from_this(), type);
   const clang::Type *clang_type = ClangUtil::GetQualType(ct).getTypePtr();
-  if (std::optional<ClangASTMetadata> metadata = GetMetadata(clang_type)) {
+  ClangASTMetadata *metadata = GetMetadata(clang_type);
+  if (metadata) {
     metadata->Dump(&s);
   }
 }
@@ -9488,7 +9485,7 @@ bool TypeSystemClang::DeclContextIsClassMethod(void *opaque_decl_ctx) {
     return true;
   } else if (clang::FunctionDecl *fun_decl =
                  llvm::dyn_cast<clang::FunctionDecl>(decl_ctx)) {
-    if (std::optional<ClangASTMetadata> metadata = GetMetadata(fun_decl))
+    if (ClangASTMetadata *metadata = GetMetadata(fun_decl))
       return metadata->HasObjectPtr();
   }
 
@@ -9541,7 +9538,7 @@ TypeSystemClang::DeclContextGetLanguage(void *opaque_decl_ctx) {
   } else if (llvm::isa<clang::CXXMethodDecl>(decl_ctx)) {
     return eLanguageTypeC_plus_plus;
   } else if (auto *fun_decl = llvm::dyn_cast<clang::FunctionDecl>(decl_ctx)) {
-    if (std::optional<ClangASTMetadata> metadata = GetMetadata(fun_decl))
+    if (ClangASTMetadata *metadata = GetMetadata(fun_decl))
       return metadata->GetObjectPtrLanguage();
   }
 
@@ -9591,7 +9588,7 @@ TypeSystemClang::DeclContextGetAsNamespaceDecl(const CompilerDeclContext &dc) {
   return nullptr;
 }
 
-std::optional<ClangASTMetadata>
+ClangASTMetadata *
 TypeSystemClang::DeclContextGetMetaData(const CompilerDeclContext &dc,
                                         const Decl *object) {
   TypeSystemClang *ast = llvm::cast<TypeSystemClang>(dc.GetTypeSystem());
@@ -9687,7 +9684,7 @@ ScratchTypeSystemClang::GetForTarget(Target &target,
       lldb::eLanguageTypeC, create_on_demand);
   if (auto err = type_system_or_err.takeError()) {
     LLDB_LOG_ERROR(GetLog(LLDBLog::Target), std::move(err),
-                   "Couldn't get scratch TypeSystemClang: {0}");
+                   "Couldn't get scratch TypeSystemClang");
     return nullptr;
   }
   auto ts_sp = *type_system_or_err;
@@ -9825,7 +9822,8 @@ bool TypeSystemClang::IsForcefullyCompleted(lldb::opaque_compiler_type_t type) {
     if (record_type) {
       const clang::RecordDecl *record_decl = record_type->getDecl();
       assert(record_decl);
-      if (std::optional<ClangASTMetadata> metadata = GetMetadata(record_decl))
+      ClangASTMetadata *metadata = GetMetadata(record_decl);
+      if (metadata)
         return metadata->IsForcefullyCompleted();
     }
   }
@@ -9835,13 +9833,11 @@ bool TypeSystemClang::IsForcefullyCompleted(lldb::opaque_compiler_type_t type) {
 bool TypeSystemClang::SetDeclIsForcefullyCompleted(const clang::TagDecl *td) {
   if (td == nullptr)
     return false;
-  std::optional<ClangASTMetadata> metadata = GetMetadata(td);
-  if (!metadata)
+  ClangASTMetadata *metadata = GetMetadata(td);
+  if (metadata == nullptr)
     return false;
   m_has_forcefully_completed_types = true;
   metadata->SetIsForcefullyCompleted();
-  SetMetadata(td, *metadata);
-
   return true;
 }
 

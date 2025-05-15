@@ -40,6 +40,7 @@
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
+#include <algorithm>
 
 using namespace llvm;
 
@@ -145,7 +146,7 @@ static void ConnectProlog(Loop *L, Value *BECount, unsigned Count,
         PN.setIncomingValueForBlock(NewPreHeader, NewPN);
       else
         PN.addIncoming(NewPN, PrologExit);
-      SE.forgetLcssaPhiWithNewPredecessor(L, &PN);
+      SE.forgetValue(&PN);
     }
   }
 
@@ -970,7 +971,8 @@ bool llvm::UnrollRuntimeLoopRemainder(
     // (e.g. breakLoopBackedgeAndSimplify) and reused in loop-deletion.
     BasicBlock *RemainderLatch = remainderLoop->getLoopLatch();
     assert(RemainderLatch);
-    SmallVector<BasicBlock *> RemainderBlocks(remainderLoop->getBlocks());
+    SmallVector<BasicBlock*> RemainderBlocks(remainderLoop->getBlocks().begin(),
+                                             remainderLoop->getBlocks().end());
     breakLoopBackedge(remainderLoop, *DT, *SE, *LI, nullptr);
     remainderLoop = nullptr;
 

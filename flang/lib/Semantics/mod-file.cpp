@@ -410,14 +410,15 @@ bool ModFileWriter::PutComponents(const Symbol &typeSymbol) {
   llvm::raw_string_ostream typeBindings{buf};
   UnorderedSymbolSet emitted;
   SymbolVector symbols{scope.GetSymbols()};
-  // Emit type parameter declarations first, in order
-  const auto &details{typeSymbol.get<DerivedTypeDetails>()};
-  for (const Symbol &symbol : details.paramDeclOrder()) {
-    CHECK(symbol.has<TypeParamDetails>());
-    PutSymbol(typeBindings, symbol);
-    emitted.emplace(symbol);
+  // Emit type parameters first
+  for (const Symbol &symbol : symbols) {
+    if (symbol.has<TypeParamDetails>()) {
+      PutSymbol(typeBindings, symbol);
+      emitted.emplace(symbol);
+    }
   }
-  // Emit actual components in component order.
+  // Emit components in component order.
+  const auto &details{typeSymbol.get<DerivedTypeDetails>()};
   for (SourceName name : details.componentNames()) {
     auto iter{scope.find(name)};
     if (iter != scope.end()) {
@@ -548,10 +549,10 @@ void ModFileWriter::PutDerivedType(
     decls_ << ",extends(" << extends->name() << ')';
   }
   decls_ << "::" << typeSymbol.name();
-  if (!details.paramNameOrder().empty()) {
+  if (!details.paramNames().empty()) {
     char sep{'('};
-    for (const SymbolRef &ref : details.paramNameOrder()) {
-      decls_ << sep << ref->name();
+    for (const auto &name : details.paramNames()) {
+      decls_ << sep << name;
       sep = ',';
     }
     decls_ << ')';
@@ -1045,7 +1046,7 @@ void ModFileWriter::PutTypeParam(llvm::raw_ostream &os, const Symbol &symbol) {
       os, symbol,
       [&]() {
         PutType(os, DEREF(symbol.GetType()));
-        PutLower(os << ',', common::EnumToString(details.attr().value()));
+        PutLower(os << ',', common::EnumToString(details.attr()));
       },
       symbol.attrs());
   PutInit(os, details.init());
@@ -1480,13 +1481,17 @@ Scope *ModFileReader::Read(SourceName name, std::optional<bool> isIntrinsic,
   std::optional<ModuleCheckSumType> checkSum{
       VerifyHeader(sourceFile->content())};
   if (!checkSum) {
-    Say(name, ancestorName, "File has invalid checksum: %s"_err_en_US,
-        sourceFile->path());
+    if (context_.ShouldWarn(common::UsageWarning::ModuleFile)) {
+      Say(name, ancestorName, "File has invalid checksum: %s"_warn_en_US,
+          sourceFile->path());
+    }
     return nullptr;
   } else if (requiredHash && *requiredHash != *checkSum) {
-    Say(name, ancestorName,
-        "File is not the right module file for %s"_err_en_US,
-        "'"s + name.ToString() + "': "s + sourceFile->path());
+    if (context_.ShouldWarn(common::UsageWarning::ModuleFile)) {
+      Say(name, ancestorName,
+          "File is not the right module file for %s"_warn_en_US,
+          "'"s + name.ToString() + "': "s + sourceFile->path());
+    }
     return nullptr;
   }
   llvm::raw_null_ostream NullStream;
@@ -1622,8 +1627,8 @@ void SubprogramSymbolCollector::Collect() {
         // &/or derived type that it shadows may be needed.
         const Symbol *spec{generic->specific()};
         const Symbol *dt{generic->derivedType()};
-        needed = needed || (spec && useSet_.count(spec->GetUltimate()) > 0) ||
-            (dt && useSet_.count(dt->GetUltimate()) > 0);
+        needed = needed || (spec && useSet_.count(*spec) > 0) ||
+            (dt && useSet_.count(*dt) > 0);
       } else if (const auto *subp{ultimate.detailsIf<SubprogramDetails>()}) {
         const Symbol *interface { subp->moduleInterface() };
         needed = needed || (interface && useSet_.count(*interface) > 0);

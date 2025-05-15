@@ -93,6 +93,6 @@ struct MapInfoOpConversion
 } // namespace
 
 void fir::populateOpenMPFIRToLLVMConversionPatterns(
-    const LLVMTypeConverter &converter, mlir::RewritePatternSet &patterns) {
+    LLVMTypeConverter &converter, mlir::RewritePatternSet &patterns) {
   patterns.add<MapInfoOpConversion>(converter);
 }

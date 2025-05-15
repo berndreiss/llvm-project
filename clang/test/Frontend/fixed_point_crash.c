@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 -verify -ffixed-point %s
-// RUN: %clang_cc1 -verify -ffixed-point %s -fexperimental-new-constant-interpreter
 
 union a {
   _Accum x;

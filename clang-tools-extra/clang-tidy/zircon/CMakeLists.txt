@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyZirconModule STATIC
+add_clang_library(clangTidyZirconModule
   TemporaryObjectsCheck.cpp
   ZirconTidyModule.cpp
 

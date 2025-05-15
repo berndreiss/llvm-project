@@ -30,7 +30,6 @@ public:
   bool ValidatePlan(Stream *error) override;
   bool ShouldStop(Event *event_ptr) override;
   bool StopOthers() override;
-  void SetStopOthers(bool new_value) override { m_stop_others = new_value; }
   lldb::StateType GetPlanRunState() override;
   bool WillStop() override;
   bool MischiefManaged() override;

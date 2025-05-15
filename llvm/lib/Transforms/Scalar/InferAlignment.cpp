@@ -15,6 +15,7 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -24,14 +25,21 @@ using namespace llvm;
 static bool tryToImproveAlign(
     const DataLayout &DL, Instruction *I,
     function_ref<Align(Value *PtrOp, Align OldAlign, Align PrefAlign)> Fn) {
-
-  if (auto *PtrOp = getLoadStorePointerOperand(I)) {
-    Align OldAlign = getLoadStoreAlignment(I);
-    Align PrefAlign = DL.getPrefTypeAlign(getLoadStoreType(I));
-
-    Align NewAlign = Fn(PtrOp, OldAlign, PrefAlign);
+  if (auto *LI = dyn_cast<LoadInst>(I)) {
+    Value *PtrOp = LI->getPointerOperand();
+    Align OldAlign = LI->getAlign();
+    Align NewAlign = Fn(PtrOp, OldAlign, DL.getPrefTypeAlign(LI->getType()));
     if (NewAlign > OldAlign) {
-      setLoadStoreAlignment(I, NewAlign);
+      LI->setAlignment(NewAlign);
+      return true;
+    }
+  } else if (auto *SI = dyn_cast<StoreInst>(I)) {
+    Value *PtrOp = SI->getPointerOperand();
+    Value *ValOp = SI->getValueOperand();
+    Align OldAlign = SI->getAlign();
+    Align NewAlign = Fn(PtrOp, OldAlign, DL.getPrefTypeAlign(ValOp->getType()));
+    if (NewAlign > OldAlign) {
+      SI->setAlignment(NewAlign);
       return true;
     }
   }

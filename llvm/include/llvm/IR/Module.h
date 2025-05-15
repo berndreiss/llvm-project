@@ -62,7 +62,7 @@ class VersionTuple;
 /// constant references to global variables in the module.  When a global
 /// variable is destroyed, it should have no entries in the GlobalList.
 /// The main container class for the LLVM Intermediate Representation.
-class LLVM_ABI Module {
+class LLVM_EXTERNAL_VISIBILITY Module {
   /// @name Types And Enumerations
   /// @{
 public:
@@ -158,6 +158,11 @@ public:
   /// converted result in MFB.
   static bool isValidModFlagBehavior(Metadata *MD, ModFlagBehavior &MFB);
 
+  /// Check if the given module flag metadata represents a valid module flag,
+  /// and store the flag behavior, the key string and the value metadata.
+  static bool isValidModuleFlag(const MDNode &ModFlag, ModFlagBehavior &MFB,
+                                MDString *&Key, Metadata *&Val);
+
   struct ModuleFlagEntry {
     ModFlagBehavior Behavior;
     MDString *Key;
@@ -201,9 +206,6 @@ private:
                              ///< based on unnamed types. The combination of
                              ///< ID and FunctionType maps to the extension that
                              ///< is used to make the intrinsic name unique.
-
-  /// llvm.module.flags metadata
-  NamedMDNode *ModuleFlags = nullptr;
 
   friend class Constant;
 
@@ -500,7 +502,7 @@ public:
 
   /// Return the first NamedMDNode in the module with the specified name. This
   /// method returns null if a NamedMDNode with the specified name is not found.
-  NamedMDNode *getNamedMetadata(StringRef Name) const;
+  NamedMDNode *getNamedMetadata(const Twine &Name) const;
 
   /// Return the named MDNode in the module with the specified name. This method
   /// returns a new NamedMDNode if a NamedMDNode with the specified name is not
@@ -531,7 +533,7 @@ public:
 
   /// Returns the NamedMDNode in the module that represents module-level flags.
   /// This method returns null if there are no module-level flags.
-  NamedMDNode *getModuleFlagsMetadata() const { return ModuleFlags; }
+  NamedMDNode *getModuleFlagsMetadata() const;
 
   /// Returns the NamedMDNode in the module that represents module-level flags.
   /// If module-level flags aren't found, it creates the named metadata that

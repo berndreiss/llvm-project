@@ -17,7 +17,6 @@
 #include "lldb/Interpreter/OptionValueDictionary.h"
 #include "lldb/Interpreter/OptionValueProperties.h"
 #include "lldb/Symbol/ObjectFile.h"
-#include "lldb/Symbol/SaveCoreOptions.h"
 #include "lldb/Target/Process.h"
 #include "lldb/Target/SectionLoadList.h"
 #include "lldb/Target/Target.h"
@@ -356,7 +355,7 @@ size_t ObjectFilePECOFF::GetModuleSpecifications(
 }
 
 bool ObjectFilePECOFF::SaveCore(const lldb::ProcessSP &process_sp,
-                                lldb_private::SaveCoreOptions &options,
+                                const lldb_private::SaveCoreOptions &options,
                                 lldb_private::Status &error) {
   // Outfile and process_sp are validated by PluginManager::SaveCore
   assert(options.GetOutputFile().has_value());

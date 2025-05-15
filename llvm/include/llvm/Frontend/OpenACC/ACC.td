@@ -229,9 +229,6 @@ def ACCC_Self : Clause<"self"> {
 // 2.9.5
 def ACCC_Seq : Clause<"seq"> {}
 
-// Non-standard extension
-def ACCC_ShortLoop : Clause<"shortloop"> {}
-
 // 2.9.4
 def ACCC_Vector : Clause<"vector"> {
   let flangClass = "ScalarIntExpr";
@@ -410,7 +407,6 @@ def ACC_Loop : Directive<"loop"> {
     VersionedClause<ACCC_Reduction>,
     VersionedClause<ACCC_Collapse>,
     VersionedClause<ACCC_Gang>,
-    VersionedClause<ACCC_ShortLoop>,
     VersionedClause<ACCC_Tile>,
     VersionedClause<ACCC_Vector>,
     VersionedClause<ACCC_Worker>
@@ -587,7 +583,6 @@ def ACC_KernelsLoop : Directive<"kernels loop"> {
     VersionedClause<ACCC_Present>,
     VersionedClause<ACCC_Private>,
     VersionedClause<ACCC_Reduction>,
-    VersionedClause<ACCC_ShortLoop>,
     VersionedClause<ACCC_Tile>,
     VersionedClause<ACCC_Vector>,
     VersionedClause<ACCC_VectorLength>,
@@ -628,7 +623,6 @@ def ACC_ParallelLoop : Directive<"parallel loop"> {
     VersionedClause<ACCC_Present>,
     VersionedClause<ACCC_Private>,
     VersionedClause<ACCC_Reduction>,
-    VersionedClause<ACCC_ShortLoop>,
     VersionedClause<ACCC_Tile>,
     VersionedClause<ACCC_Vector>,
     VersionedClause<ACCC_VectorLength>,
@@ -667,7 +661,6 @@ def ACC_SerialLoop : Directive<"serial loop"> {
     VersionedClause<ACCC_Present>,
     VersionedClause<ACCC_Private>,
     VersionedClause<ACCC_Reduction>,
-    VersionedClause<ACCC_ShortLoop>,
     VersionedClause<ACCC_Tile>,
     VersionedClause<ACCC_Vector>,
     VersionedClause<ACCC_Wait>,

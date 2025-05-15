@@ -11,11 +11,8 @@ def smrd_offset_8 : ImmOperand<i32, "SMRDOffset8", 1>;
 let EncoderMethod = "getSMEMOffsetEncoding",
     DecoderMethod = "decodeSMEMOffset" in {
 def SMEMOffset : ImmOperand<i32, "SMEMOffset", 1>;
-def SMEMOffsetMod : NamedIntOperand<"offset", 0> {
-  let AlwaysPrint = 1;
-  let PrintInHex = 1;
-}
-def OptSMEMOffsetMod : NamedIntOperand<"offset"> {
+def SMEMOffsetMod : NamedIntOperand<i32, "offset", 0>;
+def OptSMEMOffsetMod : NamedIntOperand<i32, "offset"> {
   let ImmTy = SMEMOffsetMod.ImmTy;
   let PredicateMethod = SMEMOffsetMod.PredicateMethod;
   let PrintMethod = SMEMOffsetMod.PrintMethod;
@@ -76,7 +73,6 @@ class SM_Real <SM_Pseudo ps, string opName = ps.Mnemonic>
   let IsAtomicNoRet        = ps.IsAtomicNoRet;
   let Uses                 = ps.Uses;
   let Defs                 = ps.Defs;
-  let isConvergent         = ps.isConvergent;
 
   let TSFlags = ps.TSFlags;
 
@@ -953,7 +949,7 @@ multiclass SMLoad_Pattern <string Instr, ValueType vt, bit immci = true> {
     (vt (SIsbuffer_load v4i32:$sbase, (SMRDBufferImm32 i32:$offset), timm:$cachepolicy)),
     (!cast<InstSI>(Instr#"_IMM_ci") SReg_128:$sbase, smrd_literal_offset:$offset,
                                     (extract_cpol $cachepolicy))> {
-    let SubtargetPredicate = isGFX7Only;
+    let OtherPredicates = [isGFX7Only];
     let AddedComplexity = 1;
   }
 
@@ -961,12 +957,12 @@ multiclass SMLoad_Pattern <string Instr, ValueType vt, bit immci = true> {
   def : GCNPat <
     (SIsbuffer_load v4i32:$sbase, i32:$soffset, timm:$cachepolicy),
     (vt (!cast<SM_Pseudo>(Instr#"_SGPR") SReg_128:$sbase, SReg_32:$soffset, (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isNotGFX9Plus;
+    let OtherPredicates = [isNotGFX9Plus];
   }
   def : GCNPat <
     (SIsbuffer_load v4i32:$sbase, i32:$soffset, timm:$cachepolicy),
     (vt (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") SReg_128:$sbase, SReg_32:$soffset, 0, (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isGFX9Plus;
+    let OtherPredicates = [isGFX9Plus];
   }
 
   // 4. Offset as an 32-bit SGPR + immediate
@@ -975,7 +971,7 @@ multiclass SMLoad_Pattern <string Instr, ValueType vt, bit immci = true> {
                     timm:$cachepolicy),
     (vt (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") SReg_128:$sbase, SReg_32:$soffset, i32imm:$offset,
                                              (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isGFX9Plus;
+    let OtherPredicates = [isGFX9Plus];
   }
 }
 
@@ -984,28 +980,28 @@ multiclass ScalarLoadWithExtensionPat <string Instr, SDPatternOperator node, Val
    def : GCNPat <
      (node (SMRDImm i64:$sbase, i32:$offset)),
      (vt (!cast<SM_Pseudo>(Instr#"_IMM") $sbase, $offset, 0))>{
-       let SubtargetPredicate = isGFX12Plus;
+       let OtherPredicates = [isGFX12Plus];
    }
 
    // 2. SGPR offset
    def : GCNPat <
      (node (SMRDSgpr i64:$sbase, i32:$soffset)),
      (vt (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") $sbase, $soffset, 0, 0))>{
-       let SubtargetPredicate = isGFX12Plus;
+       let OtherPredicates = [isGFX12Plus];
    }
 
    // 3. SGPR+IMM offset
    def : GCNPat <
      (node (SMRDSgprImm i64:$sbase, i32:$soffset, i32:$offset)),
      (vt (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") $sbase, $soffset, $offset, 0))>{
-       let SubtargetPredicate = isGFX12Plus;
+       let OtherPredicates = [isGFX12Plus];
    }
 
    // 4. No offset
    def : GCNPat <
      (vt (node (i64 SReg_64:$sbase))),
      (vt (!cast<SM_Pseudo>(Instr#"_IMM") i64:$sbase, 0, 0))>{
-       let SubtargetPredicate = isGFX12Plus;
+       let OtherPredicates = [isGFX12Plus];
   }
 }
 
@@ -1015,14 +1011,14 @@ multiclass ScalarBufferLoadIntrinsicPat <SDPatternOperator name, string Instr> {
   def : GCNPat <
     (name v4i32:$sbase, (SMRDBufferImm i32:$offset), timm:$cachepolicy),
     (i32 (!cast<SM_Pseudo>(Instr#"_IMM") SReg_128:$sbase, i32imm:$offset, (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isGFX12Plus;
+    let OtherPredicates = [isGFX12Plus];
   }
 
   // 2. Offset as an 32-bit SGPR
   def : GCNPat <
     (name v4i32:$sbase, i32:$soffset, timm:$cachepolicy),
     (i32 (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") SReg_128:$sbase, SReg_32:$soffset, 0, (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isGFX12Plus;
+    let OtherPredicates = [isGFX12Plus];
   }
 
   // 3. Offset as an 32-bit SGPR + immediate
@@ -1031,7 +1027,7 @@ multiclass ScalarBufferLoadIntrinsicPat <SDPatternOperator name, string Instr> {
                     timm:$cachepolicy),
     (i32 (!cast<SM_Pseudo>(Instr#"_SGPR_IMM") SReg_128:$sbase, SReg_32:$soffset, i32imm:$offset,
                                              (extract_cpol $cachepolicy)))> {
-    let SubtargetPredicate = isGFX12Plus;
+    let OtherPredicates = [isGFX12Plus];
   }
 }
 
@@ -1151,39 +1147,6 @@ multiclass SMPrefetchPat<string type, TImmLeaf cache_type> {
 
 defm : SMPrefetchPat<"INST", i32imm_zero>;
 defm : SMPrefetchPat<"DATA", i32imm_one>;
-
-let SubtargetPredicate = isGFX12Plus in {
-  def : GCNPat <
-    (int_amdgcn_s_prefetch_data (SMRDImm i64:$sbase, i32:$offset), (i32 SReg_32:$len)),
-    (S_PREFETCH_DATA $sbase, $offset, $len, 0)
-  >;
-
-  def : GCNPat <
-    (int_amdgcn_s_prefetch_data (i64 SReg_64:$sbase), (i32 SReg_32:$len)),
-    (S_PREFETCH_DATA $sbase, 0, $len, 0)
-  >;
-
-  def : GCNPat <
-    (int_amdgcn_s_prefetch_data (SMRDImm i64:$sbase, i32:$offset), imm:$len),
-    (S_PREFETCH_DATA $sbase, $offset, (i32 SGPR_NULL), (as_i8timm $len))
-  >;
-
-  def : GCNPat <
-    (int_amdgcn_s_prefetch_data (i64 SReg_64:$sbase), imm:$len),
-    (S_PREFETCH_DATA $sbase, 0, (i32 SGPR_NULL), (as_i8timm $len))
-
-  >;
-
-  def : GCNPat <
-    (SIsbuffer_prefetch v4i32:$sbase, (SMRDBufferImm i32:$offset), (i32 SReg_32:$len)),
-    (S_BUFFER_PREFETCH_DATA SReg_128:$sbase, i32imm:$offset, $len, 0)
-  >;
-
-  def : GCNPat <
-    (SIsbuffer_prefetch v4i32:$sbase, (SMRDBufferImm i32:$offset), imm:$len),
-    (S_BUFFER_PREFETCH_DATA SReg_128:$sbase, i32imm:$offset, (i32 SGPR_NULL), (as_i8timm $len))
-  >;
-} // End let SubtargetPredicate = isGFX12Plus
 
 //===----------------------------------------------------------------------===//
 // GFX10.

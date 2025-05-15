@@ -32,8 +32,6 @@ namespace llvm {
 class Value;
 class APInt;
 class LLVMContext;
-template <typename T> class Expected;
-class Error;
 
 /// Class to represent integer types. Note that this class is also used to
 /// represent the built-in integer types: Int1Ty, Int8Ty, Int16Ty, Int32Ty and
@@ -291,8 +289,8 @@ public:
   bool isSized(SmallPtrSetImpl<Type *> *Visited = nullptr) const;
 
   /// Returns true if this struct contains a scalable vector.
-  bool isScalableTy(SmallPtrSetImpl<const Type *> &Visited) const;
-  using Type::isScalableTy;
+  bool
+  containsScalableVectorType(SmallPtrSetImpl<Type *> *Visited = nullptr) const;
 
   /// Returns true if this struct contains homogeneous scalable vector types.
   /// Note that the definition of homogeneous scalable vector type is not
@@ -301,10 +299,6 @@ public:
   /// {{<vscale x 2 x i32>, <vscale x 4 x i64>},
   ///  {<vscale x 2 x i32>, <vscale x 4 x i64>}}
   bool containsHomogeneousScalableVectorTypes() const;
-
-  /// Return true if this struct is non-empty and all element types are the
-  /// same.
-  bool containsHomogeneousTypes() const;
 
   /// Return true if this is a named struct that has a non-empty name.
   bool hasName() const { return SymbolTableEntry != nullptr; }
@@ -318,17 +312,15 @@ public:
   /// suffix if there is a collision. Do not call this on an literal type.
   void setName(StringRef Name);
 
-  /// Specify a body for an opaque identified type, which must not make the type
-  /// recursive.
+  /// Specify a body for an opaque identified type.
   void setBody(ArrayRef<Type*> Elements, bool isPacked = false);
 
-  /// Specify a body for an opaque identified type or return an error if it
-  /// would make the type recursive.
-  Error setBodyOrError(ArrayRef<Type *> Elements, bool isPacked = false);
-
-  /// Return an error if the body for an opaque identified type would make it
-  /// recursive.
-  Error checkBody(ArrayRef<Type *> Elements);
+  template <typename... Tys>
+  std::enable_if_t<are_base_of<Type, Tys...>::value, void>
+  setBody(Type *elt1, Tys *... elts) {
+    assert(elt1 && "Cannot create a struct type with no elements with this");
+    setBody(ArrayRef<Type *>({elt1, elts...}));
+  }
 
   /// Return true if the specified type is valid as a element type.
   static bool isValidElementType(Type *ElemTy);
@@ -499,9 +491,9 @@ public:
     return VectorType::get(EltTy, VTy->getElementCount());
   }
 
-  // This static method returns a VectorType with a larger number of elements
-  // of a smaller type than the input element type. For example, a <4 x i64>
-  // subdivided twice would return <16 x i16>
+  // This static method returns a VectorType with a smaller number of elements
+  // of a larger type than the input element type. For example, a <16 x i8>
+  // subdivided twice would return <4 x i32>
   static VectorType *getSubdividedVectorType(VectorType *VTy, int NumSubdivs) {
     for (int i = 0; i < NumSubdivs; ++i) {
       VTy = VectorType::getDoubleElementsVectorType(VTy);
@@ -740,21 +732,8 @@ public:
   /// Return a target extension type having the specified name and optional
   /// type and integer parameters.
   static TargetExtType *get(LLVMContext &Context, StringRef Name,
-                            ArrayRef<Type *> Types = {},
-                            ArrayRef<unsigned> Ints = {});
-
-  /// Return a target extension type having the specified name and optional
-  /// type and integer parameters, or an appropriate Error if it fails the
-  /// parameters check.
-  static Expected<TargetExtType *> getOrError(LLVMContext &Context,
-                                              StringRef Name,
-                                              ArrayRef<Type *> Types = {},
-                                              ArrayRef<unsigned> Ints = {});
-
-  /// Check that a newly created target extension type has the expected number
-  /// of type parameters and integer parameters, returning the type itself if OK
-  /// or an appropriate Error if not.
-  static Expected<TargetExtType *> checkParams(TargetExtType *TTy);
+                            ArrayRef<Type *> Types = std::nullopt,
+                            ArrayRef<unsigned> Ints = std::nullopt);
 
   /// Return the name for this target extension type. Two distinct target
   /// extension types may have the same name if their type or integer parameters

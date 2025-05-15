@@ -330,8 +330,7 @@ void aix::Linker::ConstructJob(Compilation &C, const JobAction &JA,
     }
   }
 
-  if (D.IsFlangMode() &&
-      !Args.hasArg(options::OPT_nostdlib, options::OPT_nodefaultlibs)) {
+  if (D.IsFlangMode()) {
     addFortranRuntimeLibraryPath(ToolChain, Args, CmdArgs);
     addFortranRuntimeLibs(ToolChain, Args, CmdArgs);
     CmdArgs.push_back("-lm");
@@ -548,9 +547,6 @@ void AIX::addClangTargetOptions(
   if (Args.hasArg(options::OPT_mtocdata_EQ, options::OPT_mno_tocdata_EQ,
                   options::OPT_mtocdata))
     addTocDataOptions(Args, CC1Args, getDriver());
-
-  if (Args.hasArg(options::OPT_msave_reg_params))
-    CC1Args.push_back("-msave-reg-params");
 
   if (Args.hasFlag(options::OPT_fxl_pragma_pack,
                    options::OPT_fno_xl_pragma_pack, true))

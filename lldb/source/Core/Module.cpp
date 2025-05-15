@@ -131,8 +131,7 @@ Module *Module::GetAllocatedModuleAtIndex(size_t idx) {
 }
 
 Module::Module(const ModuleSpec &module_spec)
-    : m_unwind_table(*this), m_file_has_changed(false),
-      m_first_file_changed_log(false) {
+    : m_file_has_changed(false), m_first_file_changed_log(false) {
   // Scope for locker below...
   {
     std::lock_guard<std::recursive_mutex> guard(
@@ -239,8 +238,7 @@ Module::Module(const FileSpec &file_spec, const ArchSpec &arch,
     : m_mod_time(FileSystem::Instance().GetModificationTime(file_spec)),
       m_arch(arch), m_file(file_spec), m_object_name(object_name),
       m_object_offset(object_offset), m_object_mod_time(object_mod_time),
-      m_unwind_table(*this), m_file_has_changed(false),
-      m_first_file_changed_log(false) {
+      m_file_has_changed(false), m_first_file_changed_log(false) {
   // Scope for locker below...
   {
     std::lock_guard<std::recursive_mutex> guard(
@@ -256,9 +254,7 @@ Module::Module(const FileSpec &file_spec, const ArchSpec &arch,
               m_object_name.AsCString(""), m_object_name.IsEmpty() ? "" : ")");
 }
 
-Module::Module()
-    : m_unwind_table(*this), m_file_has_changed(false),
-      m_first_file_changed_log(false) {
+Module::Module() : m_file_has_changed(false), m_first_file_changed_log(false) {
   std::lock_guard<std::recursive_mutex> guard(
       GetAllocationModuleCollectionMutex());
   GetModuleCollection().push_back(this);
@@ -298,7 +294,7 @@ ObjectFile *Module::GetMemoryObjectFile(const lldb::ProcessSP &process_sp,
                                         lldb::addr_t header_addr, Status &error,
                                         size_t size_to_read) {
   if (m_objfile_sp) {
-    error = Status::FromErrorString("object file already exists");
+    error.SetErrorString("object file already exists");
   } else {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (process_sp) {
@@ -327,18 +323,15 @@ ObjectFile *Module::GetMemoryObjectFile(const lldb::ProcessSP &process_sp,
           // Augment the arch with the target's information in case
           // we are unable to extract the os/environment from memory.
           m_arch.MergeFrom(process_sp->GetTarget().GetArchitecture());
-
-          m_unwind_table.ModuleWasUpdated();
         } else {
-          error = Status::FromErrorString(
-              "unable to find suitable object file plug-in");
+          error.SetErrorString("unable to find suitable object file plug-in");
         }
       } else {
-        error = Status::FromErrorStringWithFormat(
-            "unable to read header from memory: %s", readmem_error.AsCString());
+        error.SetErrorStringWithFormat("unable to read header from memory: %s",
+                                       readmem_error.AsCString());
       }
     } else {
-      error = Status::FromErrorString("invalid process");
+      error.SetErrorString("invalid process");
     }
   }
   return m_objfile_sp.get();
@@ -1016,7 +1009,8 @@ SymbolFile *Module::GetSymbolFile(bool can_create, Stream *feedback_strm) {
         m_symfile_up.reset(
             SymbolVendor::FindPlugin(shared_from_this(), feedback_strm));
         m_did_load_symfile = true;
-        m_unwind_table.ModuleWasUpdated();
+        if (m_unwind_table)
+          m_unwind_table->Update();
       }
     }
   }
@@ -1093,8 +1087,8 @@ void Module::ReportWarningOptimization(
   ss << file_name
      << " was compiled with optimization - stepping may behave "
         "oddly; variables may not be available.";
-  llvm::StringRef msg = ss.GetString();
-  Debugger::ReportWarning(msg.str(), debugger_id, GetDiagnosticOnceFlag(msg));
+  Debugger::ReportWarning(std::string(ss.GetString()), debugger_id,
+                          &m_optimization_warning);
 }
 
 void Module::ReportWarningUnsupportedLanguage(
@@ -1104,8 +1098,8 @@ void Module::ReportWarningUnsupportedLanguage(
      << Language::GetNameForLanguageType(language)
      << "\". "
         "Inspection of frame variables will be limited.";
-  llvm::StringRef msg = ss.GetString();
-  Debugger::ReportWarning(msg.str(), debugger_id, GetDiagnosticOnceFlag(msg));
+  Debugger::ReportWarning(std::string(ss.GetString()), debugger_id,
+                          &m_language_warning);
 }
 
 void Module::ReportErrorIfModifyDetected(
@@ -1125,29 +1119,20 @@ void Module::ReportErrorIfModifyDetected(
   }
 }
 
-std::once_flag *Module::GetDiagnosticOnceFlag(llvm::StringRef msg) {
-  std::lock_guard<std::recursive_mutex> guard(m_diagnostic_mutex);
-  auto &once_ptr = m_shown_diagnostics[llvm::stable_hash_name(msg)];
-  if (!once_ptr)
-    once_ptr = std::make_unique<std::once_flag>();
-  return once_ptr.get();
-}
-
 void Module::ReportError(const llvm::formatv_object_base &payload) {
   StreamString strm;
   GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelBrief);
-  std::string msg = payload.str();
-  strm << ' ' << msg;
-  Debugger::ReportError(strm.GetString().str(), {}, GetDiagnosticOnceFlag(msg));
+  strm.PutChar(' ');
+  strm.PutCString(payload.str());
+  Debugger::ReportError(strm.GetString().str());
 }
 
 void Module::ReportWarning(const llvm::formatv_object_base &payload) {
   StreamString strm;
   GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelFull);
-  std::string msg = payload.str();
-  strm << ' ' << msg;
-  Debugger::ReportWarning(strm.GetString().str(), {},
-                          GetDiagnosticOnceFlag(msg));
+  strm.PutChar(' ');
+  strm.PutCString(payload.str());
+  Debugger::ReportWarning(std::string(strm.GetString()));
 }
 
 void Module::LogMessage(Log *log, const llvm::formatv_object_base &payload) {
@@ -1225,8 +1210,6 @@ ObjectFile *Module::GetObjectFile() {
           // more specific than the generic COFF architecture, only merge in
           // those values that overwrite unspecified unknown values.
           m_arch.MergeFrom(m_objfile_sp->GetArchitecture());
-
-          m_unwind_table.ModuleWasUpdated();
         } else {
           ReportError("failed to load objfile for {0}\nDebugging will be "
                       "degraded for this module.",
@@ -1257,9 +1240,12 @@ void Module::SectionFileAddressesChanged() {
 }
 
 UnwindTable &Module::GetUnwindTable() {
-  if (!m_symfile_spec)
-    SymbolLocator::DownloadSymbolFileAsync(GetUUID());
-  return m_unwind_table;
+  if (!m_unwind_table) {
+    if (!m_symfile_spec)
+      SymbolLocator::DownloadSymbolFileAsync(GetUUID());
+    m_unwind_table.emplace(*this);
+  }
+  return *m_unwind_table;
 }
 
 SectionList *Module::GetUnifiedSectionList() {
@@ -1437,7 +1423,7 @@ bool Module::IsLoadedInTarget(Target *target) {
 bool Module::LoadScriptingResourceInTarget(Target *target, Status &error,
                                            Stream &feedback_stream) {
   if (!target) {
-    error = Status::FromErrorString("invalid destination Target");
+    error.SetErrorString("invalid destination Target");
     return false;
   }
 
@@ -1454,7 +1440,7 @@ bool Module::LoadScriptingResourceInTarget(Target *target, Status &error,
     PlatformSP platform_sp(target->GetPlatform());
 
     if (!platform_sp) {
-      error = Status::FromErrorString("invalid Platform");
+      error.SetErrorString("invalid Platform");
       return false;
     }
 
@@ -1492,7 +1478,7 @@ bool Module::LoadScriptingResourceInTarget(Target *target, Status &error,
           }
         }
       } else {
-        error = Status::FromErrorString("invalid ScriptInterpreter");
+        error.SetErrorString("invalid ScriptInterpreter");
         return false;
       }
     }
@@ -1635,7 +1621,7 @@ uint32_t Module::Hash() {
   const auto mtime = llvm::sys::toTimeT(m_object_mod_time);
   if (mtime > 0)
     id_strm << mtime;
-  return llvm::djbHash(identifier);
+  return llvm::djbHash(id_strm.str());
 }
 
 std::string Module::GetCacheKey() {
@@ -1645,7 +1631,7 @@ std::string Module::GetCacheKey() {
   if (m_object_name)
     strm << '(' << m_object_name << ')';
   strm << '-' << llvm::format_hex(Hash(), 10);
-  return key;
+  return strm.str();
 }
 
 DataFileCache *Module::GetIndexCache() {

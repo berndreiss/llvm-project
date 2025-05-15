@@ -56,6 +56,8 @@ STATISTIC(EmittedRelaxableFragments,
           "Number of emitted assembler fragments - relaxable");
 STATISTIC(EmittedDataFragments,
           "Number of emitted assembler fragments - data");
+STATISTIC(EmittedCompactEncodedInstFragments,
+          "Number of emitted assembler fragments - compact encoded inst");
 STATISTIC(EmittedAlignFragments,
           "Number of emitted assembler fragments - align");
 STATISTIC(EmittedFillFragments,
@@ -167,12 +169,18 @@ bool MCAssembler::evaluateFixup(const MCFixup &Fixup, const MCFragment *DF,
     }
   }
 
-  unsigned FixupFlags = getBackend().getFixupKindInfo(Fixup.getKind()).Flags;
-  if (FixupFlags & MCFixupKindInfo::FKF_IsTarget)
+  assert(getBackendPtr() && "Expected assembler backend");
+  bool IsTarget = getBackendPtr()->getFixupKindInfo(Fixup.getKind()).Flags &
+                  MCFixupKindInfo::FKF_IsTarget;
+
+  if (IsTarget)
     return getBackend().evaluateTargetFixup(*this, Fixup, DF, Target, STI,
                                             Value, WasForced);
 
-  bool IsPCRel = FixupFlags & MCFixupKindInfo::FKF_IsPCRel;
+  unsigned FixupFlags = getBackendPtr()->getFixupKindInfo(Fixup.getKind()).Flags;
+  bool IsPCRel = getBackendPtr()->getFixupKindInfo(Fixup.getKind()).Flags &
+                 MCFixupKindInfo::FKF_IsPCRel;
+
   bool IsResolved = false;
   if (IsPCRel) {
     if (Target.getSymB()) {
@@ -207,7 +215,8 @@ bool MCAssembler::evaluateFixup(const MCFixup &Fixup, const MCFragment *DF,
       Value -= getSymbolOffset(Sym);
   }
 
-  bool ShouldAlignPC = FixupFlags & MCFixupKindInfo::FKF_IsAlignedDownTo32Bits;
+  bool ShouldAlignPC = getBackend().getFixupKindInfo(Fixup.getKind()).Flags &
+                       MCFixupKindInfo::FKF_IsAlignedDownTo32Bits;
   assert((ShouldAlignPC ? IsPCRel : true) &&
     "FKF_IsAlignedDownTo32Bits is only allowed on PC-relative fixups!");
 
@@ -244,6 +253,8 @@ uint64_t MCAssembler::computeFragmentSize(const MCFragment &F) const {
     return cast<MCDataFragment>(F).getContents().size();
   case MCFragment::FT_Relaxable:
     return cast<MCRelaxableFragment>(F).getContents().size();
+  case MCFragment::FT_CompactEncodedInst:
+    return cast<MCCompactEncodedInstFragment>(F).getContents().size();
   case MCFragment::FT_Fill: {
     auto &FF = cast<MCFillFragment>(F);
     int64_t NumValues = 0;
@@ -671,6 +682,11 @@ static void writeFragment(raw_ostream &OS, const MCAssembler &Asm,
   case MCFragment::FT_Relaxable:
     ++stats::EmittedRelaxableFragments;
     OS << cast<MCRelaxableFragment>(F).getContents();
+    break;
+
+  case MCFragment::FT_CompactEncodedInst:
+    ++stats::EmittedCompactEncodedInstFragments;
+    OS << cast<MCCompactEncodedInstFragment>(F).getContents();
     break;
 
   case MCFragment::FT_Fill: {

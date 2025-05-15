@@ -31,7 +31,7 @@ using namespace llvm;
 #define PRINT_ALIAS_INSTR
 #include "LanaiGenAsmWriter.inc"
 
-void LanaiInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) {
+void LanaiInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
   OS << StringRef(getRegisterName(Reg)).lower();
 }
 

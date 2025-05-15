@@ -26,7 +26,6 @@
 // ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS
 
 #include <algorithm>
-#include <cstddef>
 #include <vector>
 
 #include "test_macros.h"

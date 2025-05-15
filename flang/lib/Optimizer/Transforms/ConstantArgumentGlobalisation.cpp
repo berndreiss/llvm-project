@@ -98,8 +98,9 @@ public:
       assert(!builder.getNamedGlobal(globalName) &&
              "We should have a unique name here");
 
-      if (llvm::none_of(allocas,
-                        [alloca](auto x) { return x.first == alloca; })) {
+      if (std::find_if(allocas.begin(), allocas.end(), [alloca](auto x) {
+            return x.first == alloca;
+          }) == allocas.end()) {
         allocas.push_back(std::make_pair(alloca, store));
       }
 
@@ -126,10 +127,10 @@ public:
       newResultTypes.append(callOp.getResultTypes().begin(),
                             callOp.getResultTypes().end());
       fir::CallOp newOp = builder.create<fir::CallOp>(
-          loc,
+          loc, newResultTypes,
           callOp.getCallee().has_value() ? callOp.getCallee().value()
                                          : mlir::SymbolRefAttr{},
-          newResultTypes, newOperands);
+          newOperands);
       // Copy all the attributes from the old to new op.
       newOp->setAttrs(callOp->getAttrs());
       rewriter.replaceOp(callOp, newOp);

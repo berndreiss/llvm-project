@@ -39,7 +39,7 @@ public:
 };
 
 /// Populate the given list with patterns that convert from Complex to LLVM.
-void populateComplexToLLVMConversionPatterns(const LLVMTypeConverter &converter,
+void populateComplexToLLVMConversionPatterns(LLVMTypeConverter &converter,
                                              RewritePatternSet &patterns);
 
 void registerConvertComplexToLLVMInterface(DialectRegistry &registry);

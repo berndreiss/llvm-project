@@ -42,7 +42,8 @@ _LIBCPP_HIDE_FROM_ABI constexpr _Ip __find_if_impl(_Ip __first, _Sp __last, _Pre
   return __first;
 }
 
-struct __find_if {
+namespace __find_if {
+struct __fn {
   template <input_iterator _Ip,
             sentinel_for<_Ip> _Sp,
             class _Proj = identity,
@@ -58,9 +59,10 @@ struct __find_if {
     return ranges::__find_if_impl(ranges::begin(__r), ranges::end(__r), __pred, __proj);
   }
 };
+} // namespace __find_if
 
 inline namespace __cpo {
-inline constexpr auto find_if = __find_if{};
+inline constexpr auto find_if = __find_if::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

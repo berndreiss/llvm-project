@@ -462,9 +462,9 @@ lldb_private::Status PlatformDarwinDevice::GetSharedModuleWithLocalCache(
         module_sp->SetPlatformFileSpec(module_spec.GetFileSpec());
         return Status();
       } else
-        return Status::FromErrorString("unable to obtain valid module file");
+        return Status("unable to obtain valid module file");
     } else
-      return Status::FromErrorString("no cache path");
+      return Status("no cache path");
   } else
-    return Status::FromErrorString("unable to resolve module");
+    return Status("unable to resolve module");
 }

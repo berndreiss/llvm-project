@@ -56,8 +56,9 @@ std::string runChecker(StringRef Code, unsigned ExpectedWarningCount) {
                                                             "}"}};
   std::vector<ClangTidyError> errors;
 
-  std::string result = test::runCheckOnCode<Check>(
-      Code, &errors, "foo.cc", {}, ClangTidyOptions(), AdditionalFileContents);
+  std::string result =
+      test::runCheckOnCode<Check>(Code, &errors, "foo.cc", std::nullopt,
+                                  ClangTidyOptions(), AdditionalFileContents);
 
   EXPECT_EQ(ExpectedWarningCount, errors.size());
   return result;

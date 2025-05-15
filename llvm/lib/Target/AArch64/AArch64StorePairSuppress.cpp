@@ -53,8 +53,8 @@ private:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
-    AU.addRequired<MachineTraceMetricsWrapperPass>();
-    AU.addPreserved<MachineTraceMetricsWrapperPass>();
+    AU.addRequired<MachineTraceMetrics>();
+    AU.addPreserved<MachineTraceMetrics>();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
 };
@@ -96,8 +96,8 @@ bool AArch64StorePairSuppress::shouldAddSTPToBlock(const MachineBasicBlock *BB) 
       SingleSCDesc->isValid() && !SingleSCDesc->isVariant()) {
     // Compute the new critical resource length after replacing 2 separate
     // STRDui with one STPDi.
-    unsigned ResLenWithSTP =
-        BBTrace.getResourceLength({}, PairSCDesc, {SingleSCDesc, SingleSCDesc});
+    unsigned ResLenWithSTP = BBTrace.getResourceLength(
+        std::nullopt, PairSCDesc, {SingleSCDesc, SingleSCDesc});
     if (ResLenWithSTP > ResLength) {
       LLVM_DEBUG(dbgs() << "  Suppress STP in BB: " << BB->getNumber()
                         << " resources " << ResLength << " -> " << ResLenWithSTP
@@ -139,7 +139,7 @@ bool AArch64StorePairSuppress::runOnMachineFunction(MachineFunction &MF) {
   TRI = ST.getRegisterInfo();
   MRI = &MF.getRegInfo();
   SchedModel.init(&ST);
-  Traces = &getAnalysis<MachineTraceMetricsWrapperPass>().getMTM();
+  Traces = &getAnalysis<MachineTraceMetrics>();
   MinInstr = nullptr;
 
   LLVM_DEBUG(dbgs() << "*** " << getPassName() << ": " << MF.getName() << '\n');

@@ -10,6 +10,8 @@
 #include "LibCxx.h"
 
 #include "Plugins/TypeSystem/Clang/TypeSystemClang.h"
+#include "lldb/Core/ValueObject.h"
+#include "lldb/Core/ValueObjectConstResult.h"
 #include "lldb/DataFormatters/StringPrinter.h"
 #include "lldb/DataFormatters/VectorIterator.h"
 #include "lldb/Target/Target.h"
@@ -17,8 +19,6 @@
 #include "lldb/Utility/Endian.h"
 #include "lldb/Utility/Status.h"
 #include "lldb/Utility/Stream.h"
-#include "lldb/ValueObject/ValueObject.h"
-#include "lldb/ValueObject/ValueObjectConstResult.h"
 #include <optional>
 
 using namespace lldb;

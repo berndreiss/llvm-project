@@ -14,7 +14,6 @@
 #include "AllocationOrder.h"
 #include "RegAllocBase.h"
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/CodeGen/CalcSpillWeights.h"
 #include "llvm/CodeGen/LiveDebugVariables.h"
 #include "llvm/CodeGen/LiveIntervals.h"
@@ -139,9 +138,8 @@ INITIALIZE_PASS_DEPENDENCY(LiveStacks)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfoWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(VirtRegMapWrapperLegacy)
-INITIALIZE_PASS_DEPENDENCY(LiveRegMatrixWrapperLegacy)
-INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(VirtRegMap)
+INITIALIZE_PASS_DEPENDENCY(LiveRegMatrix)
 INITIALIZE_PASS_END(RABasic, "regallocbasic", "Basic Register Allocator", false,
                     false)
 
@@ -184,17 +182,16 @@ void RABasic::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<LiveDebugVariables>();
   AU.addRequired<LiveStacks>();
   AU.addPreserved<LiveStacks>();
-  AU.addRequired<ProfileSummaryInfoWrapperPass>();
   AU.addRequired<MachineBlockFrequencyInfoWrapperPass>();
   AU.addPreserved<MachineBlockFrequencyInfoWrapperPass>();
   AU.addRequiredID(MachineDominatorsID);
   AU.addPreservedID(MachineDominatorsID);
   AU.addRequired<MachineLoopInfoWrapperPass>();
   AU.addPreserved<MachineLoopInfoWrapperPass>();
-  AU.addRequired<VirtRegMapWrapperLegacy>();
-  AU.addPreserved<VirtRegMapWrapperLegacy>();
-  AU.addRequired<LiveRegMatrixWrapperLegacy>();
-  AU.addPreserved<LiveRegMatrixWrapperLegacy>();
+  AU.addRequired<VirtRegMap>();
+  AU.addPreserved<VirtRegMap>();
+  AU.addRequired<LiveRegMatrix>();
+  AU.addPreserved<LiveRegMatrix>();
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
@@ -310,13 +307,12 @@ bool RABasic::runOnMachineFunction(MachineFunction &mf) {
                     << "********** Function: " << mf.getName() << '\n');
 
   MF = &mf;
-  RegAllocBase::init(getAnalysis<VirtRegMapWrapperLegacy>().getVRM(),
+  RegAllocBase::init(getAnalysis<VirtRegMap>(),
                      getAnalysis<LiveIntervalsWrapperPass>().getLIS(),
-                     getAnalysis<LiveRegMatrixWrapperLegacy>().getLRM());
+                     getAnalysis<LiveRegMatrix>());
   VirtRegAuxInfo VRAI(
       *MF, *LIS, *VRM, getAnalysis<MachineLoopInfoWrapperPass>().getLI(),
-      getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI(),
-      &getAnalysis<ProfileSummaryInfoWrapperPass>().getPSI());
+      getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI());
   VRAI.calculateSpillWeightsAndHints();
 
   SpillerInstance.reset(createInlineSpiller(*this, *MF, *VRM, VRAI));

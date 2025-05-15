@@ -42,7 +42,7 @@ def main():
     if (
         subprocess.call(
             "gn --version",
-            stdout=subprocess.DEVNULL,
+            stdout=open(os.devnull, "w"),
             stderr=subprocess.STDOUT,
             shell=True,
         )

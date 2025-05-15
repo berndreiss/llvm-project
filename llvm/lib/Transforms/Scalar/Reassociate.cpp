@@ -874,8 +874,6 @@ static Value *NegateValue(Value *V, Instruction *BI,
   // negation.
   Instruction *NewNeg =
       CreateNeg(V, V->getName() + ".neg", BI->getIterator(), BI);
-  // NewNeg is generated to potentially replace BI, so use its DebugLoc.
-  NewNeg->setDebugLoc(BI->getDebugLoc());
   ToRedo.insert(NewNeg);
   return NewNeg;
 }

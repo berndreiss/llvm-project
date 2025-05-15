@@ -1,5 +1,4 @@
 //===----------------------------------------------------------------------===//
-//
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
@@ -18,10 +17,9 @@
 // assumptions of the size and speed optimizations are still valid.
 
 #include <algorithm>
-#include <cassert>
-#include <format>
-#include <functional>
 #include <numeric>
+#include <format>
+#include <cassert>
 
 // Contains the entries for [format.string.escaped]/2.2.1.2.1
 //   CE is a Unicode encoding and C corresponds to a UCS scalar value whose

@@ -123,13 +123,7 @@ def main():
                 common.warn("Skipping unparsable RUN line: " + l)
                 continue
 
-            cropped_content = l
-            if "%if" in l:
-                match = re.search(r"%{\s*(.*?)\s*%}", l)
-                if match:
-                    cropped_content = match.group(1)
-
-            commands = [cmd.strip() for cmd in cropped_content.split("|")]
+            commands = [cmd.strip() for cmd in l.split("|")]
             assert len(commands) >= 2
             preprocess_cmd = None
             if len(commands) > 2:

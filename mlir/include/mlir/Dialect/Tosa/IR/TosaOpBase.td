@@ -40,7 +40,7 @@ def Tosa_Dialect : Dialect {
     there will be tools to lower from the ML frameworks into TOSA.
   }];
 
-  let dependentDialects = ["tensor::TensorDialect", "quant::QuantDialect"];
+  let dependentDialects = ["tensor::TensorDialect", "quant::QuantizationDialect"];
 
   let cppNamespace = "mlir::tosa";
   let hasConstantMaterializer = 1;
@@ -207,15 +207,6 @@ def Tosa_ExplicitValuePadOpQuantInfoBuilder : OpBuilder<
   }]>;
 
 //===----------------------------------------------------------------------===//
-// TOSA Operator Trait.
-//===----------------------------------------------------------------------===//
-
-// Permits broadcasting. Elementwise trait is too strict.
-def TosaElementwiseOperator : NativeOpTrait<"TosaElementwiseOperator"> {
-  let cppNamespace = "mlir::OpTrait::tosa";
-}
-
-//===----------------------------------------------------------------------===//
 // TOSA Operator Class.
 //===----------------------------------------------------------------------===//
 
@@ -228,7 +219,6 @@ class Tosa_ElementwiseOp<string mnemonic, list<Trait> traits = []> :
               DeclareOpInterfaceMethods<InferShapedTypeOpInterface,
                                         ["inferReturnTypeComponents"]>,
               ResultsBroadcastableShape,
-              TosaElementwiseOperator,
               Pure])> {
   let assemblyFormat =
       "operands attr-dict `:` functional-type(operands, results)";

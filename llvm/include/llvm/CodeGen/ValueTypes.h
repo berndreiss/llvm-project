@@ -27,7 +27,6 @@ namespace llvm {
 
   class LLVMContext;
   class Type;
-  struct fltSemantics;
 
   /// Extended Value Type. Capable of holding value types which are not native
   /// for any processor (such as the i12345 type), as well as the types an MVT
@@ -175,9 +174,6 @@ namespace llvm {
       return isSimple() ? V.isScalableVector() : isExtendedScalableVector();
     }
 
-    /// Return true if this is a vector value type.
-    bool isRISCVVectorTuple() const { return V.isRISCVVectorTuple(); }
-
     bool isFixedLengthVector() const {
       return isSimple() ? V.isFixedLengthVector()
                         : isExtendedFixedLengthVector();
@@ -230,8 +226,7 @@ namespace llvm {
 
     /// Return true if this is an overloaded type for TableGen.
     bool isOverloaded() const {
-      return (V == MVT::iAny || V == MVT::fAny || V == MVT::vAny ||
-              V == MVT::pAny);
+      return (V==MVT::iAny || V==MVT::fAny || V==MVT::vAny || V==MVT::iPTRAny);
     }
 
     /// Return true if the bit size is a multiple of 8.
@@ -353,11 +348,6 @@ namespace llvm {
     /// Given a vector type, return the minimum number of elements it contains.
     unsigned getVectorMinNumElements() const {
       return getVectorElementCount().getKnownMinValue();
-    }
-
-    /// Given a RISCV vector tuple type, return the num_fields.
-    unsigned getRISCVVectorTupleNumFields() const {
-      return V.getRISCVVectorTupleNumFields();
     }
 
     /// Return the size of the specified value type in bits.
@@ -521,10 +511,6 @@ namespace llvm {
           return L.V.SimpleTy < R.V.SimpleTy;
       }
     };
-
-    /// Returns an APFloat semantics tag appropriate for the value type. If this
-    /// is a vector type, the element semantics are returned.
-    const fltSemantics &getFltSemantics() const;
 
   private:
     // Methods for handling the Extended-type case in functions above.

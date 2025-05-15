@@ -28,13 +28,42 @@ OpenACCComputeConstruct::CreateEmpty(const ASTContext &C, unsigned NumClauses) {
 OpenACCComputeConstruct *OpenACCComputeConstruct::Create(
     const ASTContext &C, OpenACCDirectiveKind K, SourceLocation BeginLoc,
     SourceLocation DirLoc, SourceLocation EndLoc,
-    ArrayRef<const OpenACCClause *> Clauses, Stmt *StructuredBlock) {
+    ArrayRef<const OpenACCClause *> Clauses, Stmt *StructuredBlock,
+    ArrayRef<OpenACCLoopConstruct *> AssociatedLoopConstructs) {
   void *Mem = C.Allocate(
       OpenACCComputeConstruct::totalSizeToAlloc<const OpenACCClause *>(
           Clauses.size()));
   auto *Inst = new (Mem) OpenACCComputeConstruct(K, BeginLoc, DirLoc, EndLoc,
                                                  Clauses, StructuredBlock);
+
+  llvm::for_each(AssociatedLoopConstructs, [&](OpenACCLoopConstruct *C) {
+    C->setParentComputeConstruct(Inst);
+  });
+
   return Inst;
+}
+
+void OpenACCComputeConstruct::findAndSetChildLoops() {
+  struct LoopConstructFinder : RecursiveASTVisitor<LoopConstructFinder> {
+    OpenACCComputeConstruct *Construct = nullptr;
+
+    LoopConstructFinder(OpenACCComputeConstruct *Construct)
+        : Construct(Construct) {}
+
+    bool TraverseOpenACCComputeConstruct(OpenACCComputeConstruct *C) {
+      // Stop searching if we find a compute construct.
+      return true;
+    }
+    bool TraverseOpenACCLoopConstruct(OpenACCLoopConstruct *C) {
+      // Stop searching if we find a loop construct, after taking ownership of
+      // it.
+      C->setParentComputeConstruct(Construct);
+      return true;
+    }
+  };
+
+  LoopConstructFinder f(this);
+  f.TraverseStmt(getAssociatedStmt());
 }
 
 OpenACCLoopConstruct::OpenACCLoopConstruct(unsigned NumClauses)
@@ -50,13 +79,11 @@ OpenACCLoopConstruct::OpenACCLoopConstruct(unsigned NumClauses)
 }
 
 OpenACCLoopConstruct::OpenACCLoopConstruct(
-    OpenACCDirectiveKind ParentKind, SourceLocation Start,
-    SourceLocation DirLoc, SourceLocation End,
+    SourceLocation Start, SourceLocation DirLoc, SourceLocation End,
     ArrayRef<const OpenACCClause *> Clauses, Stmt *Loop)
     : OpenACCAssociatedStmtConstruct(OpenACCLoopConstructClass,
                                      OpenACCDirectiveKind::Loop, Start, DirLoc,
-                                     End, Loop),
-      ParentComputeConstructKind(ParentKind) {
+                                     End, Loop) {
   // accept 'nullptr' for the loop. This is diagnosed somewhere, but this gives
   // us some level of AST fidelity in the error case.
   assert((Loop == nullptr || isa<ForStmt, CXXForRangeStmt>(Loop)) &&
@@ -69,6 +96,12 @@ OpenACCLoopConstruct::OpenACCLoopConstruct(
                                 Clauses.size()));
 }
 
+void OpenACCLoopConstruct::setLoop(Stmt *Loop) {
+  assert((isa<ForStmt, CXXForRangeStmt>(Loop)) &&
+         "Associated Loop not a for loop?");
+  setAssociatedStmt(Loop);
+}
+
 OpenACCLoopConstruct *OpenACCLoopConstruct::CreateEmpty(const ASTContext &C,
                                                         unsigned NumClauses) {
   void *Mem =
@@ -78,14 +111,15 @@ OpenACCLoopConstruct *OpenACCLoopConstruct::CreateEmpty(const ASTContext &C,
   return Inst;
 }
 
-OpenACCLoopConstruct *OpenACCLoopConstruct::Create(
-    const ASTContext &C, OpenACCDirectiveKind ParentKind,
-    SourceLocation BeginLoc, SourceLocation DirLoc, SourceLocation EndLoc,
-    ArrayRef<const OpenACCClause *> Clauses, Stmt *Loop) {
+OpenACCLoopConstruct *
+OpenACCLoopConstruct::Create(const ASTContext &C, SourceLocation BeginLoc,
+                             SourceLocation DirLoc, SourceLocation EndLoc,
+                             ArrayRef<const OpenACCClause *> Clauses,
+                             Stmt *Loop) {
   void *Mem =
       C.Allocate(OpenACCLoopConstruct::totalSizeToAlloc<const OpenACCClause *>(
           Clauses.size()));
-  auto *Inst = new (Mem)
-      OpenACCLoopConstruct(ParentKind, BeginLoc, DirLoc, EndLoc, Clauses, Loop);
+  auto *Inst =
+      new (Mem) OpenACCLoopConstruct(BeginLoc, DirLoc, EndLoc, Clauses, Loop);
   return Inst;
 }

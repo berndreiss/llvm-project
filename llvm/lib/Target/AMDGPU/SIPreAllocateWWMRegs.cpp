@@ -11,7 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "SIPreAllocateWWMRegs.h"
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
@@ -35,7 +34,7 @@ static cl::opt<bool>
 
 namespace {
 
-class SIPreAllocateWWMRegs {
+class SIPreAllocateWWMRegs : public MachineFunctionPass {
 private:
   const SIInstrInfo *TII;
   const SIRegisterInfo *TRI;
@@ -49,49 +48,45 @@ private:
 #ifndef NDEBUG
   void printWWMInfo(const MachineInstr &MI);
 #endif
-  bool processDef(MachineOperand &MO);
-  void rewriteRegs(MachineFunction &MF);
 
-public:
-  SIPreAllocateWWMRegs(LiveIntervals *LIS, LiveRegMatrix *Matrix,
-                       VirtRegMap *VRM)
-      : LIS(LIS), Matrix(Matrix), VRM(VRM) {}
-  bool run(MachineFunction &MF);
-};
-
-class SIPreAllocateWWMRegsLegacy : public MachineFunctionPass {
 public:
   static char ID;
 
-  SIPreAllocateWWMRegsLegacy() : MachineFunctionPass(ID) {}
+  SIPreAllocateWWMRegs() : MachineFunctionPass(ID) {
+    initializeSIPreAllocateWWMRegsPass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<LiveIntervalsWrapperPass>();
-    AU.addRequired<VirtRegMapWrapperLegacy>();
-    AU.addRequired<LiveRegMatrixWrapperLegacy>();
+    AU.addRequired<VirtRegMap>();
+    AU.addRequired<LiveRegMatrix>();
     AU.setPreservesAll();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
+
+private:
+  bool processDef(MachineOperand &MO);
+  void rewriteRegs(MachineFunction &MF);
 };
 
 } // End anonymous namespace.
 
-INITIALIZE_PASS_BEGIN(SIPreAllocateWWMRegsLegacy, DEBUG_TYPE,
-                      "SI Pre-allocate WWM Registers", false, false)
+INITIALIZE_PASS_BEGIN(SIPreAllocateWWMRegs, DEBUG_TYPE,
+                "SI Pre-allocate WWM Registers", false, false)
 INITIALIZE_PASS_DEPENDENCY(LiveIntervalsWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(VirtRegMapWrapperLegacy)
-INITIALIZE_PASS_DEPENDENCY(LiveRegMatrixWrapperLegacy)
-INITIALIZE_PASS_END(SIPreAllocateWWMRegsLegacy, DEBUG_TYPE,
-                    "SI Pre-allocate WWM Registers", false, false)
+INITIALIZE_PASS_DEPENDENCY(VirtRegMap)
+INITIALIZE_PASS_DEPENDENCY(LiveRegMatrix)
+INITIALIZE_PASS_END(SIPreAllocateWWMRegs, DEBUG_TYPE,
+                "SI Pre-allocate WWM Registers", false, false)
 
-char SIPreAllocateWWMRegsLegacy::ID = 0;
+char SIPreAllocateWWMRegs::ID = 0;
 
-char &llvm::SIPreAllocateWWMRegsLegacyID = SIPreAllocateWWMRegsLegacy::ID;
+char &llvm::SIPreAllocateWWMRegsID = SIPreAllocateWWMRegs::ID;
 
-FunctionPass *llvm::createSIPreAllocateWWMRegsLegacyPass() {
-  return new SIPreAllocateWWMRegsLegacy();
+FunctionPass *llvm::createSIPreAllocateWWMRegsPass() {
+  return new SIPreAllocateWWMRegs();
 }
 
 bool SIPreAllocateWWMRegs::processDef(MachineOperand &MO) {
@@ -189,14 +184,7 @@ SIPreAllocateWWMRegs::printWWMInfo(const MachineInstr &MI) {
 
 #endif
 
-bool SIPreAllocateWWMRegsLegacy::runOnMachineFunction(MachineFunction &MF) {
-  auto *LIS = &getAnalysis<LiveIntervalsWrapperPass>().getLIS();
-  auto *Matrix = &getAnalysis<LiveRegMatrixWrapperLegacy>().getLRM();
-  auto *VRM = &getAnalysis<VirtRegMapWrapperLegacy>().getVRM();
-  return SIPreAllocateWWMRegs(LIS, Matrix, VRM).run(MF);
-}
-
-bool SIPreAllocateWWMRegs::run(MachineFunction &MF) {
+bool SIPreAllocateWWMRegs::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "SIPreAllocateWWMRegs: function " << MF.getName() << "\n");
 
   const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
@@ -204,6 +192,10 @@ bool SIPreAllocateWWMRegs::run(MachineFunction &MF) {
   TII = ST.getInstrInfo();
   TRI = &TII->getRegisterInfo();
   MRI = &MF.getRegInfo();
+
+  LIS = &getAnalysis<LiveIntervalsWrapperPass>().getLIS();
+  Matrix = &getAnalysis<LiveRegMatrix>();
+  VRM = &getAnalysis<VirtRegMap>();
 
   RegClassInfo.runOnMachineFunction(MF);
 
@@ -223,10 +215,14 @@ bool SIPreAllocateWWMRegs::run(MachineFunction &MF) {
   for (MachineBasicBlock *MBB : RPOT) {
     bool InWWM = false;
     for (MachineInstr &MI : *MBB) {
+      if (MI.getOpcode() == AMDGPU::V_SET_INACTIVE_B32 ||
+          MI.getOpcode() == AMDGPU::V_SET_INACTIVE_B64)
+        RegsAssigned |= processDef(MI.getOperand(0));
+
       if (MI.getOpcode() == AMDGPU::SI_SPILL_S32_TO_VGPR) {
-        if (PreallocateSGPRSpillVGPRs)
-          RegsAssigned |= processDef(MI.getOperand(0));
-        continue;
+        if (!PreallocateSGPRSpillVGPRs)
+          continue;
+        RegsAssigned |= processDef(MI.getOperand(0));
       }
 
       if (MI.getOpcode() == AMDGPU::ENTER_STRICT_WWM ||
@@ -258,14 +254,4 @@ bool SIPreAllocateWWMRegs::run(MachineFunction &MF) {
 
   rewriteRegs(MF);
   return true;
-}
-
-PreservedAnalyses
-SIPreAllocateWWMRegsPass::run(MachineFunction &MF,
-                              MachineFunctionAnalysisManager &MFAM) {
-  auto *LIS = &MFAM.getResult<LiveIntervalsAnalysis>(MF);
-  auto *Matrix = &MFAM.getResult<LiveRegMatrixAnalysis>(MF);
-  auto *VRM = &MFAM.getResult<VirtRegMapAnalysis>(MF);
-  SIPreAllocateWWMRegs(LIS, Matrix, VRM).run(MF);
-  return PreservedAnalyses::all();
 }

@@ -47,7 +47,6 @@ for var in [
     "ASAN_OPTIONS",
     "HWASAN_OPTIONS",
     "MSAN_OPTIONS",
-    "RTSAN_OPTIONS",
     "TSAN_OPTIONS",
     "UBSAN_OPTIONS",
 ]:
@@ -60,6 +59,6 @@ if sys.platform in ["win32", "cygwin"] and os.path.isdir(config.shlibdir):
         (config.shlibdir, config.environment["PATH"])
     )
 
-# Win32 may use %SYSTEMDRIVE% during file system shell operations, so propagate.
+# Win32 may use %SYSTEMDRIVE% during file system shell operations, so propogate.
 if sys.platform == "win32" and "SYSTEMDRIVE" in os.environ:
     config.environment["SYSTEMDRIVE"] = os.environ["SYSTEMDRIVE"]

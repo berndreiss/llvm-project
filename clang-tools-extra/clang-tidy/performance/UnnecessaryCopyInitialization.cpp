@@ -36,7 +36,7 @@ void recordFixes(const VarDecl &Var, ASTContext &Context,
   Diagnostic << utils::fixit::changeVarDeclToReference(Var, Context);
   if (!Var.getType().isLocalConstQualified()) {
     if (std::optional<FixItHint> Fix = utils::fixit::addQualifierToVarDecl(
-            Var, Context, Qualifiers::Const))
+            Var, Context, DeclSpec::TQ::TQ_const))
       Diagnostic << *Fix;
   }
 }

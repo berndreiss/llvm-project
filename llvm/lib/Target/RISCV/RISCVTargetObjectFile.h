@@ -22,7 +22,7 @@ class RISCVELFTargetObjectFile : public TargetLoweringObjectFileELF {
   MCSection *SmallROData16Section;
   MCSection *SmallROData32Section;
   MCSection *SmallBSSSection;
-  unsigned SSThreshold = 0;
+  unsigned SSThreshold = 8;
 
 public:
   unsigned getTextSectionAlignment() const override;

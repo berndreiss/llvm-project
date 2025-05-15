@@ -243,18 +243,16 @@ ObjCCategoryRecord *RecordsSlice::addObjCCategory(StringRef ClassToExtend,
 
 std::vector<ObjCIVarRecord *> ObjCContainerRecord::getObjCIVars() const {
   std::vector<ObjCIVarRecord *> Records;
-  Records.reserve(IVars.size());
-  for (const auto &Record : IVars)
-    Records.push_back(Record.second.get());
+  llvm::for_each(IVars,
+                 [&](auto &Record) { Records.push_back(Record.second.get()); });
   return Records;
 }
 
 std::vector<ObjCCategoryRecord *>
 ObjCInterfaceRecord::getObjCCategories() const {
   std::vector<ObjCCategoryRecord *> Records;
-  Records.reserve(Categories.size());
-  for (const auto &Record : Categories)
-    Records.push_back(Record.second);
+  llvm::for_each(Categories,
+                 [&](auto &Record) { Records.push_back(Record.second); });
   return Records;
 }
 

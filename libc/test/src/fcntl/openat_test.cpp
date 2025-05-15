@@ -14,7 +14,7 @@
 #include "test/UnitTest/ErrnoSetterMatcher.h"
 #include "test/UnitTest/Test.h"
 
-#include "hdr/fcntl_macros.h"
+#include <fcntl.h>
 
 TEST(LlvmLibcUniStd, OpenAndReadTest) {
   using LIBC_NAMESPACE::testing::ErrnoSetterMatcher::Succeeds;

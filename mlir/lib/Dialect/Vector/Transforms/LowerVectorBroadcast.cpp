@@ -125,8 +125,7 @@ public:
     //   ..
     //   %x = [%a,%b,%c,%d]
     VectorType resType =
-        VectorType::get(dstType.getShape().drop_front(), eltType,
-                        dstType.getScalableDims().drop_front());
+        VectorType::get(dstType.getShape().drop_front(), eltType);
     Value result = rewriter.create<arith::ConstantOp>(
         loc, dstType, rewriter.getZeroAttr(dstType));
     if (m == 0) {
@@ -137,10 +136,6 @@ public:
         result = rewriter.create<vector::InsertOp>(loc, bcst, result, d);
     } else {
       // Stetch not at start.
-      if (dstType.getScalableDims()[0]) {
-        // TODO: For scalable vectors we should emit an scf.for loop.
-        return failure();
-      }
       for (int64_t d = 0, dim = dstType.getDimSize(0); d < dim; ++d) {
         Value ext = rewriter.create<vector::ExtractOp>(loc, op.getSource(), d);
         Value bcst = rewriter.create<vector::BroadcastOp>(loc, resType, ext);

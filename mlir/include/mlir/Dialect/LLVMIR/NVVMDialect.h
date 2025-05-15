@@ -35,9 +35,7 @@ enum NVVMMemorySpace {
   /// Global memory space identifier.
   kGlobalMemorySpace = 1,
   /// Shared memory space identifier.
-  kSharedMemorySpace = 3,
-  /// Constant memory space identifier.
-  kConstantMemorySpace = 4
+  kSharedMemorySpace = 3
 };
 
 /// Return the element type and number of elements associated with a wmma matrix

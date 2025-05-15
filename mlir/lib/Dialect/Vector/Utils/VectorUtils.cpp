@@ -323,7 +323,8 @@ SmallVector<OpFoldResult> vector::getMixedSizesXfer(bool hasTensorSemantics,
 }
 
 bool vector::isLinearizableVector(VectorType type) {
-  return (type.getRank() > 1) && (type.getNumScalableDims() <= 1);
+  auto numScalableDims = llvm::count(type.getScalableDims(), true);
+  return (type.getRank() > 1) && (numScalableDims <= 1);
 }
 
 Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,

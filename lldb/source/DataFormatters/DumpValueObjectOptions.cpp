@@ -8,7 +8,7 @@
 
 #include "lldb/DataFormatters/DumpValueObjectOptions.h"
 
-#include "lldb/ValueObject/ValueObject.h"
+#include "lldb/Core/ValueObject.h"
 
 using namespace lldb;
 using namespace lldb_private;

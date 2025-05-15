@@ -35,7 +35,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __min {
+namespace __min {
+struct __fn {
   template <class _Tp,
             class _Proj                                                    = identity,
             indirect_strict_weak_order<projected<const _Tp*, _Proj>> _Comp = ranges::less>
@@ -78,9 +79,10 @@ struct __min {
     }
   }
 };
+} // namespace __min
 
 inline namespace __cpo {
-inline constexpr auto min = __min{};
+inline constexpr auto min = __min::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

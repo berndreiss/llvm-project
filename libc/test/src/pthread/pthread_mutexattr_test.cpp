@@ -6,7 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "hdr/errno_macros.h"
 #include "src/pthread/pthread_mutexattr_destroy.h"
 #include "src/pthread/pthread_mutexattr_getpshared.h"
 #include "src/pthread/pthread_mutexattr_getrobust.h"
@@ -16,6 +15,8 @@
 #include "src/pthread/pthread_mutexattr_setrobust.h"
 #include "src/pthread/pthread_mutexattr_settype.h"
 #include "test/UnitTest/Test.h"
+
+#include <errno.h>
 #include <pthread.h>
 
 TEST(LlvmLibcPThreadMutexAttrTest, InitAndDestroy) {

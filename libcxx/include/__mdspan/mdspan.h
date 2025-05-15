@@ -37,6 +37,9 @@
 #include <__type_traits/remove_reference.h>
 #include <__utility/integer_sequence.h>
 #include <array>
+#include <cinttypes>
+#include <cstddef>
+#include <limits>
 #include <span>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)

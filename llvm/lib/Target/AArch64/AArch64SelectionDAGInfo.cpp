@@ -11,8 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "AArch64TargetMachine.h"
-#include "Utils/AArch64SMEAttributes.h"
-
 using namespace llvm;
 
 #define DEBUG_TYPE "aarch64-selectiondag-info"

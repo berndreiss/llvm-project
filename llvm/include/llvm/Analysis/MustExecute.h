@@ -37,6 +37,7 @@ template <typename T> using GetterTy = std::function<T *(const Function &F)>;
 
 class BasicBlock;
 class DominatorTree;
+class Instruction;
 class Loop;
 class LoopInfo;
 class PostDominatorTree;

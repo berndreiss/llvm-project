@@ -17,6 +17,20 @@
 using namespace llvm;
 using namespace mlir;
 
+std::optional<SmallVector<Value>>
+OneToNTypeConverter::materializeTargetConversion(OpBuilder &builder,
+                                                 Location loc,
+                                                 TypeRange resultTypes,
+                                                 Value input) const {
+  for (const OneToNMaterializationCallbackFn &fn :
+       llvm::reverse(oneToNTargetMaterializations)) {
+    if (std::optional<SmallVector<Value>> result =
+            fn(builder, resultTypes, input, loc))
+      return *result;
+  }
+  return std::nullopt;
+}
+
 TypeRange OneToNTypeMapping::getConvertedTypes(unsigned originalTypeNo) const {
   TypeRange convertedTypes = getConvertedTypes();
   if (auto mapping = getInputMapping(originalTypeNo))
@@ -254,20 +268,20 @@ Block *OneToNPatternRewriter::applySignatureConversion(
 LogicalResult
 OneToNConversionPattern::matchAndRewrite(Operation *op,
                                          PatternRewriter &rewriter) const {
-  auto *typeConverter = getTypeConverter();
+  auto *typeConverter = getTypeConverter<OneToNTypeConverter>();
 
   // Construct conversion mapping for results.
   Operation::result_type_range originalResultTypes = op->getResultTypes();
   OneToNTypeMapping resultMapping(originalResultTypes);
-  if (failed(typeConverter->convertSignatureArgs(originalResultTypes,
-                                                 resultMapping)))
+  if (failed(typeConverter->computeTypeMapping(originalResultTypes,
+                                               resultMapping)))
     return failure();
 
   // Construct conversion mapping for operands.
   Operation::operand_type_range originalOperandTypes = op->getOperandTypes();
   OneToNTypeMapping operandMapping(originalOperandTypes);
-  if (failed(typeConverter->convertSignatureArgs(originalOperandTypes,
-                                                 operandMapping)))
+  if (failed(typeConverter->computeTypeMapping(originalOperandTypes,
+                                               operandMapping)))
     return failure();
 
   // Cast operands to target types.
@@ -304,7 +318,7 @@ namespace mlir {
 // inserted by this pass are annotated with a string attribute that also
 // documents which kind of the cast (source, argument, or target).
 LogicalResult
-applyPartialOneToNConversion(Operation *op, TypeConverter &typeConverter,
+applyPartialOneToNConversion(Operation *op, OneToNTypeConverter &typeConverter,
                              const FrozenRewritePatternSet &patterns) {
 #ifndef NDEBUG
   // Remember existing unrealized casts. This data structure is only used in
@@ -356,13 +370,15 @@ applyPartialOneToNConversion(Operation *op, TypeConverter &typeConverter,
       // Target materialization.
       assert(!areOperandTypesLegal && areResultsTypesLegal &&
              operands.size() == 1 && "found unexpected target cast");
-      materializedResults = typeConverter.materializeTargetConversion(
-          rewriter, castOp->getLoc(), resultTypes, operands.front());
-      if (materializedResults.empty()) {
+      std::optional<SmallVector<Value>> maybeResults =
+          typeConverter.materializeTargetConversion(
+              rewriter, castOp->getLoc(), resultTypes, operands.front());
+      if (!maybeResults) {
         emitError(castOp->getLoc())
             << "failed to create target materialization";
         return failure();
       }
+      materializedResults = maybeResults.value();
     } else {
       // Source and argument materializations.
       assert(areOperandTypesLegal && !areResultsTypesLegal &&
@@ -402,7 +418,7 @@ class FunctionOpInterfaceSignatureConversion : public OneToNConversionPattern {
 public:
   FunctionOpInterfaceSignatureConversion(StringRef functionLikeOpName,
                                          MLIRContext *ctx,
-                                         const TypeConverter &converter)
+                                         TypeConverter &converter)
       : OneToNConversionPattern(converter, functionLikeOpName, /*benefit=*/1,
                                 ctx) {}
 
@@ -411,18 +427,18 @@ public:
                                 const OneToNTypeMapping &resultMapping,
                                 ValueRange convertedOperands) const override {
     auto funcOp = cast<FunctionOpInterface>(op);
-    auto *typeConverter = getTypeConverter();
+    auto *typeConverter = getTypeConverter<OneToNTypeConverter>();
 
     // Construct mapping for function arguments.
     OneToNTypeMapping argumentMapping(funcOp.getArgumentTypes());
-    if (failed(typeConverter->convertSignatureArgs(funcOp.getArgumentTypes(),
-                                                   argumentMapping)))
+    if (failed(typeConverter->computeTypeMapping(funcOp.getArgumentTypes(),
+                                                 argumentMapping)))
       return failure();
 
     // Construct mapping for function results.
     OneToNTypeMapping funcResultMapping(funcOp.getResultTypes());
-    if (failed(typeConverter->convertSignatureArgs(funcOp.getResultTypes(),
-                                                   funcResultMapping)))
+    if (failed(typeConverter->computeTypeMapping(funcOp.getResultTypes(),
+                                                 funcResultMapping)))
       return failure();
 
     // Nothing to do if the op doesn't have any non-identity conversions for its
@@ -450,7 +466,7 @@ public:
 } // namespace
 
 void populateOneToNFunctionOpInterfaceTypeConversionPattern(
-    StringRef functionLikeOpName, const TypeConverter &converter,
+    StringRef functionLikeOpName, TypeConverter &converter,
     RewritePatternSet &patterns) {
   patterns.add<FunctionOpInterfaceSignatureConversion>(
       functionLikeOpName, patterns.getContext(), converter);

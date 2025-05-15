@@ -447,11 +447,11 @@ SymbolCache::findPublicSymbolBySectOffset(uint32_t Sect, uint32_t Offset) {
 std::vector<SymbolCache::LineTableEntry>
 SymbolCache::findLineTable(uint16_t Modi) const {
   // Check if this module has already been added.
-  auto [LineTableIter, Inserted] = LineTable.try_emplace(Modi);
-  if (!Inserted)
+  auto LineTableIter = LineTable.find(Modi);
+  if (LineTableIter != LineTable.end())
     return LineTableIter->second;
 
-  std::vector<LineTableEntry> &ModuleLineTable = LineTableIter->second;
+  std::vector<LineTableEntry> &ModuleLineTable = LineTable[Modi];
 
   // If there is an error or there are no lines, just return the
   // empty vector.

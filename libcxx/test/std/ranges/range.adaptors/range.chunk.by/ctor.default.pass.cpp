@@ -16,7 +16,6 @@
 #include <ranges>
 
 #include <cassert>
-#include <cstddef>
 #include <type_traits>
 
 constexpr int buff[] = {-2, 1, -1, 2};

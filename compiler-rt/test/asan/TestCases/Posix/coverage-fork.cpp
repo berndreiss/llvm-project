@@ -26,14 +26,11 @@ void baz() { printf("baz\n"); }
 
 int main(int argc, char **argv) {
   pid_t child_pid = fork();
-  char buf[100];
   if (child_pid == 0) {
-    snprintf(buf, sizeof(buf), "Child PID: %ld\n", (long)getpid());
-    write(2, buf, strlen(buf));
+    fprintf(stderr, "Child PID: %d\n", getpid());
     baz();
   } else {
-    snprintf(buf, sizeof(buf), "Parent PID: %ld\n", (long)getpid());
-    write(2, buf, strlen(buf));
+    fprintf(stderr, "Parent PID: %d\n", getpid());
     foo();
     bar();
 

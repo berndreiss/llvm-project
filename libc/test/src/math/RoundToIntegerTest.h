@@ -19,28 +19,28 @@
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
 #include "hdr/math_macros.h"
+#include <errno.h>
 
 namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
-using LIBC_NAMESPACE::Sign;
 
 static constexpr int ROUNDING_MODES[4] = {FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO,
                                           FE_TONEAREST};
 
-template <typename FloatType, typename IntType, bool TestModes = false>
+template <typename F, typename I, bool TestModes = false>
 class RoundToIntegerTestTemplate
     : public LIBC_NAMESPACE::testing::FEnvSafeTest {
 public:
-  typedef IntType (*RoundToIntegerFunc)(FloatType);
+  typedef I (*RoundToIntegerFunc)(F);
 
 private:
-  using FPBits = LIBC_NAMESPACE::fputil::FPBits<FloatType>;
+  using FPBits = LIBC_NAMESPACE::fputil::FPBits<F>;
   using StorageType = typename FPBits::StorageType;
 
-  const FloatType zero = FPBits::zero().get_val();
-  const FloatType neg_zero = FPBits::zero(Sign::NEG).get_val();
-  const FloatType inf = FPBits::inf().get_val();
-  const FloatType neg_inf = FPBits::inf(Sign::NEG).get_val();
-  const FloatType nan = FPBits::quiet_nan().get_val();
+  const F zero = FPBits::zero().get_val();
+  const F neg_zero = FPBits::zero(Sign::NEG).get_val();
+  const F inf = FPBits::inf().get_val();
+  const F neg_inf = FPBits::inf(Sign::NEG).get_val();
+  const F nan = FPBits::quiet_nan().get_val();
 
   static constexpr StorageType MAX_NORMAL = FPBits::max_normal().uintval();
   static constexpr StorageType MIN_NORMAL = FPBits::min_normal().uintval();
@@ -49,12 +49,11 @@ private:
   static constexpr StorageType MIN_SUBNORMAL =
       FPBits::min_subnormal().uintval();
 
-  static constexpr IntType INTEGER_MIN = IntType(1)
-                                         << (sizeof(IntType) * 8 - 1);
-  static constexpr IntType INTEGER_MAX = -(INTEGER_MIN + 1);
+  static constexpr I INTEGER_MIN = I(1) << (sizeof(I) * 8 - 1);
+  static constexpr I INTEGER_MAX = -(INTEGER_MIN + 1);
 
-  void test_one_input(RoundToIntegerFunc func, FloatType input,
-                      IntType expected, bool expectError) {
+  void test_one_input(RoundToIntegerFunc func, F input, I expected,
+                      bool expectError) {
     LIBC_NAMESPACE::libc_errno = 0;
     LIBC_NAMESPACE::fputil::clear_except(FE_ALL_EXCEPT);
 
@@ -121,35 +120,35 @@ public:
   }
 
   void do_round_numbers_test(RoundToIntegerFunc func) {
-    test_one_input(func, zero, IntType(0), false);
-    test_one_input(func, neg_zero, IntType(0), false);
-    test_one_input(func, FloatType(1.0), IntType(1), false);
-    test_one_input(func, FloatType(-1.0), IntType(-1), false);
-    test_one_input(func, FloatType(10.0), IntType(10), false);
-    test_one_input(func, FloatType(-10.0), IntType(-10), false);
-    test_one_input(func, FloatType(1234.0), IntType(1234), false);
-    test_one_input(func, FloatType(-1234.0), IntType(-1234), false);
+    test_one_input(func, zero, I(0), false);
+    test_one_input(func, neg_zero, I(0), false);
+    test_one_input(func, F(1.0), I(1), false);
+    test_one_input(func, F(-1.0), I(-1), false);
+    test_one_input(func, F(10.0), I(10), false);
+    test_one_input(func, F(-10.0), I(-10), false);
+    test_one_input(func, F(1234.0), I(1234), false);
+    test_one_input(func, F(-1234.0), I(-1234), false);
 
     // The rest of this function compares with an equivalent MPFR function
     // which rounds floating point numbers to long values. There is no MPFR
     // function to round to long long or wider integer values. So, we will
-    // the remaining tests only if the width of IntType less than equal to that
-    // of long.
-    if (sizeof(IntType) > sizeof(long))
+    // the remaining tests only if the width of I less than equal to that of
+    // long.
+    if (sizeof(I) > sizeof(long))
       return;
 
-    constexpr int EXPONENT_LIMIT = sizeof(IntType) * 8 - 1;
+    constexpr int EXPONENT_LIMIT = sizeof(I) * 8 - 1;
     constexpr int BIASED_EXPONENT_LIMIT = EXPONENT_LIMIT + FPBits::EXP_BIAS;
     if (BIASED_EXPONENT_LIMIT > FPBits::MAX_BIASED_EXPONENT)
       return;
     // We start with 1.0 so that the implicit bit for x86 long doubles
     // is set.
-    FPBits bits(FloatType(1.0));
+    FPBits bits(F(1.0));
     bits.set_biased_exponent(BIASED_EXPONENT_LIMIT);
     bits.set_sign(Sign::NEG);
     bits.set_mantissa(0);
 
-    FloatType x = bits.get_val();
+    F x = bits.get_val();
     long mpfr_result;
     bool erangeflag = mpfr::round_to_long(x, mpfr_result);
     ASSERT_FALSE(erangeflag);
@@ -168,11 +167,10 @@ public:
   }
 
   void do_fractions_test(RoundToIntegerFunc func, int mode) {
-    constexpr FloatType FRACTIONS[] = {
-        FloatType(0.5),    FloatType(-0.5),  FloatType(0.115),
-        FloatType(-0.115), FloatType(0.715), FloatType(-0.715),
+    constexpr F FRACTIONS[] = {
+        F(0.5), F(-0.5), F(0.115), F(-0.115), F(0.715), F(-0.715),
     };
-    for (FloatType x : FRACTIONS) {
+    for (F x : FRACTIONS) {
       long mpfr_long_result;
       bool erangeflag;
       if (TestModes)
@@ -181,7 +179,7 @@ public:
       else
         erangeflag = mpfr::round_to_long(x, mpfr_long_result);
       ASSERT_FALSE(erangeflag);
-      IntType mpfr_result = mpfr_long_result;
+      I mpfr_result = mpfr_long_result;
       test_one_input(func, x, mpfr_result, false);
     }
   }
@@ -203,23 +201,23 @@ public:
     // This function compares with an equivalent MPFR function which rounds
     // floating point numbers to long values. There is no MPFR function to
     // round to long long or wider integer values. So, we will peform the
-    // comparisons in this function only if the width of IntType less than equal
-    // to that of long.
-    if (sizeof(IntType) > sizeof(long))
+    // comparisons in this function only if the width of I less than equal to
+    // that of long.
+    if (sizeof(I) > sizeof(long))
       return;
 
-    constexpr int EXPONENT_LIMIT = sizeof(IntType) * 8 - 1;
+    constexpr int EXPONENT_LIMIT = sizeof(I) * 8 - 1;
     constexpr int BIASED_EXPONENT_LIMIT = EXPONENT_LIMIT + FPBits::EXP_BIAS;
     if (BIASED_EXPONENT_LIMIT > FPBits::MAX_BIASED_EXPONENT)
       return;
     // We start with 1.0 so that the implicit bit for x86 long doubles
     // is set.
-    FPBits bits(FloatType(1.0));
+    FPBits bits(F(1.0));
     bits.set_biased_exponent(BIASED_EXPONENT_LIMIT);
     bits.set_sign(Sign::NEG);
     bits.set_mantissa(FPBits::FRACTION_MASK);
 
-    FloatType x = bits.get_val();
+    F x = bits.get_val();
     if (TestModes) {
       for (int m : ROUNDING_MODES) {
         LIBC_NAMESPACE::fputil::set_round(m);
@@ -243,29 +241,29 @@ public:
         static_cast<StorageType>((MAX_SUBNORMAL - MIN_SUBNORMAL) / COUNT),
         StorageType(1));
     for (StorageType i = MIN_SUBNORMAL; i <= MAX_SUBNORMAL; i += STEP) {
-      FloatType x = FPBits(i).get_val();
-      if (x == FloatType(0.0))
+      F x = FPBits(i).get_val();
+      if (x == F(0.0))
         continue;
       // All subnormal numbers should round to zero.
       if (TestModes) {
         if (x > 0) {
           LIBC_NAMESPACE::fputil::set_round(FE_UPWARD);
-          test_one_input(func, x, IntType(1), false);
+          test_one_input(func, x, I(1), false);
           LIBC_NAMESPACE::fputil::set_round(FE_DOWNWARD);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
           LIBC_NAMESPACE::fputil::set_round(FE_TOWARDZERO);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
           LIBC_NAMESPACE::fputil::set_round(FE_TONEAREST);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
         } else {
           LIBC_NAMESPACE::fputil::set_round(FE_UPWARD);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
           LIBC_NAMESPACE::fputil::set_round(FE_DOWNWARD);
-          test_one_input(func, x, IntType(-1), false);
+          test_one_input(func, x, I(-1), false);
           LIBC_NAMESPACE::fputil::set_round(FE_TOWARDZERO);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
           LIBC_NAMESPACE::fputil::set_round(FE_TONEAREST);
-          test_one_input(func, x, IntType(0), false);
+          test_one_input(func, x, I(0), false);
         }
       } else {
         test_one_input(func, x, 0L, false);
@@ -277,9 +275,9 @@ public:
     // This function compares with an equivalent MPFR function which rounds
     // floating point numbers to long values. There is no MPFR function to
     // round to long long or wider integer values. So, we will peform the
-    // comparisons in this function only if the width of IntType less than equal
-    // to that of long.
-    if (sizeof(IntType) > sizeof(long))
+    // comparisons in this function only if the width of I less than equal to
+    // that of long.
+    if (sizeof(I) > sizeof(long))
       return;
 
     constexpr int COUNT = 1'000'001;
@@ -288,7 +286,7 @@ public:
         StorageType(1));
     for (StorageType i = MIN_NORMAL; i <= MAX_NORMAL; i += STEP) {
       FPBits xbits(i);
-      FloatType x = xbits.get_val();
+      F x = xbits.get_val();
       // In normal range on x86 platforms, the long double implicit 1 bit can be
       // zero making the numbers NaN. We will skip them.
       if (xbits.is_nan())
@@ -299,7 +297,7 @@ public:
           long mpfr_long_result;
           bool erangeflag = mpfr::round_to_long(x, to_mpfr_rounding_mode(m),
                                                 mpfr_long_result);
-          IntType mpfr_result = mpfr_long_result;
+          I mpfr_result = mpfr_long_result;
           LIBC_NAMESPACE::fputil::set_round(m);
           if (erangeflag)
             test_one_input(func, x, x > 0 ? INTEGER_MAX : INTEGER_MIN, true);
@@ -309,7 +307,7 @@ public:
       } else {
         long mpfr_long_result;
         bool erangeflag = mpfr::round_to_long(x, mpfr_long_result);
-        IntType mpfr_result = mpfr_long_result;
+        I mpfr_result = mpfr_long_result;
         if (erangeflag)
           test_one_input(func, x, x > 0 ? INTEGER_MAX : INTEGER_MIN, true);
         else
@@ -319,10 +317,9 @@ public:
   }
 };
 
-#define LIST_ROUND_TO_INTEGER_TESTS_HELPER(FloatType, IntType, func,           \
-                                           TestModes)                          \
+#define LIST_ROUND_TO_INTEGER_TESTS_HELPER(F, I, func, TestModes)              \
   using LlvmLibcRoundToIntegerTest =                                           \
-      RoundToIntegerTestTemplate<FloatType, IntType, TestModes>;               \
+      RoundToIntegerTestTemplate<F, I, TestModes>;                             \
   TEST_F(LlvmLibcRoundToIntegerTest, InfinityAndNaN) {                         \
     testInfinityAndNaN(&func);                                                 \
   }                                                                            \
@@ -338,10 +335,10 @@ public:
   }                                                                            \
   TEST_F(LlvmLibcRoundToIntegerTest, NormalRange) { testNormalRange(&func); }
 
-#define LIST_ROUND_TO_INTEGER_TESTS(FloatType, IntType, func)                  \
-  LIST_ROUND_TO_INTEGER_TESTS_HELPER(FloatType, IntType, func, false)
+#define LIST_ROUND_TO_INTEGER_TESTS(F, I, func)                                \
+  LIST_ROUND_TO_INTEGER_TESTS_HELPER(F, I, func, false)
 
-#define LIST_ROUND_TO_INTEGER_TESTS_WITH_MODES(FloatType, IntType, func)       \
-  LIST_ROUND_TO_INTEGER_TESTS_HELPER(FloatType, IntType, func, true)
+#define LIST_ROUND_TO_INTEGER_TESTS_WITH_MODES(F, I, func)                     \
+  LIST_ROUND_TO_INTEGER_TESTS_HELPER(F, I, func, true)
 
 #endif // LLVM_LIBC_TEST_SRC_MATH_ROUNDTOINTEGERTEST_H

@@ -137,21 +137,18 @@ struct CaseBlock {
   SDLoc DL;
   DebugLoc DbgLoc;
 
-  // Branch weights and predictability.
+  // Branch weights.
   BranchProbability TrueProb, FalseProb;
-  bool IsUnpredictable;
 
   // Constructor for SelectionDAG.
   CaseBlock(ISD::CondCode cc, const Value *cmplhs, const Value *cmprhs,
             const Value *cmpmiddle, MachineBasicBlock *truebb,
             MachineBasicBlock *falsebb, MachineBasicBlock *me, SDLoc dl,
             BranchProbability trueprob = BranchProbability::getUnknown(),
-            BranchProbability falseprob = BranchProbability::getUnknown(),
-            bool isunpredictable = false)
+            BranchProbability falseprob = BranchProbability::getUnknown())
       : CC(cc), CmpLHS(cmplhs), CmpMHS(cmpmiddle), CmpRHS(cmprhs),
         TrueBB(truebb), FalseBB(falsebb), ThisBB(me), DL(dl),
-        TrueProb(trueprob), FalseProb(falseprob),
-        IsUnpredictable(isunpredictable) {}
+        TrueProb(trueprob), FalseProb(falseprob) {}
 
   // Constructor for GISel.
   CaseBlock(CmpInst::Predicate pred, bool nocmp, const Value *cmplhs,
@@ -159,18 +156,16 @@ struct CaseBlock {
             MachineBasicBlock *truebb, MachineBasicBlock *falsebb,
             MachineBasicBlock *me, DebugLoc dl,
             BranchProbability trueprob = BranchProbability::getUnknown(),
-            BranchProbability falseprob = BranchProbability::getUnknown(),
-            bool isunpredictable = false)
+            BranchProbability falseprob = BranchProbability::getUnknown())
       : PredInfo({pred, nocmp}), CmpLHS(cmplhs), CmpMHS(cmpmiddle),
         CmpRHS(cmprhs), TrueBB(truebb), FalseBB(falsebb), ThisBB(me),
-        DbgLoc(dl), TrueProb(trueprob), FalseProb(falseprob),
-        IsUnpredictable(isunpredictable) {}
+        DbgLoc(dl), TrueProb(trueprob), FalseProb(falseprob) {}
 };
 
 struct JumpTable {
   /// The virtual register containing the index of the jump table entry
   /// to jump to.
-  Register Reg;
+  unsigned Reg;
   /// The JumpTableIndex for this jump table in the function.
   unsigned JTI;
   /// The MBB into which to emit the code for the indirect jump.
@@ -182,7 +177,7 @@ struct JumpTable {
   /// The debug location of the instruction this JumpTable was produced from.
   std::optional<SDLoc> SL; // For SelectionDAG
 
-  JumpTable(Register R, unsigned J, MachineBasicBlock *M, MachineBasicBlock *D,
+  JumpTable(unsigned R, unsigned J, MachineBasicBlock *M, MachineBasicBlock *D,
             std::optional<SDLoc> SL)
       : Reg(R), JTI(J), MBB(M), Default(D), SL(SL) {}
 };
@@ -218,7 +213,7 @@ struct BitTestBlock {
   APInt First;
   APInt Range;
   const Value *SValue;
-  Register Reg;
+  unsigned Reg;
   MVT RegVT;
   bool Emitted;
   bool ContiguousRange;
@@ -229,7 +224,7 @@ struct BitTestBlock {
   BranchProbability DefaultProb;
   bool FallthroughUnreachable = false;
 
-  BitTestBlock(APInt F, APInt R, const Value *SV, Register Rg, MVT RgVT, bool E,
+  BitTestBlock(APInt F, APInt R, const Value *SV, unsigned Rg, MVT RgVT, bool E,
                bool CR, MachineBasicBlock *P, MachineBasicBlock *D,
                BitTestInfo C, BranchProbability Pr)
       : First(std::move(F)), Range(std::move(R)), SValue(SV), Reg(Rg),

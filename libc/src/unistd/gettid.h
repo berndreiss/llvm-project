@@ -14,7 +14,7 @@
 
 namespace LIBC_NAMESPACE_DECL {
 
-pid_t gettid();
+pid_t gettid(void);
 
 } // namespace LIBC_NAMESPACE_DECL
 

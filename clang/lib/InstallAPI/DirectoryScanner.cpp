@@ -130,8 +130,7 @@ Error DirectoryScanner::scanHeaders(StringRef Path, Library &Lib,
   if (ParentPath.empty())
     ParentPath = Path;
   for (const StringRef Dir : SubDirectories)
-    if (Error Err = scanHeaders(Dir, Lib, Type, BasePath, ParentPath))
-      return Err;
+    return scanHeaders(Dir, Lib, Type, BasePath, ParentPath);
 
   return Error::success();
 }

@@ -185,13 +185,6 @@ public:
   // bytes, so this is used only for logging or debugging.
   virtual StringRef getDebugName() const { return ""; }
 
-  // Verify that chunk relocations are within their ranges.
-  virtual bool verifyRanges() { return true; };
-
-  // If needed, extend the chunk to ensure all relocations are within the
-  // allowed ranges. Return the additional space required for the extension.
-  virtual uint32_t extendRanges() { return 0; };
-
   static bool classof(const Chunk *c) { return c->kind() >= OtherKind; }
 
 protected:
@@ -551,25 +544,14 @@ static const uint8_t importThunkARM64[] = {
     0x00, 0x02, 0x1f, 0xd6, // br   x16
 };
 
-static const uint8_t importThunkARM64EC[] = {
-    0x0b, 0x00, 0x00, 0x90, // adrp x11, 0x0
-    0x6b, 0x01, 0x40, 0xf9, // ldr  x11, [x11]
-    0x0a, 0x00, 0x00, 0x90, // adrp x10, 0x0
-    0x4a, 0x01, 0x00, 0x91, // add  x10, x10, #0x0
-    0x00, 0x00, 0x00, 0x14  // b    0x0
-};
-
 // Windows-specific.
 // A chunk for DLL import jump table entry. In a final output, its
 // contents will be a JMP instruction to some __imp_ symbol.
 class ImportThunkChunk : public NonSectionCodeChunk {
 public:
-  ImportThunkChunk(COFFLinkerContext &ctx, Defined *s);
+  ImportThunkChunk(COFFLinkerContext &ctx, Defined *s)
+      : NonSectionCodeChunk(ImportThunkKind), impSymbol(s), ctx(ctx) {}
   static bool classof(const Chunk *c) { return c->kind() == ImportThunkKind; }
-
-  // We track the usage of the thunk symbol separately from the import file
-  // to avoid generating unnecessary thunks.
-  bool live;
 
 protected:
   Defined *impSymbol;
@@ -608,37 +590,13 @@ public:
 
 class ImportThunkChunkARM64 : public ImportThunkChunk {
 public:
-  explicit ImportThunkChunkARM64(COFFLinkerContext &ctx, Defined *s,
-                                 MachineTypes machine)
-      : ImportThunkChunk(ctx, s), machine(machine) {
+  explicit ImportThunkChunkARM64(COFFLinkerContext &ctx, Defined *s)
+      : ImportThunkChunk(ctx, s) {
     setAlignment(4);
   }
   size_t getSize() const override { return sizeof(importThunkARM64); }
   void writeTo(uint8_t *buf) const override;
-  MachineTypes getMachine() const override { return machine; }
-
-private:
-  MachineTypes machine;
-};
-
-// ARM64EC __impchk_* thunk implementation.
-// Performs an indirect call to an imported function pointer
-// using the __icall_helper_arm64ec helper function.
-class ImportThunkChunkARM64EC : public ImportThunkChunk {
-public:
-  explicit ImportThunkChunkARM64EC(ImportFile *file);
-  size_t getSize() const override;
-  MachineTypes getMachine() const override { return ARM64EC; }
-  void writeTo(uint8_t *buf) const override;
-  bool verifyRanges() override;
-  uint32_t extendRanges() override;
-
-  Defined *exitThunk;
-  Defined *sym = nullptr;
-  bool extended = false;
-
-private:
-  ImportFile *file;
+  MachineTypes getMachine() const override { return ARM64; }
 };
 
 class RangeExtensionThunkARM : public NonSectionCodeChunk {
@@ -657,22 +615,20 @@ private:
   COFFLinkerContext &ctx;
 };
 
-// A ragnge extension thunk used for both ARM64EC and ARM64 machine types.
 class RangeExtensionThunkARM64 : public NonSectionCodeChunk {
 public:
-  explicit RangeExtensionThunkARM64(MachineTypes machine, Defined *t)
-      : target(t), machine(machine) {
+  explicit RangeExtensionThunkARM64(COFFLinkerContext &ctx, Defined *t)
+      : target(t), ctx(ctx) {
     setAlignment(4);
-    assert(llvm::COFF::isAnyArm64(machine));
   }
   size_t getSize() const override;
   void writeTo(uint8_t *buf) const override;
-  MachineTypes getMachine() const override { return machine; }
+  MachineTypes getMachine() const override { return ARM64; }
 
   Defined *target;
 
 private:
-  MachineTypes machine;
+  COFFLinkerContext &ctx;
 };
 
 // Windows-specific.
@@ -755,7 +711,7 @@ public:
   Baserel(uint32_t v, uint8_t ty) : rva(v), type(ty) {}
   explicit Baserel(uint32_t v, llvm::COFF::MachineTypes machine)
       : Baserel(v, getDefaultType(machine)) {}
-  static uint8_t getDefaultType(llvm::COFF::MachineTypes machine);
+  uint8_t getDefaultType(llvm::COFF::MachineTypes machine);
 
   uint32_t rva;
   uint8_t type;
@@ -791,48 +747,6 @@ public:
 
 private:
   std::vector<ECCodeMapEntry> &map;
-};
-
-class CHPECodeRangesChunk : public NonSectionChunk {
-public:
-  CHPECodeRangesChunk(std::vector<std::pair<Chunk *, Defined *>> &exportThunks)
-      : exportThunks(exportThunks) {}
-  size_t getSize() const override;
-  void writeTo(uint8_t *buf) const override;
-
-private:
-  std::vector<std::pair<Chunk *, Defined *>> &exportThunks;
-};
-
-class CHPERedirectionChunk : public NonSectionChunk {
-public:
-  CHPERedirectionChunk(std::vector<std::pair<Chunk *, Defined *>> &exportThunks)
-      : exportThunks(exportThunks) {}
-  size_t getSize() const override;
-  void writeTo(uint8_t *buf) const override;
-
-private:
-  std::vector<std::pair<Chunk *, Defined *>> &exportThunks;
-};
-
-static const uint8_t ECExportThunkCode[] = {
-    0x48, 0x8b, 0xc4,          // movq    %rsp, %rax
-    0x48, 0x89, 0x58, 0x20,    // movq    %rbx, 0x20(%rax)
-    0x55,                      // pushq   %rbp
-    0x5d,                      // popq    %rbp
-    0xe9, 0,    0,    0,    0, // jmp *0x0
-    0xcc,                      // int3
-    0xcc                       // int3
-};
-
-class ECExportThunkChunk : public NonSectionCodeChunk {
-public:
-  explicit ECExportThunkChunk(Defined *targetSym) : target(targetSym) {}
-  size_t getSize() const override { return sizeof(ECExportThunkCode); };
-  void writeTo(uint8_t *buf) const override;
-  MachineTypes getMachine() const override { return AMD64; }
-
-  Defined *target;
 };
 
 // MinGW specific, for the "automatic import of variables from DLLs" feature.

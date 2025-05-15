@@ -89,9 +89,9 @@ else()
 
   # Check for flang
   if (NOT MSVC)
-    set(OPENMP_TEST_Fortran_COMPILER ${LLVM_RUNTIME_OUTPUT_INTDIR}/flang)
+    set(OPENMP_TEST_Fortran_COMPILER ${LLVM_RUNTIME_OUTPUT_INTDIR}/flang-new)
   else()
-    set(OPENMP_TEST_Fortran_COMPILER ${LLVM_RUNTIME_OUTPUT_INTDIR}/flang.exe)
+    set(OPENMP_TEST_Fortran_COMPILER ${LLVM_RUNTIME_OUTPUT_INTDIR}/flang-new.exe)
   endif()
 
   # Set fortran test compiler if flang is found
@@ -127,6 +127,7 @@ include(LibomptargetGetDependencies)
 # Set up testing infrastructure.
 include(OpenMPTesting)
 
+include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag(-Werror=global-constructors OFFLOAD_HAVE_WERROR_CTOR)
 
 # LLVM source tree is required at build time for libomptarget
@@ -159,8 +160,8 @@ if(NOT (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(ppc64le)|(aarch64)$"
                    "Linux x86_64, ppc64le, or aarch64 hosts")
     list(REMOVE_ITEM LIBOMPTARGET_PLUGINS_TO_BUILD "amdgpu")
   endif()
-  if("cuda" IN_LIST LIBOMPTARGET_PLUGINS_TO_BUILD)
-    message(STATUS "Not building CUDA plugin: only support CUDA in "
+  if("nvptx" IN_LIST LIBOMPTARGET_PLUGINS_TO_BUILD)
+    message(STATUS "Not building CUDA plugin: only support AMDGPU in "
                    "Linux x86_64, ppc64le, or aarch64 hosts")
     list(REMOVE_ITEM LIBOMPTARGET_PLUGINS_TO_BUILD "cuda")
   endif()
@@ -192,8 +193,8 @@ set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} powerpc64le-ibm-linux
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} powerpc64le-ibm-linux-gnu-LTO")
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} powerpc64-ibm-linux-gnu")
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} powerpc64-ibm-linux-gnu-LTO")
-set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} x86_64-unknown-linux-gnu")
-set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} x86_64-unknown-linux-gnu-LTO")
+set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} x86_64-pc-linux-gnu")
+set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} x86_64-pc-linux-gnu-LTO")
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} nvptx64-nvidia-cuda")
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} nvptx64-nvidia-cuda-LTO")
 set (LIBOMPTARGET_ALL_TARGETS "${LIBOMPTARGET_ALL_TARGETS} nvptx64-nvidia-cuda-JIT-LTO")
@@ -282,6 +283,26 @@ if(OPENMP_STANDALONE_BUILD)
       ${LLVM_LIBRARY_DIRS}
     REQUIRED
   )
+
+  find_path (
+    LIBOMP_INCLUDE_DIR
+    NAMES
+      omp.h
+    HINTS
+    ${COMPILER_RESOURCE_DIR}/include
+    ${CMAKE_INSTALL_PREFIX}/include
+  )
+
+  get_filename_component(LIBOMP_LIBRARY_DIR ${LIBOMP_STANDALONE} DIRECTORY)
+
+  set(OPENMP_TEST_FLAGS "" CACHE STRING
+    "Extra compiler flags to send to the test compiler.")
+  set(OPENMP_TEST_OPENMP_FLAGS ${OPENMP_TEST_COMPILER_OPENMP_FLAGS} CACHE STRING
+    "OpenMP compiler flag to use for testing OpenMP runtime libraries.")
+  set(LIBOMPTARGET_OPENMP_HEADER_FOLDER "${LIBOMP_INCLUDE_DIR}" CACHE STRING
+    "Path to folder containing omp.h")
+  set(LIBOMPTARGET_OPENMP_HOST_RTL_FOLDER "${LIBOMP_LIBRARY_DIR}" CACHE STRING
+    "Path to folder containing libomp.so, and libLLVMSupport.so with profiling enabled")
 endif()
 
 macro(pythonize_bool var)

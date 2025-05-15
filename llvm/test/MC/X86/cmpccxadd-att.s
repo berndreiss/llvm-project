@@ -196,197 +196,197 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xec,0x8a,0x00,0xfc,0xff,0xff]
           cmplxadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpaxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpnbexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe7,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpnbexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpaxadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpnbexadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe7,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaxadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpnbexadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpaxadd  %eax, %ecx, (%rip)
+// CHECK: cmpnbexadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x0d,0x00,0x00,0x00,0x00]
-          cmpaxadd  %eax, %ecx, (%rip)
+          cmpnbexadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpaxadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpnbexadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpaxadd  %eax, %ecx, -128(,%rbp,2)
+          cmpnbexadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpaxadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpnbexadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x89,0xfc,0x01,0x00,0x00]
-          cmpaxadd  %eax, %ecx, 508(%rcx)
+          cmpnbexadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpaxadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpnbexadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x8a,0x00,0xfe,0xff,0xff]
-          cmpaxadd  %eax, %ecx, -512(%rdx)
+          cmpnbexadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpaxadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpnbexadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe7,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaxadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpnbexadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpaxadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpnbexadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe7,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaxadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpnbexadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpaxadd  %r10, %r9, (%rip)
+// CHECK: cmpnbexadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x0d,0x00,0x00,0x00,0x00]
-          cmpaxadd  %r10, %r9, (%rip)
+          cmpnbexadd  %r10, %r9, (%rip)
 
-// CHECK: cmpaxadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpnbexadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpaxadd  %r10, %r9, -256(,%rbp,2)
+          cmpnbexadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpaxadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpnbexadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x89,0xf8,0x03,0x00,0x00]
-          cmpaxadd  %r10, %r9, 1016(%rcx)
+          cmpnbexadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpaxadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpnbexadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x8a,0x00,0xfc,0xff,0xff]
-          cmpaxadd  %r10, %r9, -1024(%rdx)
+          cmpnbexadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpaexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpnbxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe3,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpnbxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpaexadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpnbxadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe3,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaexadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpnbxadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpaexadd  %eax, %ecx, (%rip)
+// CHECK: cmpnbxadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x0d,0x00,0x00,0x00,0x00]
-          cmpaexadd  %eax, %ecx, (%rip)
+          cmpnbxadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpaexadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpnbxadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpaexadd  %eax, %ecx, -128(,%rbp,2)
+          cmpnbxadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpaexadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpnbxadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x89,0xfc,0x01,0x00,0x00]
-          cmpaexadd  %eax, %ecx, 508(%rcx)
+          cmpnbxadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpaexadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpnbxadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x8a,0x00,0xfe,0xff,0xff]
-          cmpaexadd  %eax, %ecx, -512(%rdx)
+          cmpnbxadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpaexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpnbxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe3,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpnbxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpaexadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpnbxadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe3,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaexadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpnbxadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpaexadd  %r10, %r9, (%rip)
+// CHECK: cmpnbxadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x0d,0x00,0x00,0x00,0x00]
-          cmpaexadd  %r10, %r9, (%rip)
+          cmpnbxadd  %r10, %r9, (%rip)
 
-// CHECK: cmpaexadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpnbxadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpaexadd  %r10, %r9, -256(,%rbp,2)
+          cmpnbxadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpaexadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpnbxadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x89,0xf8,0x03,0x00,0x00]
-          cmpaexadd  %r10, %r9, 1016(%rcx)
+          cmpnbxadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpaexadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpnbxadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x8a,0x00,0xfc,0xff,0xff]
-          cmpaexadd  %r10, %r9, -1024(%rdx)
+          cmpnbxadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpgxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpnlexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xef,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpnlexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpgxadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpnlexadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xef,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgxadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpnlexadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpgxadd  %eax, %ecx, (%rip)
+// CHECK: cmpnlexadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x0d,0x00,0x00,0x00,0x00]
-          cmpgxadd  %eax, %ecx, (%rip)
+          cmpnlexadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpgxadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpnlexadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpgxadd  %eax, %ecx, -128(,%rbp,2)
+          cmpnlexadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpgxadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpnlexadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x89,0xfc,0x01,0x00,0x00]
-          cmpgxadd  %eax, %ecx, 508(%rcx)
+          cmpnlexadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpgxadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpnlexadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x8a,0x00,0xfe,0xff,0xff]
-          cmpgxadd  %eax, %ecx, -512(%rdx)
+          cmpnlexadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpgxadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpnlexadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xef,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgxadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpnlexadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpgxadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpnlexadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xef,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgxadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpnlexadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpgxadd  %r10, %r9, (%rip)
+// CHECK: cmpnlexadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x0d,0x00,0x00,0x00,0x00]
-          cmpgxadd  %r10, %r9, (%rip)
+          cmpnlexadd  %r10, %r9, (%rip)
 
-// CHECK: cmpgxadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpnlexadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpgxadd  %r10, %r9, -256(,%rbp,2)
+          cmpnlexadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpgxadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpnlexadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x89,0xf8,0x03,0x00,0x00]
-          cmpgxadd  %r10, %r9, 1016(%rcx)
+          cmpnlexadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpgxadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpnlexadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x8a,0x00,0xfc,0xff,0xff]
-          cmpgxadd  %r10, %r9, -1024(%rdx)
+          cmpnlexadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpgexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpnlxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xed,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpnlxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpgexadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpnlxadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xed,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgexadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpnlxadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpgexadd  %eax, %ecx, (%rip)
+// CHECK: cmpnlxadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x0d,0x00,0x00,0x00,0x00]
-          cmpgexadd  %eax, %ecx, (%rip)
+          cmpnlxadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpgexadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpnlxadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpgexadd  %eax, %ecx, -128(,%rbp,2)
+          cmpnlxadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpgexadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpnlxadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x89,0xfc,0x01,0x00,0x00]
-          cmpgexadd  %eax, %ecx, 508(%rcx)
+          cmpnlxadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpgexadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpnlxadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x8a,0x00,0xfe,0xff,0xff]
-          cmpgexadd  %eax, %ecx, -512(%rdx)
+          cmpnlxadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpgexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpnlxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xed,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpnlxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpgexadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpnlxadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xed,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgexadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpnlxadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpgexadd  %r10, %r9, (%rip)
+// CHECK: cmpnlxadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x0d,0x00,0x00,0x00,0x00]
-          cmpgexadd  %r10, %r9, (%rip)
+          cmpnlxadd  %r10, %r9, (%rip)
 
-// CHECK: cmpgexadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpnlxadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpgexadd  %r10, %r9, -256(,%rbp,2)
+          cmpnlxadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpgexadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpnlxadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x89,0xf8,0x03,0x00,0x00]
-          cmpgexadd  %r10, %r9, 1016(%rcx)
+          cmpnlxadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpgexadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpnlxadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x8a,0x00,0xfc,0xff,0xff]
-          cmpgexadd  %r10, %r9, -1024(%rdx)
+          cmpnlxadd  %r10, %r9, -1024(%rdx)
 
 // CHECK: cmpnoxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe1,0x8c,0xf5,0x00,0x00,0x00,0x10]
@@ -532,53 +532,53 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe9,0x8a,0x00,0xfc,0xff,0xff]
           cmpnsxadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpnexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpnzxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe5,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpnexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpnzxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpnexadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpnzxadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe5,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpnexadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpnzxadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpnexadd  %eax, %ecx, (%rip)
+// CHECK: cmpnzxadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x0d,0x00,0x00,0x00,0x00]
-          cmpnexadd  %eax, %ecx, (%rip)
+          cmpnzxadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpnexadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpnzxadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpnexadd  %eax, %ecx, -128(,%rbp,2)
+          cmpnzxadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpnexadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpnzxadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x89,0xfc,0x01,0x00,0x00]
-          cmpnexadd  %eax, %ecx, 508(%rcx)
+          cmpnzxadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpnexadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpnzxadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x8a,0x00,0xfe,0xff,0xff]
-          cmpnexadd  %eax, %ecx, -512(%rdx)
+          cmpnzxadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpnexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpnzxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe5,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpnexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpnzxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpnexadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpnzxadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe5,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpnexadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpnzxadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpnexadd  %r10, %r9, (%rip)
+// CHECK: cmpnzxadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x0d,0x00,0x00,0x00,0x00]
-          cmpnexadd  %r10, %r9, (%rip)
+          cmpnzxadd  %r10, %r9, (%rip)
 
-// CHECK: cmpnexadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpnzxadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpnexadd  %r10, %r9, -256(,%rbp,2)
+          cmpnzxadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpnexadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpnzxadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x89,0xf8,0x03,0x00,0x00]
-          cmpnexadd  %r10, %r9, 1016(%rcx)
+          cmpnzxadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpnexadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpnzxadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x8a,0x00,0xfc,0xff,0xff]
-          cmpnexadd  %r10, %r9, -1024(%rdx)
+          cmpnzxadd  %r10, %r9, -1024(%rdx)
 
 // CHECK: cmpoxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe0,0x8c,0xf5,0x00,0x00,0x00,0x10]
@@ -724,53 +724,53 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe8,0x8a,0x00,0xfc,0xff,0xff]
           cmpsxadd  %r10, %r9, -1024(%rdx)
 
-// CHECK: cmpexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+// CHECK: cmpzxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe4,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpexadd  %eax, %ecx, 268435456(%rbp,%r14,8)
+          cmpzxadd  %eax, %ecx, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpexadd  %eax, %ecx, 291(%r8,%rax,4)
+// CHECK: cmpzxadd  %eax, %ecx, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe4,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpexadd  %eax, %ecx, 291(%r8,%rax,4)
+          cmpzxadd  %eax, %ecx, 291(%r8,%rax,4)
 
-// CHECK: cmpexadd  %eax, %ecx, (%rip)
+// CHECK: cmpzxadd  %eax, %ecx, (%rip)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x0d,0x00,0x00,0x00,0x00]
-          cmpexadd  %eax, %ecx, (%rip)
+          cmpzxadd  %eax, %ecx, (%rip)
 
-// CHECK: cmpexadd  %eax, %ecx, -128(,%rbp,2)
+// CHECK: cmpzxadd  %eax, %ecx, -128(,%rbp,2)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpexadd  %eax, %ecx, -128(,%rbp,2)
+          cmpzxadd  %eax, %ecx, -128(,%rbp,2)
 
-// CHECK: cmpexadd  %eax, %ecx, 508(%rcx)
+// CHECK: cmpzxadd  %eax, %ecx, 508(%rcx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x89,0xfc,0x01,0x00,0x00]
-          cmpexadd  %eax, %ecx, 508(%rcx)
+          cmpzxadd  %eax, %ecx, 508(%rcx)
 
-// CHECK: cmpexadd  %eax, %ecx, -512(%rdx)
+// CHECK: cmpzxadd  %eax, %ecx, -512(%rdx)
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x8a,0x00,0xfe,0xff,0xff]
-          cmpexadd  %eax, %ecx, -512(%rdx)
+          cmpzxadd  %eax, %ecx, -512(%rdx)
 
-// CHECK: cmpexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+// CHECK: cmpzxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe4,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpexadd  %r10, %r9, 268435456(%rbp,%r14,8)
+          cmpzxadd  %r10, %r9, 268435456(%rbp,%r14,8)
 
-// CHECK: cmpexadd  %r10, %r9, 291(%r8,%rax,4)
+// CHECK: cmpzxadd  %r10, %r9, 291(%r8,%rax,4)
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe4,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpexadd  %r10, %r9, 291(%r8,%rax,4)
+          cmpzxadd  %r10, %r9, 291(%r8,%rax,4)
 
-// CHECK: cmpexadd  %r10, %r9, (%rip)
+// CHECK: cmpzxadd  %r10, %r9, (%rip)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x0d,0x00,0x00,0x00,0x00]
-          cmpexadd  %r10, %r9, (%rip)
+          cmpzxadd  %r10, %r9, (%rip)
 
-// CHECK: cmpexadd  %r10, %r9, -256(,%rbp,2)
+// CHECK: cmpzxadd  %r10, %r9, -256(,%rbp,2)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpexadd  %r10, %r9, -256(,%rbp,2)
+          cmpzxadd  %r10, %r9, -256(,%rbp,2)
 
-// CHECK: cmpexadd  %r10, %r9, 1016(%rcx)
+// CHECK: cmpzxadd  %r10, %r9, 1016(%rcx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x89,0xf8,0x03,0x00,0x00]
-          cmpexadd  %r10, %r9, 1016(%rcx)
+          cmpzxadd  %r10, %r9, 1016(%rcx)
 
-// CHECK: cmpexadd  %r10, %r9, -1024(%rdx)
+// CHECK: cmpzxadd  %r10, %r9, -1024(%rdx)
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x8a,0x00,0xfc,0xff,0xff]
-          cmpexadd  %r10, %r9, -1024(%rdx)
+          cmpzxadd  %r10, %r9, -1024(%rdx)
 
 // CHECK: cmpbexadd  %ecx, %r8d, (%rip)
 // CHECK: encoding: [0xc4,0x62,0x71,0xe6,0x05,0x00,0x00,0x00,0x00]

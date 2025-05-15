@@ -552,18 +552,6 @@ def getAltVSXFMAOpcode : InstrMapping {
   let ValueCols = [["1"]];
 }
 
-def get64BitInstrFromSignedExt32BitInstr : InstrMapping {
-  let FilterClass = "SExt32To64";
-  // Instructions with the same opcode.
-  let RowFields = ["Inst"];
-  // Instructions with the same Interpretation64Bit value form a column.
-  let ColFields = ["Interpretation64Bit"];
-  // The key column are not the Interpretation64Bit-form instructions.
-  let KeyCol = ["0"];
-  // Value columns are the Interpretation64Bit-form instructions.
-  let ValueCols = [["1"]];
-}
-
 //===----------------------------------------------------------------------===//
 // Register File Description
 //===----------------------------------------------------------------------===//
@@ -731,8 +719,7 @@ def PPCAsmWriter : AsmWriter {
 }
 
 def PPCAsmParser : AsmParser {
-  let ShouldEmitMatchRegisterName = 1;
-  let AllowDuplicateRegisterNames = 1;
+  let ShouldEmitMatchRegisterName = 0;
 }
 
 def PPCAsmParserVariant : AsmParserVariant {

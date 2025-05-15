@@ -8,6 +8,7 @@ Output files:
   *.test.sh -- interestingness test for C-Reduce
 """
 
+from __future__ import print_function
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import re
@@ -227,7 +228,8 @@ fi
         testfile = os.path.abspath(self.testfile)
 
         # Check that the test considers the original file interesting
-        returncode = subprocess.call(testfile, stdout=subprocess.DEVNULL)
+        with open(os.devnull, "w") as devnull:
+            returncode = subprocess.call(testfile, stdout=devnull)
         if returncode:
             sys.exit("The interestingness test does not pass for the original file.")
 

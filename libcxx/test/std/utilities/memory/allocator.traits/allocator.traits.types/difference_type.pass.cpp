@@ -17,7 +17,6 @@
 // };
 
 #include <memory>
-#include <cstddef>
 #include <type_traits>
 
 #include "test_macros.h"
@@ -54,12 +53,18 @@ private:
     typedef void difference_type;
 };
 
+namespace std
+{
+
 template <>
-struct std::pointer_traits<C<char>::pointer> {
-  typedef C<char>::pointer pointer;
-  typedef char element_type;
-  typedef signed char difference_type;
+struct pointer_traits<C<char>::pointer>
+{
+    typedef C<char>::pointer pointer;
+    typedef char             element_type;
+    typedef signed char      difference_type;
 };
+
+}
 
 int main(int, char**)
 {

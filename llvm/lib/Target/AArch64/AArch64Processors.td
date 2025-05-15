@@ -847,7 +847,7 @@ def ProcessorFeatures {
                                      FeatureFullFP16, FeatureCRC, FeatureLSE, FeatureRAS, FeatureRDM,
                                      FeatureFPARMv8];
   list<SubtargetFeature> AppleA7  = [HasV8_0aOps, FeatureSHA2, FeatureAES, FeatureFPARMv8,
-                                     FeatureNEON,FeaturePerfMon];
+                                     FeatureNEON,FeaturePerfMon, FeatureAppleA7SysReg];
   list<SubtargetFeature> AppleA10 = [HasV8_0aOps, FeatureSHA2, FeatureAES, FeatureFPARMv8,
                                      FeatureNEON, FeaturePerfMon, FeatureCRC,
                                      FeatureRDM, FeaturePAN, FeatureLOR, FeatureVH];
@@ -876,7 +876,7 @@ def ProcessorFeatures {
                                      FeatureNEON, FeaturePerfMon, FeatureSHA3,
                                      FeatureFullFP16, FeatureFP16FML,
                                      FeatureComplxNum, FeatureCRC, FeatureJS,
-                                     FeatureLSE, FeaturePAuth, FeatureFPAC,
+                                     FeatureLSE, FeaturePAuth,
                                      FeatureRAS, FeatureRCPC, FeatureRDM,
                                      FeatureBF16, FeatureDotProd, FeatureMatMulInt8, FeatureSSBS];
   list<SubtargetFeature> AppleA16 = [HasV8_6aOps, FeatureSHA2, FeatureAES, FeatureFPARMv8,
@@ -884,7 +884,7 @@ def ProcessorFeatures {
                                      FeatureFullFP16, FeatureFP16FML,
                                      FeatureHCX,
                                      FeatureComplxNum, FeatureCRC, FeatureJS,
-                                     FeatureLSE, FeaturePAuth, FeatureFPAC,
+                                     FeatureLSE, FeaturePAuth,
                                      FeatureRAS, FeatureRCPC, FeatureRDM,
                                      FeatureBF16, FeatureDotProd, FeatureMatMulInt8, FeatureSSBS];
   list<SubtargetFeature> AppleA17 = [HasV8_6aOps, FeatureSHA2, FeatureAES, FeatureFPARMv8,
@@ -892,7 +892,7 @@ def ProcessorFeatures {
                                      FeatureFullFP16, FeatureFP16FML,
                                      FeatureHCX,
                                      FeatureComplxNum, FeatureCRC, FeatureJS,
-                                     FeatureLSE, FeaturePAuth, FeatureFPAC,
+                                     FeatureLSE, FeaturePAuth,
                                      FeatureRAS, FeatureRCPC, FeatureRDM,
                                      FeatureBF16, FeatureDotProd, FeatureMatMulInt8, FeatureSSBS];
   // Technically apple-m4 is v9.2a, but we can't use that here.
@@ -906,9 +906,8 @@ def ProcessorFeatures {
                                     FeatureAES, FeatureBF16,
                                     FeatureSME, FeatureSME2,
                                     FeatureSMEF64F64, FeatureSMEI16I64,
-                                    FeatureComplxNum, FeatureCRC, FeatureJS,
-                                    FeatureLSE, FeaturePAuth, FeatureFPAC,
-                                    FeatureRAS, FeatureRCPC, FeatureRDM,
+                                    FeatureComplxNum, FeatureCRC, FeatureJS, FeatureLSE,
+                                    FeaturePAuth, FeatureRAS, FeatureRCPC, FeatureRDM,
                                     FeatureDotProd, FeatureMatMulInt8];
   list<SubtargetFeature> ExynosM3 = [HasV8_0aOps, FeatureCRC, FeatureSHA2, FeatureAES,
                                      FeaturePerfMon, FeatureNEON, FeatureFPARMv8];
@@ -1107,7 +1106,7 @@ def : ProcessorModel<"cortex-a720", NeoverseN2Model, ProcessorFeatures.A720,
                      [TuneA720]>;
 def : ProcessorModel<"cortex-a720ae", NeoverseN2Model, ProcessorFeatures.A720AE,
                      [TuneA720AE]>;
-def : ProcessorModel<"cortex-a725", NeoverseN3Model, ProcessorFeatures.A725,
+def : ProcessorModel<"cortex-a725", NeoverseN2Model, ProcessorFeatures.A725,
                      [TuneA725]>;
 def : ProcessorModel<"cortex-r82", CortexA55Model, ProcessorFeatures.R82,
                      [TuneR82]>;
@@ -1132,7 +1131,7 @@ def : ProcessorModel<"neoverse-n1", NeoverseN1Model,
 def : ProcessorModel<"neoverse-n2", NeoverseN2Model,
                      ProcessorFeatures.NeoverseN2, [TuneNeoverseN2]>;
 def : ProcessorAlias<"cobalt-100", "neoverse-n2">;
-def : ProcessorModel<"neoverse-n3", NeoverseN3Model,
+def : ProcessorModel<"neoverse-n3", NeoverseN2Model,
                      ProcessorFeatures.NeoverseN3, [TuneNeoverseN3]>;
 def : ProcessorModel<"neoverse-512tvb", NeoverseV1Model,
                      ProcessorFeatures.Neoverse512TVB, [TuneNeoverse512TVB]>;

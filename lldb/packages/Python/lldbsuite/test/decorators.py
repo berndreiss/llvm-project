@@ -426,6 +426,18 @@ def add_test_categories(cat):
     return impl
 
 
+def benchmarks_test(func):
+    """Decorate the item as a benchmarks test."""
+
+    def should_skip_benchmarks_test():
+        return "benchmarks test"
+
+    # Mark this function as such to separate them from the regular tests.
+    result = skipTestIfFn(should_skip_benchmarks_test)(func)
+    result.__benchmarks_test__ = True
+    return result
+
+
 def no_debug_info_test(func):
     """Decorate the item as a test what don't use any debug info. If this annotation is specified
     then the test runner won't generate a separate test for each debug info format."""
@@ -455,8 +467,9 @@ def apple_simulator_test(platform):
         if lldbplatformutil.getHostPlatform() not in ["darwin", "macosx"]:
             return "simulator tests are run only on darwin hosts."
         try:
+            DEVNULL = open(os.devnull, "w")
             output = subprocess.check_output(
-                ["xcodebuild", "-showsdks"], stderr=subprocess.DEVNULL
+                ["xcodebuild", "-showsdks"], stderr=DEVNULL
             ).decode("utf-8")
             if re.search("%ssimulator" % platform, output):
                 return None
@@ -989,19 +1002,13 @@ def skipUnlessAArch64MTELinuxCompiler(func):
 
     def is_toolchain_with_mte():
         compiler_path = lldbplatformutil.getCompiler()
-        f = tempfile.NamedTemporaryFile(delete=False)
+        compiler = os.path.basename(compiler_path)
+        f = tempfile.NamedTemporaryFile()
         if lldbplatformutil.getPlatform() == "windows":
             return "MTE tests are not compatible with 'windows'"
 
-        # Note hostos may be Windows.
-        f.close()
-
-        cmd = f"{compiler_path} -x c -o {f.name} -"
-        if (
-            subprocess.run(cmd, shell=True, input="int main() {}".encode()).returncode
-            != 0
-        ):
-            os.remove(f.name)
+        cmd = "echo 'int main() {}' | %s -x c -o %s -" % (compiler_path, f.name)
+        if os.popen(cmd).close() is not None:
             # Cannot compile at all, don't skip the test
             # so that we report the broken compiler normally.
             return None
@@ -1016,10 +1023,12 @@ def skipUnlessAArch64MTELinuxCompiler(func):
             int main() {
                 void* ptr = __arm_mte_create_random_tag((void*)(0), 0);
             }"""
-        cmd = f"{compiler_path} -march=armv8.5-a+memtag -x c -o {f.name} -"
-        res = subprocess.run(cmd, shell=True, input=test_src.encode())
-        os.remove(f.name)
-        if res.returncode != 0:
+        cmd = "echo '%s' | %s -march=armv8.5-a+memtag -x c -o %s -" % (
+            test_src,
+            compiler_path,
+            f.name,
+        )
+        if os.popen(cmd).close() is not None:
             return "Toolchain does not support MTE"
         return None
 
@@ -1042,10 +1051,6 @@ def _get_bool_config(key, fail_value=True):
 def _get_bool_config_skip_if_decorator(key):
     have = _get_bool_config(key)
     return unittest.skipIf(not have, "requires " + key)
-
-
-def skipIfCurlSupportMissing(func):
-    return _get_bool_config_skip_if_decorator("curl")(func)
 
 
 def skipIfCursesSupportMissing(func):
@@ -1085,8 +1090,9 @@ def skipUnlessFeature(feature):
     def is_feature_enabled():
         if platform.system() == "Darwin":
             try:
+                DEVNULL = open(os.devnull, "w")
                 output = subprocess.check_output(
-                    ["/usr/sbin/sysctl", feature], stderr=subprocess.DEVNULL
+                    ["/usr/sbin/sysctl", feature], stderr=DEVNULL
                 ).decode("utf-8")
                 # If 'feature: 1' was output, then this feature is available and
                 # the test should not be skipped.

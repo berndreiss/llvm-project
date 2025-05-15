@@ -376,7 +376,7 @@ const Stmt *ExplodedNode::getNextStmtForDiagnostics() const {
 
 const Stmt *ExplodedNode::getPreviousStmtForDiagnostics() const {
   for (const ExplodedNode *N = getFirstPred(); N; N = N->getFirstPred())
-    if (const Stmt *S = N->getStmtForDiagnostics(); S && !isa<CompoundStmt>(S))
+    if (const Stmt *S = N->getStmtForDiagnostics())
       return S;
 
   return nullptr;

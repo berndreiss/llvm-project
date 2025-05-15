@@ -60,10 +60,6 @@ class PerfJITEventListener : public JITEventListener {
 public:
   PerfJITEventListener();
   ~PerfJITEventListener() {
-    // Lock a mutex to correctly synchronize with prior calls to
-    // `notifyObjectLoaded` and `notifyFreeingObject` that happened on other
-    // threads to prevent tsan from complaining.
-    std::lock_guard<sys::Mutex> Guard(Mutex);
     if (MarkerAddr)
       CloseMarker();
   }
@@ -199,9 +195,10 @@ PerfJITEventListener::PerfJITEventListener()
   // Need to open ourselves, because we need to hand the FD to OpenMarker() and
   // raw_fd_ostream doesn't expose the FD.
   using sys::fs::openFileForWrite;
-  if (auto EC = openFileForReadWrite(Filename, DumpFd, sys::fs::CD_CreateNew,
-                                     sys::fs::OF_None)) {
-    errs() << "could not open JIT dump file " << Filename << ": "
+  if (auto EC =
+          openFileForReadWrite(FilenameBuf.str(), DumpFd,
+			       sys::fs::CD_CreateNew, sys::fs::OF_None)) {
+    errs() << "could not open JIT dump file " << FilenameBuf.str() << ": "
            << EC.message() << "\n";
     return;
   }

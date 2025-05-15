@@ -40,8 +40,6 @@ class Undefined;
 class LazySymbol;
 class InputFile;
 
-const ELFSyncStream &operator<<(const ELFSyncStream &, const Symbol *);
-
 void printTraceSymbol(const Symbol &sym, StringRef name);
 
 enum {
@@ -57,6 +55,17 @@ enum {
   NEEDS_GOT_DTPREL = 1 << 7,
   NEEDS_TLSIE = 1 << 8,
 };
+
+// Some index properties of a symbol are stored separately in this auxiliary
+// struct to decrease sizeof(SymbolUnion) in the majority of cases.
+struct SymbolAux {
+  uint32_t gotIdx = -1;
+  uint32_t pltIdx = -1;
+  uint32_t tlsDescIdx = -1;
+  uint32_t tlsGdIdx = -1;
+};
+
+LLVM_LIBRARY_VISIBILITY extern SmallVector<SymbolAux, 0> symAux;
 
 // The base class for real symbol classes.
 class Symbol {
@@ -77,7 +86,7 @@ public:
 
   // The default copy constructor is deleted due to atomic flags. Define one for
   // places where no atomic is needed.
-  Symbol(const Symbol &o) { memcpy(static_cast<void *>(this), &o, sizeof(o)); }
+  Symbol(const Symbol &o) { memcpy(this, &o, sizeof(o)); }
 
 protected:
   const char *nameData;
@@ -168,8 +177,8 @@ public:
     stOther = (stOther & ~3) | visibility;
   }
 
-  bool includeInDynsym(Ctx &) const;
-  uint8_t computeBinding(Ctx &) const;
+  bool includeInDynsym() const;
+  uint8_t computeBinding() const;
   bool isGlobal() const { return binding == llvm::ELF::STB_GLOBAL; }
   bool isWeak() const { return binding == llvm::ELF::STB_WEAK; }
 
@@ -194,31 +203,29 @@ public:
     nameSize = s.size();
   }
 
-  void parseSymbolVersion(Ctx &);
+  void parseSymbolVersion();
 
   // Get the NUL-terminated version suffix ("", "@...", or "@@...").
   //
   // For @@, the name has been truncated by insert(). For @, the name has been
-  // truncated by Symbol::parseSymbolVersion(ctx).
+  // truncated by Symbol::parseSymbolVersion().
   const char *getVersionSuffix() const { return nameData + nameSize; }
 
-  uint32_t getGotIdx(Ctx &ctx) const { return ctx.symAux[auxIdx].gotIdx; }
-  uint32_t getPltIdx(Ctx &ctx) const { return ctx.symAux[auxIdx].pltIdx; }
-  uint32_t getTlsDescIdx(Ctx &ctx) const {
-    return ctx.symAux[auxIdx].tlsDescIdx;
-  }
-  uint32_t getTlsGdIdx(Ctx &ctx) const { return ctx.symAux[auxIdx].tlsGdIdx; }
+  uint32_t getGotIdx() const { return symAux[auxIdx].gotIdx; }
+  uint32_t getPltIdx() const { return symAux[auxIdx].pltIdx; }
+  uint32_t getTlsDescIdx() const { return symAux[auxIdx].tlsDescIdx; }
+  uint32_t getTlsGdIdx() const { return symAux[auxIdx].tlsGdIdx; }
 
-  bool isInGot(Ctx &ctx) const { return getGotIdx(ctx) != uint32_t(-1); }
-  bool isInPlt(Ctx &ctx) const { return getPltIdx(ctx) != uint32_t(-1); }
+  bool isInGot() const { return getGotIdx() != uint32_t(-1); }
+  bool isInPlt() const { return getPltIdx() != uint32_t(-1); }
 
-  uint64_t getVA(Ctx &, int64_t addend = 0) const;
+  uint64_t getVA(int64_t addend = 0) const;
 
-  uint64_t getGotOffset(Ctx &) const;
-  uint64_t getGotVA(Ctx &) const;
-  uint64_t getGotPltOffset(Ctx &) const;
-  uint64_t getGotPltVA(Ctx &) const;
-  uint64_t getPltVA(Ctx &) const;
+  uint64_t getGotOffset() const;
+  uint64_t getGotVA() const;
+  uint64_t getGotPltOffset() const;
+  uint64_t getGotPltVA() const;
+  uint64_t getPltVA() const;
   uint64_t getSize() const;
   OutputSection *getOutputSection() const;
 
@@ -236,21 +243,21 @@ public:
   // For example, if "this" is an undefined symbol and a new symbol is
   // a defined symbol, "this" is replaced with the new symbol.
   void mergeProperties(const Symbol &other);
-  void resolve(Ctx &, const Undefined &other);
-  void resolve(Ctx &, const CommonSymbol &other);
-  void resolve(Ctx &, const Defined &other);
-  void resolve(Ctx &, const LazySymbol &other);
-  void resolve(Ctx &, const SharedSymbol &other);
+  void resolve(const Undefined &other);
+  void resolve(const CommonSymbol &other);
+  void resolve(const Defined &other);
+  void resolve(const LazySymbol &other);
+  void resolve(const SharedSymbol &other);
 
   // If this is a lazy symbol, extract an input file and add the symbol
   // in the file to the symbol table. Calling this function on
   // non-lazy object causes a runtime error.
-  void extract(Ctx &) const;
+  void extract() const;
 
-  void checkDuplicate(Ctx &, const Defined &other) const;
+  void checkDuplicate(const Defined &other) const;
 
 private:
-  bool shouldReplace(Ctx &, const Defined &other) const;
+  bool shouldReplace(const Defined &other) const;
 
 protected:
   Symbol(Kind k, InputFile *file, StringRef name, uint8_t binding,
@@ -318,8 +325,8 @@ public:
   // entries during postScanRelocations();
   std::atomic<uint16_t> flags;
 
-  // A ctx.symAux index used to access GOT/PLT entry indexes. This is allocated
-  // in postScanRelocations().
+  // A symAux index used to access GOT/PLT entry indexes. This is allocated in
+  // postScanRelocations().
   uint32_t auxIdx;
   uint32_t dynsymIndex;
 
@@ -348,10 +355,10 @@ public:
            (NEEDS_COPY | NEEDS_GOT | NEEDS_PLT | NEEDS_TLSDESC | NEEDS_TLSGD |
             NEEDS_TLSGD_TO_IE | NEEDS_GOT_DTPREL | NEEDS_TLSIE);
   }
-  void allocateAux(Ctx &ctx) {
+  void allocateAux() {
     assert(auxIdx == 0);
-    auxIdx = ctx.symAux.size();
-    ctx.symAux.emplace_back();
+    auxIdx = symAux.size();
+    symAux.emplace_back();
   }
 
   bool isSection() const { return type == llvm::ELF::STT_SECTION; }
@@ -365,12 +372,11 @@ public:
 // Represents a symbol that is defined in the current output file.
 class Defined : public Symbol {
 public:
-  Defined(Ctx &ctx, InputFile *file, StringRef name, uint8_t binding,
-          uint8_t stOther, uint8_t type, uint64_t value, uint64_t size,
-          SectionBase *section)
+  Defined(InputFile *file, StringRef name, uint8_t binding, uint8_t stOther,
+          uint8_t type, uint64_t value, uint64_t size, SectionBase *section)
       : Symbol(DefinedKind, file, name, binding, stOther, type), value(value),
         size(size), section(section) {
-    exportDynamic = ctx.arg.exportDynamic;
+    exportDynamic = config->exportDynamic;
   }
   void overwrite(Symbol &sym) const;
 
@@ -404,11 +410,11 @@ public:
 // section. (Therefore, the later passes don't see any CommonSymbols.)
 class CommonSymbol : public Symbol {
 public:
-  CommonSymbol(Ctx &ctx, InputFile *file, StringRef name, uint8_t binding,
+  CommonSymbol(InputFile *file, StringRef name, uint8_t binding,
                uint8_t stOther, uint8_t type, uint64_t alignment, uint64_t size)
       : Symbol(CommonKind, file, name, binding, stOther, type),
         alignment(alignment), size(size) {
-    exportDynamic = ctx.arg.exportDynamic;
+    exportDynamic = config->exportDynamic;
   }
   void overwrite(Symbol &sym) const {
     Symbol::overwrite(sym, CommonKind);
@@ -506,6 +512,45 @@ public:
   static bool classof(const Symbol *s) { return s->kind() == LazyKind; }
 };
 
+// Some linker-generated symbols need to be created as
+// Defined symbols.
+struct ElfSym {
+  // __bss_start
+  static Defined *bss;
+
+  // etext and _etext
+  static Defined *etext1;
+  static Defined *etext2;
+
+  // edata and _edata
+  static Defined *edata1;
+  static Defined *edata2;
+
+  // end and _end
+  static Defined *end1;
+  static Defined *end2;
+
+  // The _GLOBAL_OFFSET_TABLE_ symbol is defined by target convention to
+  // be at some offset from the base of the .got section, usually 0 or
+  // the end of the .got.
+  static Defined *globalOffsetTable;
+
+  // _gp, _gp_disp and __gnu_local_gp symbols. Only for MIPS.
+  static Defined *mipsGp;
+  static Defined *mipsGpDisp;
+  static Defined *mipsLocalGp;
+
+  // __global_pointer$ for RISC-V.
+  static Defined *riscvGlobalPointer;
+
+  // __rel{,a}_iplt_{start,end} symbols.
+  static Defined *relaIpltStart;
+  static Defined *relaIpltEnd;
+
+  // _TLS_MODULE_BASE_ on targets that support TLSDESC.
+  static Defined *tlsModuleBase;
+};
+
 // A buffer class that is large enough to hold any Symbol-derived
 // object. We allocate memory using this class and instantiate a symbol
 // using the placement new.
@@ -528,10 +573,10 @@ template <typename... T> Defined *makeDefined(T &&...args) {
   return &s;
 }
 
-void reportDuplicate(Ctx &, const Symbol &sym, const InputFile *newFile,
+void reportDuplicate(const Symbol &sym, const InputFile *newFile,
                      InputSectionBase *errSec, uint64_t errOffset);
-void maybeWarnUnorderableSymbol(Ctx &, const Symbol *sym);
-bool computeIsPreemptible(Ctx &, const Symbol &sym);
+void maybeWarnUnorderableSymbol(const Symbol *sym);
+bool computeIsPreemptible(const Symbol &sym);
 
 } // namespace elf
 } // namespace lld

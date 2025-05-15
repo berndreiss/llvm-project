@@ -13,8 +13,6 @@
 #ifndef SANITIZER_UBSAN_INTERFACE_H
 #define SANITIZER_UBSAN_INTERFACE_H
 
-#include <sanitizer/common_interface_defs.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

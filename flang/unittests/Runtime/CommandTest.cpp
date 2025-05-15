@@ -348,12 +348,8 @@ TEST_F(ZeroArguments, ECLGeneralErrorCommandErrorSync) {
 
   RTNAME(ExecuteCommandLine)
   (*command.get(), wait, exitStat.get(), cmdStat.get(), cmdMsg.get());
-#if defined(_WIN32)
+#ifdef _WIN32
   CheckDescriptorEqInt<std::int64_t>(exitStat.get(), 1);
-  CheckDescriptorEqInt<std::int64_t>(cmdStat.get(), 6);
-  CheckDescriptorEqStr(cmdMsg.get(), "Invalid command lineXXXXXXXXX");
-#elif defined(_AIX)
-  CheckDescriptorEqInt<std::int64_t>(exitStat.get(), 2);
   CheckDescriptorEqInt<std::int64_t>(cmdStat.get(), 6);
   CheckDescriptorEqStr(cmdMsg.get(), "Invalid command lineXXXXXXXXX");
 #else

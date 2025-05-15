@@ -10,12 +10,6 @@ package(
 
 licenses(["notice"])
 
-genrule(
-    name = "generate_vcs_revision",
-    outs = ["include/VCSVersion.inc"],
-    cmd = "echo '#undef BOLT_REVISION' >> $@\n",
-)
-
 cc_binary(
     name = "llvm-bolt-heatmap",
     srcs = glob([
@@ -116,7 +110,6 @@ cc_library(
     srcs = glob([
         "lib/RuntimeLibs/*.cpp",
     ]),
-    defines = ["CMAKE_INSTALL_FULL_LIBDIR=\\\"\\\""],
     includes = ["include"],
     textual_hdrs = glob([
         "include/bolt/RuntimeLibs/*.h",
@@ -287,7 +280,6 @@ cc_library(
         "//llvm:ObjectYAML",
         "//llvm:Support",
         "//llvm:TargetParser",
-        "//llvm:config",
         "//llvm:ir_headers",
     ],
 )
@@ -297,9 +289,7 @@ cc_library(
     srcs = glob([
         "lib/Utils/*.cpp",
     ]),
-    hdrs = [
-        "include/VCSVersion.inc",
-    ] + glob([
+    hdrs = glob([
         "include/bolt/Utils/*.h",
     ]),
     includes = ["include"],

@@ -604,8 +604,7 @@ bool WasmWriter::writeWasm(raw_ostream &OS) {
     if (auto S = dyn_cast<WasmYAML::CustomSection>(Sec.get()))
       SecName = S->Name;
     if (!Checker.isValidSectionOrder(Sec->Type, SecName)) {
-      reportError("out of order section type: " +
-                  wasm::sectionTypeToString(Sec->Type));
+      reportError("out of order section type: " + Twine(Sec->Type));
       return false;
     }
     encodeULEB128(Sec->Type, OS);
@@ -648,7 +647,7 @@ bool WasmWriter::writeWasm(raw_ostream &OS) {
     StringStream.flush();
 
     unsigned HeaderSecSizeEncodingLen =
-        Sec->HeaderSecSizeEncodingLen.value_or(5);
+        Sec->HeaderSecSizeEncodingLen ? *Sec->HeaderSecSizeEncodingLen : 5;
     unsigned RequiredLen = getULEB128Size(OutString.size());
     // Wasm spec does not allow LEBs larger than 5 bytes
     assert(RequiredLen <= 5);

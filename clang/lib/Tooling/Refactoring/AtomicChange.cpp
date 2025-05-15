@@ -104,9 +104,9 @@ bool violatesColumnLimit(llvm::StringRef Code, unsigned ColumnLimit,
 }
 
 std::vector<Range>
-getRangesForFormatting(llvm::StringRef Code, unsigned ColumnLimit,
-                       ApplyChangesSpec::FormatOption Format,
-                       const clang::tooling::Replacements &Replaces) {
+getRangesForFormating(llvm::StringRef Code, unsigned ColumnLimit,
+                      ApplyChangesSpec::FormatOption Format,
+                      const clang::tooling::Replacements &Replaces) {
   // kNone suppresses formatting entirely.
   if (Format == ApplyChangesSpec::kNone)
     return {};
@@ -235,6 +235,7 @@ std::string AtomicChange::toYAMLString() {
 
   llvm::yaml::Output YAML(YamlContentStream);
   YAML << *this;
+  YamlContentStream.flush();
   return YamlContent;
 }
 
@@ -351,7 +352,7 @@ applyAtomicChanges(llvm::StringRef FilePath, llvm::StringRef Code,
 
   AllReplaces = AllReplaces.merge(HeaderSortingReplacements);
 
-  std::vector<Range> FormatRanges = getRangesForFormatting(
+  std::vector<Range> FormatRanges = getRangesForFormating(
       *ChangedCode, Spec.Style.ColumnLimit, Spec.Format, AllReplaces);
   if (!FormatRanges.empty()) {
     Replacements FormatReplacements =

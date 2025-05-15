@@ -13,7 +13,6 @@
 
 using namespace mlir;
 using namespace mlir::tblgen;
-using llvm::SourceMgr;
 
 //===----------------------------------------------------------------------===//
 // FormatToken
@@ -27,14 +26,14 @@ SMLoc FormatToken::getLoc() const {
 // FormatLexer
 //===----------------------------------------------------------------------===//
 
-FormatLexer::FormatLexer(SourceMgr &mgr, SMLoc loc)
+FormatLexer::FormatLexer(llvm::SourceMgr &mgr, SMLoc loc)
     : mgr(mgr), loc(loc),
       curBuffer(mgr.getMemoryBuffer(mgr.getMainFileID())->getBuffer()),
       curPtr(curBuffer.begin()) {}
 
 FormatToken FormatLexer::emitError(SMLoc loc, const Twine &msg) {
-  mgr.PrintMessage(loc, SourceMgr::DK_Error, msg);
-  llvm::SrcMgr.PrintMessage(this->loc, SourceMgr::DK_Note,
+  mgr.PrintMessage(loc, llvm::SourceMgr::DK_Error, msg);
+  llvm::SrcMgr.PrintMessage(this->loc, llvm::SourceMgr::DK_Note,
                             "in custom assembly format for this operation");
   return formToken(FormatToken::error, loc.getPointer());
 }
@@ -45,10 +44,10 @@ FormatToken FormatLexer::emitError(const char *loc, const Twine &msg) {
 
 FormatToken FormatLexer::emitErrorAndNote(SMLoc loc, const Twine &msg,
                                           const Twine &note) {
-  mgr.PrintMessage(loc, SourceMgr::DK_Error, msg);
-  llvm::SrcMgr.PrintMessage(this->loc, SourceMgr::DK_Note,
+  mgr.PrintMessage(loc, llvm::SourceMgr::DK_Error, msg);
+  llvm::SrcMgr.PrintMessage(this->loc, llvm::SourceMgr::DK_Note,
                             "in custom assembly format for this operation");
-  mgr.PrintMessage(loc, SourceMgr::DK_Note, note);
+  mgr.PrintMessage(loc, llvm::SourceMgr::DK_Note, note);
   return formToken(FormatToken::error, loc.getPointer());
 }
 

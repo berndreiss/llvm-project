@@ -137,7 +137,12 @@ struct ConvertLoad final : public OpConversionPattern<memref::LoadOp> {
     auto subscript = rewriter.create<emitc::SubscriptOp>(
         op.getLoc(), arrayValue, operands.getIndices());
 
-    rewriter.replaceOpWithNewOp<emitc::LoadOp>(op, resultTy, subscript);
+    auto noInit = emitc::OpaqueAttr::get(getContext(), "");
+    auto var =
+        rewriter.create<emitc::VariableOp>(op.getLoc(), resultTy, noInit);
+
+    rewriter.create<emitc::AssignOp>(op.getLoc(), var, subscript);
+    rewriter.replaceOp(op, var);
     return success();
   }
 };
@@ -167,9 +172,7 @@ void mlir::populateMemRefToEmitCTypeConversion(TypeConverter &typeConverter) {
   typeConverter.addConversion(
       [&](MemRefType memRefType) -> std::optional<Type> {
         if (!memRefType.hasStaticShape() ||
-            !memRefType.getLayout().isIdentity() || memRefType.getRank() == 0 ||
-            llvm::any_of(memRefType.getShape(),
-                         [](int64_t dim) { return dim == 0; })) {
+            !memRefType.getLayout().isIdentity() || memRefType.getRank() == 0) {
           return {};
         }
         Type convertedElementType =
@@ -181,8 +184,8 @@ void mlir::populateMemRefToEmitCTypeConversion(TypeConverter &typeConverter) {
       });
 }
 
-void mlir::populateMemRefToEmitCConversionPatterns(
-    RewritePatternSet &patterns, const TypeConverter &converter) {
+void mlir::populateMemRefToEmitCConversionPatterns(RewritePatternSet &patterns,
+                                                   TypeConverter &converter) {
   patterns.add<ConvertAlloca, ConvertGlobal, ConvertGetGlobal, ConvertLoad,
                ConvertStore>(converter, patterns.getContext());
 }

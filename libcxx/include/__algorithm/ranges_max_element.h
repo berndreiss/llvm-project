@@ -32,7 +32,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __max_element {
+namespace __max_element {
+struct __fn {
   template <forward_iterator _Ip,
             sentinel_for<_Ip> _Sp,
             class _Proj                                             = identity,
@@ -52,9 +53,10 @@ struct __max_element {
     return ranges::__min_element_impl(ranges::begin(__r), ranges::end(__r), __comp_lhs_rhs_swapped, __proj);
   }
 };
+} // namespace __max_element
 
 inline namespace __cpo {
-inline constexpr auto max_element = __max_element{};
+inline constexpr auto max_element = __max_element::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

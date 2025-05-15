@@ -48,11 +48,8 @@ ArrayRef<syntax::Token> tokens(syntax::Node *N,
 
 std::vector<TestClangConfig> clang::syntax::allTestClangConfigs() {
   std::vector<TestClangConfig> all_configs;
-  for (TestLanguage lang : {
-#define TESTLANGUAGE(lang, version, std_flag, version_index)                   \
-  Lang_##lang##version,
-#include "clang/Testing/TestLanguage.def"
-       }) {
+  for (TestLanguage lang : {Lang_C89, Lang_C99, Lang_CXX03, Lang_CXX11,
+                            Lang_CXX14, Lang_CXX17, Lang_CXX20}) {
     TestClangConfig config;
     config.Language = lang;
     config.Target = "x86_64-pc-linux-gnu";

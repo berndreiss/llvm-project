@@ -12,6 +12,7 @@
 #include "src/__support/macros/config.h"
 #include "src/__support/threads/linux/rwlock.h"
 
+#include <errno.h>
 #include <pthread.h>
 
 namespace LIBC_NAMESPACE_DECL {

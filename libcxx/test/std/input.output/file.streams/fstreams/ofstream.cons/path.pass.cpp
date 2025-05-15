@@ -16,7 +16,7 @@
 // class basic_ofstream
 
 // template<class T>
-// explicit basic_ofstream(const T& s, ios_base::openmode mode = ios_base::out); // Since C++17
+// explicit basic_ifstream(const T& s, ios_base::openmode mode = ios_base::in); // Since C++17
 // Constraints: is_same_v<T, filesystem::path> is true
 
 #include <cassert>
@@ -25,7 +25,6 @@
 #include <type_traits>
 
 #include "platform_support.h"
-#include "operator_hijacker.h"
 #include "test_macros.h"
 #include "test_iterators.h"
 
@@ -61,6 +60,7 @@ static_assert(test_non_convert_to_path<char16_t>());
 static_assert(test_non_convert_to_path<char32_t>());
 
 int main(int, char**) {
+  fs::path p = get_temp_file_name();
   {
     static_assert(!std::is_convertible<fs::path, std::ofstream>::value,
                   "ctor should be explicit");
@@ -68,7 +68,6 @@ int main(int, char**) {
                                         std::ios_base::openmode>::value,
                   "");
   }
-  fs::path p = get_temp_file_name();
   {
     std::ofstream stream(p);
     stream << 3.25;
@@ -79,38 +78,8 @@ int main(int, char**) {
     stream >> x;
     assert(x == 3.25);
   }
-  std::remove(p.string().c_str());
-
   {
-    std::basic_ofstream<char, operator_hijacker_char_traits<char> > stream(p);
-    stream << "3.25";
-  }
-  {
-    std::ifstream stream(p);
-    double x = 0;
-    stream >> x;
-    assert(x == 3.25);
-  }
-  std::remove(p.string().c_str());
-
-  {
-    std::ofstream stream(p, std::ios_base::out);
-    stream << 3.25;
-  }
-  {
-    std::ifstream stream(p);
-    double x = 0;
-    stream >> x;
-    assert(x == 3.25);
-  }
-  std::remove(p.string().c_str());
-
-  {
-    std::basic_ofstream<char, operator_hijacker_char_traits<char> > stream(p, std::ios_base::out);
-    stream << "3.25";
-  }
-  {
-    std::ifstream stream(p);
+    std::ifstream stream(p, std::ios_base::out);
     double x = 0;
     stream >> x;
     assert(x == 3.25);
@@ -128,38 +97,8 @@ int main(int, char**) {
     stream >> x;
     assert(x == 3.25);
   }
-  std::remove(p.string().c_str());
-
   {
-    std::basic_ofstream<wchar_t, operator_hijacker_char_traits<wchar_t> > stream(p);
-    stream << L"3.25";
-  }
-  {
-    std::wifstream stream(p);
-    double x = 0;
-    stream >> x;
-    assert(x == 3.25);
-  }
-  std::remove(p.string().c_str());
-
-  {
-    std::wofstream stream(p, std::ios_base::out);
-    stream << 3.25;
-  }
-  {
-    std::wifstream stream(p);
-    double x = 0;
-    stream >> x;
-    assert(x == 3.25);
-  }
-  std::remove(p.string().c_str());
-
-  {
-    std::basic_ofstream<wchar_t, operator_hijacker_char_traits<wchar_t> > stream(p, std::ios_base::out);
-    stream << L"3.25";
-  }
-  {
-    std::wifstream stream(p);
+    std::wifstream stream(p, std::ios_base::out);
     double x = 0;
     stream >> x;
     assert(x == 3.25);

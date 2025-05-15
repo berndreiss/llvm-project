@@ -2238,10 +2238,7 @@ prepareCallHierarchy(ParsedAST &AST, Position Pos, PathRef TUPath) {
   for (const NamedDecl *Decl : getDeclAtPosition(AST, *Loc, {})) {
     if (!(isa<DeclContext>(Decl) &&
           cast<DeclContext>(Decl)->isFunctionOrMethod()) &&
-        Decl->getKind() != Decl::Kind::FunctionTemplate &&
-        !(Decl->getKind() == Decl::Kind::Var &&
-          !cast<VarDecl>(Decl)->isLocalVarDecl()) &&
-        Decl->getKind() != Decl::Kind::Field)
+        Decl->getKind() != Decl::Kind::FunctionTemplate)
       continue;
     if (auto CHI = declToCallHierarchyItem(*Decl, AST.tuPath()))
       Result.emplace_back(std::move(*CHI));
@@ -2285,7 +2282,8 @@ incomingCalls(const CallHierarchyItem &Item, const SymbolIndex *Index) {
       elog("incomingCalls failed to convert location: {0}", Loc.takeError());
       return;
     }
-    CallsIn[R.Container].push_back(Loc->range);
+    auto It = CallsIn.try_emplace(R.Container, std::vector<Range>{}).first;
+    It->second.push_back(Loc->range);
 
     ContainerLookup.IDs.insert(R.Container);
   });

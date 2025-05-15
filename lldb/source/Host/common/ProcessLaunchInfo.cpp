@@ -333,10 +333,10 @@ bool ProcessLaunchInfo::ConvertArgumentsForLaunchingInShell(
       m_arguments = shell_arguments;
       return true;
     } else {
-      error = Status::FromErrorString("invalid shell path");
+      error.SetErrorString("invalid shell path");
     }
   } else {
-    error = Status::FromErrorString("not launching in shell");
+    error.SetErrorString("not launching in shell");
   }
   return false;
 }

@@ -350,8 +350,7 @@ LinkageComputer::getLVForTemplateArgumentList(ArrayRef<TemplateArgument> Args,
     case TemplateArgument::Template:
     case TemplateArgument::TemplateExpansion:
       if (TemplateDecl *Template =
-              Arg.getAsTemplateOrTemplatePattern().getAsTemplateDecl(
-                  /*IgnoreDeduced=*/true))
+              Arg.getAsTemplateOrTemplatePattern().getAsTemplateDecl())
         LV.merge(getLVForDecl(Template, computation));
       continue;
 
@@ -584,6 +583,12 @@ static bool isSingleLineLanguageLinkage(const Decl &D) {
   return false;
 }
 
+static bool isDeclaredInModuleInterfaceOrPartition(const NamedDecl *D) {
+  if (auto *M = D->getOwningModule())
+    return M->isInterfaceOrPartition();
+  return false;
+}
+
 static LinkageInfo getExternalLinkageFor(const NamedDecl *D) {
   return LinkageInfo::external();
 }
@@ -637,13 +642,7 @@ LinkageComputer::getLVForNamespaceScopeDecl(const NamedDecl *D,
     // (There is no equivalent in C99.)
     if (Context.getLangOpts().CPlusPlus && Var->getType().isConstQualified() &&
         !Var->getType().isVolatileQualified() && !Var->isInline() &&
-        ![Var]() {
-          // Check if it is module purview except private module fragment
-          // and implementation unit.
-          if (auto *M = Var->getOwningModule())
-            return M->isInterfaceOrPartition() || M->isImplicitGlobalModule();
-          return false;
-        }() &&
+        !isDeclaredInModuleInterfaceOrPartition(Var) &&
         !isa<VarTemplateSpecializationDecl>(Var) &&
         !Var->getDescribedVarTemplate()) {
       const VarDecl *PrevVar = Var->getPreviousDecl();
@@ -1737,16 +1736,9 @@ void NamedDecl::printNestedNameSpecifier(raw_ostream &OS,
       continue;
 
     // Suppress inline namespace if it doesn't make the result ambiguous.
-    if (Ctx->isInlineNamespace() && NameInScope) {
-      if (P.SuppressInlineNamespace ==
-              PrintingPolicy::SuppressInlineNamespaceMode::All ||
-          (P.SuppressInlineNamespace ==
-               PrintingPolicy::SuppressInlineNamespaceMode::Redundant &&
-           cast<NamespaceDecl>(Ctx)->isRedundantInlineQualifierFor(
-               NameInScope))) {
-        continue;
-      }
-    }
+    if (P.SuppressInlineNamespace && Ctx->isInlineNamespace() && NameInScope &&
+        cast<NamespaceDecl>(Ctx)->isRedundantInlineQualifierFor(NameInScope))
+      continue;
 
     // Skip non-named contexts such as linkage specifications and ExportDecls.
     const NamedDecl *ND = dyn_cast<NamedDecl>(Ctx);
@@ -2811,17 +2803,9 @@ bool VarDecl::isKnownToBeDefined() const {
 }
 
 bool VarDecl::isNoDestroy(const ASTContext &Ctx) const {
-  if (!hasGlobalStorage())
-    return false;
-  if (hasAttr<NoDestroyAttr>())
-    return true;
-  if (hasAttr<AlwaysDestroyAttr>())
-    return false;
-
-  using RSDKind = LangOptions::RegisterStaticDestructorsKind;
-  RSDKind K = Ctx.getLangOpts().getRegisterStaticDestructors();
-  return K == RSDKind::None ||
-         (K == RSDKind::ThreadLocal && getTLSKind() == TLS_None);
+  return hasGlobalStorage() && (hasAttr<NoDestroyAttr>() ||
+                                (!Ctx.getLangOpts().RegisterStaticDestructors &&
+                                 !hasAttr<AlwaysDestroyAttr>()));
 }
 
 QualType::DestructionKind
@@ -3312,10 +3296,11 @@ bool FunctionDecl::isImmediateFunction() const {
 }
 
 bool FunctionDecl::isMain() const {
-  return isNamed(this, "main") && !getLangOpts().Freestanding &&
-         !getLangOpts().HLSL &&
-         (getDeclContext()->getRedeclContext()->isTranslationUnit() ||
-          isExternC());
+  const TranslationUnitDecl *tunit =
+    dyn_cast<TranslationUnitDecl>(getDeclContext()->getRedeclContext());
+  return tunit &&
+         !tunit->getASTContext().getLangOpts().Freestanding &&
+         isNamed(this, "main");
 }
 
 bool FunctionDecl::isMSVCRTEntryPoint() const {
@@ -3654,10 +3639,6 @@ unsigned FunctionDecl::getBuiltinID(bool ConsiderWrapperFunctions) const {
   // and is not the C library function.
   if (!ConsiderWrapperFunctions && hasAttr<OverloadableAttr>() &&
       (!hasAttr<ArmBuiltinAliasAttr>() && !hasAttr<BuiltinAliasAttr>()))
-    return 0;
-
-  if (getASTContext().getLangOpts().CPlusPlus &&
-      BuiltinID == Builtin::BI__builtin_counted_by_ref)
     return 0;
 
   const ASTContext &Context = getASTContext();
@@ -4703,19 +4684,6 @@ void FieldDecl::printName(raw_ostream &OS, const PrintingPolicy &Policy) const {
   DeclaratorDecl::printName(OS, Policy);
 }
 
-const FieldDecl *FieldDecl::findCountedByField() const {
-  const auto *CAT = getType()->getAs<CountAttributedType>();
-  if (!CAT)
-    return nullptr;
-
-  const auto *CountDRE = cast<DeclRefExpr>(CAT->getCountExpr());
-  const auto *CountDecl = CountDRE->getDecl();
-  if (const auto *IFD = dyn_cast<IndirectFieldDecl>(CountDecl))
-    CountDecl = IFD->getAnonField();
-
-  return dyn_cast<FieldDecl>(CountDecl);
-}
-
 //===----------------------------------------------------------------------===//
 // TagDecl Implementation
 //===----------------------------------------------------------------------===//
@@ -5510,8 +5478,9 @@ IndirectFieldDecl::Create(ASTContext &C, DeclContext *DC, SourceLocation L,
 
 IndirectFieldDecl *IndirectFieldDecl::CreateDeserialized(ASTContext &C,
                                                          GlobalDeclID ID) {
-  return new (C, ID) IndirectFieldDecl(C, nullptr, SourceLocation(),
-                                       DeclarationName(), QualType(), {});
+  return new (C, ID)
+      IndirectFieldDecl(C, nullptr, SourceLocation(), DeclarationName(),
+                        QualType(), std::nullopt);
 }
 
 SourceRange EnumConstantDecl::getSourceRange() const {
@@ -5751,7 +5720,7 @@ ImportDecl *ImportDecl::CreateDeserialized(ASTContext &C, GlobalDeclID ID,
 
 ArrayRef<SourceLocation> ImportDecl::getIdentifierLocs() const {
   if (!isImportComplete())
-    return {};
+    return std::nullopt;
 
   const auto *StoredLocs = getTrailingObjects<SourceLocation>();
   return llvm::ArrayRef(StoredLocs,

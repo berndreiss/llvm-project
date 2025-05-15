@@ -37,6 +37,7 @@ class AnyMemTransferInst;
 class AnyMemIntrinsic;
 class TargetLibraryInfo;
 class VAArgInst;
+class Value;
 
 // Represents the size of a MemoryLocation. Logically, it's an
 // std::optional<uint63_t> that also carries a bit to represent whether the

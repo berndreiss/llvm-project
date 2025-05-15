@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/TableGen/Error.h"
 #include "llvm/TableGen/Record.h"
 #include "llvm/TableGen/TableGenBackend.h"
+#include <vector>
 using namespace llvm;
 
 #define DEBUG_TYPE "attr-enum"
@@ -17,7 +17,7 @@ namespace {
 
 class Attributes {
 public:
-  Attributes(const RecordKeeper &R) : Records(R) {}
+  Attributes(RecordKeeper &R) : Records(R) {}
   void run(raw_ostream &OS);
 
 private:
@@ -25,7 +25,7 @@ private:
   void emitFnAttrCompatCheck(raw_ostream &OS, bool IsStringAttr);
   void emitAttributeProperties(raw_ostream &OF);
 
-  const RecordKeeper &Records;
+  RecordKeeper &Records;
 };
 
 } // End anonymous namespace.
@@ -85,7 +85,10 @@ void Attributes::emitFnAttrCompatCheck(raw_ostream &OS, bool IsStringAttr) {
      << "                                        const Function &Callee) {\n";
   OS << "  bool Ret = true;\n\n";
 
-  for (const Record *Rule : Records.getAllDerivedDefinitions("CompatRule")) {
+  std::vector<Record *> CompatRules =
+      Records.getAllDerivedDefinitions("CompatRule");
+
+  for (auto *Rule : CompatRules) {
     StringRef FuncName = Rule->getValueAsString("CompatFunc");
     OS << "  Ret &= " << FuncName << "(Caller, Callee";
     StringRef AttrName = Rule->getValueAsString("AttrName");
@@ -98,10 +101,12 @@ void Attributes::emitFnAttrCompatCheck(raw_ostream &OS, bool IsStringAttr) {
   OS << "  return Ret;\n";
   OS << "}\n\n";
 
+  std::vector<Record *> MergeRules =
+      Records.getAllDerivedDefinitions("MergeRule");
   OS << "static inline void mergeFnAttrs(Function &Caller,\n"
      << "                                const Function &Callee) {\n";
 
-  for (const Record *Rule : Records.getAllDerivedDefinitions("MergeRule")) {
+  for (auto *Rule : MergeRules) {
     StringRef FuncName = Rule->getValueAsString("MergeFunc");
     OS << "  " << FuncName << "(Caller, Callee);\n";
   }
@@ -117,20 +122,10 @@ void Attributes::emitAttributeProperties(raw_ostream &OS) {
   OS << "static const uint8_t AttrPropTable[] = {\n";
   for (StringRef KindName : {"EnumAttr", "TypeAttr", "IntAttr",
                              "ConstantRangeAttr", "ConstantRangeListAttr"}) {
-    bool AllowIntersectAnd = KindName == "EnumAttr";
-    bool AllowIntersectMin = KindName == "IntAttr";
     for (auto *A : Records.getAllDerivedDefinitions(KindName)) {
       OS << "0";
-      for (const Init *P : *A->getValueAsListInit("Properties")) {
-        if (!AllowIntersectAnd &&
-            cast<DefInit>(P)->getDef()->getName() == "IntersectAnd")
-          PrintFatalError("'IntersectAnd' only compatible with 'EnumAttr'");
-        if (!AllowIntersectMin &&
-            cast<DefInit>(P)->getDef()->getName() == "IntersectMin")
-          PrintFatalError("'IntersectMin' only compatible with 'IntAttr'");
-
+      for (Init *P : *A->getValueAsListInit("Properties"))
         OS << " | AttributeProperty::" << cast<DefInit>(P)->getDef()->getName();
-      }
       OS << ",\n";
     }
   }

@@ -18,15 +18,6 @@
 
 using namespace llvm;
 
-KnownBits KnownBits::flipSignBit(const KnownBits &Val) {
-  unsigned SignBitPosition = Val.getBitWidth() - 1;
-  APInt Zero = Val.Zero;
-  APInt One = Val.One;
-  Zero.setBitVal(SignBitPosition, Val.One[SignBitPosition]);
-  One.setBitVal(SignBitPosition, Val.Zero[SignBitPosition]);
-  return KnownBits(Zero, One);
-}
-
 static KnownBits computeForAddCarry(const KnownBits &LHS, const KnownBits &RHS,
                                     bool CarryZero, bool CarryOne) {
 
@@ -209,7 +200,16 @@ KnownBits KnownBits::umin(const KnownBits &LHS, const KnownBits &RHS) {
 }
 
 KnownBits KnownBits::smax(const KnownBits &LHS, const KnownBits &RHS) {
-  return flipSignBit(umax(flipSignBit(LHS), flipSignBit(RHS)));
+  // Flip the range of values: [-0x80000000, 0x7FFFFFFF] <-> [0, 0xFFFFFFFF]
+  auto Flip = [](const KnownBits &Val) {
+    unsigned SignBitPosition = Val.getBitWidth() - 1;
+    APInt Zero = Val.Zero;
+    APInt One = Val.One;
+    Zero.setBitVal(SignBitPosition, Val.One[SignBitPosition]);
+    One.setBitVal(SignBitPosition, Val.Zero[SignBitPosition]);
+    return KnownBits(Zero, One);
+  };
+  return Flip(umax(Flip(LHS), Flip(RHS)));
 }
 
 KnownBits KnownBits::smin(const KnownBits &LHS, const KnownBits &RHS) {
@@ -610,82 +610,28 @@ static KnownBits computeForSatAddSub(bool Add, bool Signed,
                                      const KnownBits &RHS) {
   // We don't see NSW even for sadd/ssub as we want to check if the result has
   // signed overflow.
-  unsigned BitWidth = LHS.getBitWidth();
-
+  KnownBits Res =
+      KnownBits::computeForAddSub(Add, /*NSW=*/false, /*NUW=*/false, LHS, RHS);
+  unsigned BitWidth = Res.getBitWidth();
+  auto SignBitKnown = [&](const KnownBits &K) {
+    return K.Zero[BitWidth - 1] || K.One[BitWidth - 1];
+  };
   std::optional<bool> Overflow;
-  // Even if we can't entirely rule out overflow, we may be able to rule out
-  // overflow in one direction. This allows us to potentially keep some of the
-  // add/sub bits. I.e if we can't overflow in the positive direction we won't
-  // clamp to INT_MAX so we can keep low 0s from the add/sub result.
-  bool MayNegClamp = true;
-  bool MayPosClamp = true;
+
   if (Signed) {
-    // Easy cases we can rule out any overflow.
-    if (Add && ((LHS.isNegative() && RHS.isNonNegative()) ||
-                (LHS.isNonNegative() && RHS.isNegative())))
-      Overflow = false;
-    else if (!Add && (((LHS.isNegative() && RHS.isNegative()) ||
-                       (LHS.isNonNegative() && RHS.isNonNegative()))))
-      Overflow = false;
-    else {
-      // Check if we may overflow. If we can't rule out overflow then check if
-      // we can rule out a direction at least.
-      KnownBits UnsignedLHS = LHS;
-      KnownBits UnsignedRHS = RHS;
-      // Get version of LHS/RHS with clearer signbit. This allows us to detect
-      // how the addition/subtraction might overflow into the signbit. Then
-      // using the actual known signbits of LHS/RHS, we can figure out which
-      // overflows are/aren't possible.
-      UnsignedLHS.One.clearSignBit();
-      UnsignedLHS.Zero.setSignBit();
-      UnsignedRHS.One.clearSignBit();
-      UnsignedRHS.Zero.setSignBit();
-      KnownBits Res =
-          KnownBits::computeForAddSub(Add, /*NSW=*/false,
-                                      /*NUW=*/false, UnsignedLHS, UnsignedRHS);
+    // If we can actually detect overflow do so. Otherwise leave Overflow as
+    // nullopt (we assume it may have happened).
+    if (SignBitKnown(LHS) && SignBitKnown(RHS) && SignBitKnown(Res)) {
       if (Add) {
-        if (Res.isNegative()) {
-          // Only overflow scenario is Pos + Pos.
-          MayNegClamp = false;
-          // Pos + Pos will overflow with extra signbit.
-          if (LHS.isNonNegative() && RHS.isNonNegative())
-            Overflow = true;
-        } else if (Res.isNonNegative()) {
-          // Only overflow scenario is Neg + Neg
-          MayPosClamp = false;
-          // Neg + Neg will overflow without extra signbit.
-          if (LHS.isNegative() && RHS.isNegative())
-            Overflow = true;
-        }
-        // We will never clamp to the opposite sign of N-bit result.
-        if (LHS.isNegative() || RHS.isNegative())
-          MayPosClamp = false;
-        if (LHS.isNonNegative() || RHS.isNonNegative())
-          MayNegClamp = false;
+        // sadd.sat
+        Overflow = (LHS.isNonNegative() == RHS.isNonNegative() &&
+                    Res.isNonNegative() != LHS.isNonNegative());
       } else {
-        if (Res.isNegative()) {
-          // Only overflow scenario is Neg - Pos.
-          MayPosClamp = false;
-          // Neg - Pos will overflow with extra signbit.
-          if (LHS.isNegative() && RHS.isNonNegative())
-            Overflow = true;
-        } else if (Res.isNonNegative()) {
-          // Only overflow scenario is Pos - Neg.
-          MayNegClamp = false;
-          // Pos - Neg will overflow without extra signbit.
-          if (LHS.isNonNegative() && RHS.isNegative())
-            Overflow = true;
-        }
-        // We will never clamp to the opposite sign of N-bit result.
-        if (LHS.isNegative() || RHS.isNonNegative())
-          MayPosClamp = false;
-        if (LHS.isNonNegative() || RHS.isNegative())
-          MayNegClamp = false;
+        // ssub.sat
+        Overflow = (LHS.isNonNegative() != RHS.isNonNegative() &&
+                    Res.isNonNegative() != LHS.isNonNegative());
       }
     }
-    // If we have ruled out all clamping, we will never overflow.
-    if (!MayNegClamp && !MayPosClamp)
-      Overflow = false;
   } else if (Add) {
     // uadd.sat
     bool Of;
@@ -710,8 +656,52 @@ static KnownBits computeForSatAddSub(bool Add, bool Signed,
     }
   }
 
-  KnownBits Res = KnownBits::computeForAddSub(Add, /*NSW=*/Signed,
-                                              /*NUW=*/!Signed, LHS, RHS);
+  if (Signed) {
+    if (Add) {
+      if (LHS.isNonNegative() && RHS.isNonNegative()) {
+        // Pos + Pos -> Pos
+        Res.One.clearSignBit();
+        Res.Zero.setSignBit();
+      }
+      if (LHS.isNegative() && RHS.isNegative()) {
+        // Neg + Neg -> Neg
+        Res.One.setSignBit();
+        Res.Zero.clearSignBit();
+      }
+    } else {
+      if (LHS.isNegative() && RHS.isNonNegative()) {
+        // Neg - Pos -> Neg
+        Res.One.setSignBit();
+        Res.Zero.clearSignBit();
+      } else if (LHS.isNonNegative() && RHS.isNegative()) {
+        // Pos - Neg -> Pos
+        Res.One.clearSignBit();
+        Res.Zero.setSignBit();
+      }
+    }
+  } else {
+    // Add: Leading ones of either operand are preserved.
+    // Sub: Leading zeros of LHS and leading ones of RHS are preserved
+    // as leading zeros in the result.
+    unsigned LeadingKnown;
+    if (Add)
+      LeadingKnown =
+          std::max(LHS.countMinLeadingOnes(), RHS.countMinLeadingOnes());
+    else
+      LeadingKnown =
+          std::max(LHS.countMinLeadingZeros(), RHS.countMinLeadingOnes());
+
+    // We select between the operation result and all-ones/zero
+    // respectively, so we can preserve known ones/zeros.
+    APInt Mask = APInt::getHighBitsSet(BitWidth, LeadingKnown);
+    if (Add) {
+      Res.One |= Mask;
+      Res.Zero &= ~Mask;
+    } else {
+      Res.Zero |= Mask;
+      Res.One &= ~Mask;
+    }
+  }
 
   if (Overflow) {
     // We know whether or not we overflowed.
@@ -724,7 +714,7 @@ static KnownBits computeForSatAddSub(bool Add, bool Signed,
     APInt C;
     if (Signed) {
       // sadd.sat / ssub.sat
-      assert(!LHS.isSignUnknown() &&
+      assert(SignBitKnown(LHS) &&
              "We somehow know overflow without knowing input sign");
       C = LHS.isNegative() ? APInt::getSignedMinValue(BitWidth)
                            : APInt::getSignedMaxValue(BitWidth);
@@ -745,10 +735,8 @@ static KnownBits computeForSatAddSub(bool Add, bool Signed,
   if (Signed) {
     // sadd.sat/ssub.sat
     // We can keep our information about the sign bits.
-    if (MayPosClamp)
-      Res.Zero.clearLowBits(BitWidth - 1);
-    if (MayNegClamp)
-      Res.One.clearLowBits(BitWidth - 1);
+    Res.Zero.clearLowBits(BitWidth - 1);
+    Res.One.clearLowBits(BitWidth - 1);
   } else if (Add) {
     // uadd.sat
     // We need to clear all the known zeros as we can only use the leading ones.
@@ -775,10 +763,11 @@ KnownBits KnownBits::usub_sat(const KnownBits &LHS, const KnownBits &RHS) {
   return computeForSatAddSub(/*Add*/ false, /*Signed*/ false, LHS, RHS);
 }
 
-static KnownBits avgComputeU(KnownBits LHS, KnownBits RHS, bool IsCeil) {
+static KnownBits avgCompute(KnownBits LHS, KnownBits RHS, bool IsCeil,
+                            bool IsSigned) {
   unsigned BitWidth = LHS.getBitWidth();
-  LHS = LHS.zext(BitWidth + 1);
-  RHS = RHS.zext(BitWidth + 1);
+  LHS = IsSigned ? LHS.sext(BitWidth + 1) : LHS.zext(BitWidth + 1);
+  RHS = IsSigned ? RHS.sext(BitWidth + 1) : RHS.zext(BitWidth + 1);
   LHS =
       computeForAddCarry(LHS, RHS, /*CarryZero*/ !IsCeil, /*CarryOne*/ IsCeil);
   LHS = LHS.extractBits(BitWidth, 1);
@@ -786,19 +775,23 @@ static KnownBits avgComputeU(KnownBits LHS, KnownBits RHS, bool IsCeil) {
 }
 
 KnownBits KnownBits::avgFloorS(const KnownBits &LHS, const KnownBits &RHS) {
-  return flipSignBit(avgFloorU(flipSignBit(LHS), flipSignBit(RHS)));
+  return avgCompute(LHS, RHS, /* IsCeil */ false,
+                    /* IsSigned */ true);
 }
 
 KnownBits KnownBits::avgFloorU(const KnownBits &LHS, const KnownBits &RHS) {
-  return avgComputeU(LHS, RHS, /*IsCeil=*/false);
+  return avgCompute(LHS, RHS, /* IsCeil */ false,
+                    /* IsSigned */ false);
 }
 
 KnownBits KnownBits::avgCeilS(const KnownBits &LHS, const KnownBits &RHS) {
-  return flipSignBit(avgCeilU(flipSignBit(LHS), flipSignBit(RHS)));
+  return avgCompute(LHS, RHS, /* IsCeil */ true,
+                    /* IsSigned */ true);
 }
 
 KnownBits KnownBits::avgCeilU(const KnownBits &LHS, const KnownBits &RHS) {
-  return avgComputeU(LHS, RHS, /*IsCeil=*/true);
+  return avgCompute(LHS, RHS, /* IsCeil */ true,
+                    /* IsSigned */ false);
 }
 
 KnownBits KnownBits::mul(const KnownBits &LHS, const KnownBits &RHS,
@@ -1082,13 +1075,9 @@ KnownBits KnownBits::srem(const KnownBits &LHS, const KnownBits &RHS) {
 
   // The sign bit is the LHS's sign bit, except when the result of the
   // remainder is zero. The magnitude of the result should be less than or
-  // equal to the magnitude of either operand.
-  if (LHS.isNegative() && Known.isNonZero())
-    Known.One.setHighBits(
-        std::max(LHS.countMinLeadingOnes(), RHS.countMinSignBits()));
-  else if (LHS.isNonNegative())
-    Known.Zero.setHighBits(
-        std::max(LHS.countMinLeadingZeros(), RHS.countMinSignBits()));
+  // equal to the magnitude of the LHS. Therefore any leading zeros that exist
+  // in the left hand side must also exist in the result.
+  Known.Zero.setHighBits(LHS.countMinLeadingZeros());
   return Known;
 }
 

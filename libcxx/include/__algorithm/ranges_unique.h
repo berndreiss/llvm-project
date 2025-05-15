@@ -40,7 +40,9 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __unique {
+namespace __unique {
+
+struct __fn {
   template <permutable _Iter,
             sentinel_for<_Iter> _Sent,
             class _Proj                                                  = identity,
@@ -64,8 +66,10 @@ struct __unique {
   }
 };
 
+} // namespace __unique
+
 inline namespace __cpo {
-inline constexpr auto unique = __unique{};
+inline constexpr auto unique = __unique::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

@@ -29,8 +29,7 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
         os << "  ";
         block.printAsOperand(os);
         os << " = ";
-        auto *live = solver.lookupState<Executable>(
-            solver.getProgramPointBefore(&block));
+        auto *live = solver.lookupState<Executable>(&block);
         if (live)
           os << *live;
         else
@@ -41,7 +40,7 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
           pred->printAsOperand(os);
           os << " = ";
           auto *live = solver.lookupState<Executable>(
-              solver.getLatticeAnchor<CFGEdge>(pred, &block));
+              solver.getProgramPoint<CFGEdge>(pred, &block));
           if (live)
             os << *live;
           else
@@ -50,14 +49,12 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
         }
       }
       if (!region.empty()) {
-        auto *preds = solver.lookupState<PredecessorState>(
-            solver.getProgramPointBefore(&region.front()));
+        auto *preds = solver.lookupState<PredecessorState>(&region.front());
         if (preds)
           os << "region_preds: " << *preds << "\n";
       }
     }
-    auto *preds =
-        solver.lookupState<PredecessorState>(solver.getProgramPointAfter(op));
+    auto *preds = solver.lookupState<PredecessorState>(op);
     if (preds)
       os << "op_preds: " << *preds << "\n";
   });
@@ -71,15 +68,15 @@ struct ConstantAnalysis : public DataFlowAnalysis {
 
   LogicalResult initialize(Operation *top) override {
     WalkResult result = top->walk([&](Operation *op) {
-      if (failed(visit(getProgramPointAfter(op))))
+      if (failed(visit(op)))
         return WalkResult::interrupt();
       return WalkResult::advance();
     });
     return success(!result.wasInterrupted());
   }
 
-  LogicalResult visit(ProgramPoint *point) override {
-    Operation *op = point->getPrevOp();
+  LogicalResult visit(ProgramPoint point) override {
+    Operation *op = point.get<Operation *>();
     Attribute value;
     if (matchPattern(op, m_Constant(&value))) {
       auto *constant = getOrCreate<Lattice<ConstantValue>>(op->getResult(0));

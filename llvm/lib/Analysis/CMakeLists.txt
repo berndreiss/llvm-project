@@ -46,7 +46,6 @@ add_llvm_component_library(LLVMAnalysis
   CostModel.cpp
   CodeMetrics.cpp
   ConstantFolding.cpp
-  CtxProfAnalysis.cpp
   CycleAnalysis.cpp
   DDG.cpp
   DDGPrinter.cpp
@@ -60,8 +59,6 @@ add_llvm_component_library(LLVMAnalysis
   DomPrinter.cpp
   DomTreeUpdater.cpp
   DominanceFrontier.cpp
-  DXILResource.cpp
-  DXILMetadataAnalysis.cpp
   FunctionPropertiesAnalysis.cpp
   GlobalsModRef.cpp
   GuardUtils.cpp
@@ -79,7 +76,6 @@ add_llvm_component_library(LLVMAnalysis
   InstructionPrecedenceTracking.cpp
   InstructionSimplify.cpp
   InteractiveModelRunner.cpp
-  LastRunTrackingAnalysis.cpp
   LazyBranchProbabilityInfo.cpp
   LazyBlockFrequencyInfo.cpp
   LazyCallGraph.cpp

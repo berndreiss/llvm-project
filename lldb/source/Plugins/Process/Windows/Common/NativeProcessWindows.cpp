@@ -120,7 +120,7 @@ Status NativeProcessWindows::Resume(const ResumeActionList &resume_actions) {
         break;
 
       default:
-        return Status::FromErrorStringWithFormat(
+        return Status(
             "NativeProcessWindows::%s (): unexpected state %s specified "
             "for pid %" PRIu64 ", tid %" PRIu64,
             __FUNCTION__, StateAsCString(action->state), GetID(),
@@ -129,7 +129,7 @@ Status NativeProcessWindows::Resume(const ResumeActionList &resume_actions) {
     }
 
     if (failed) {
-      error = Status::FromErrorString("NativeProcessWindows::DoResume failed");
+      error.SetErrorString("NativeProcessWindows::DoResume failed");
     } else {
       SetState(eStateRunning);
     }
@@ -177,10 +177,9 @@ Status NativeProcessWindows::Detach() {
     else
       LLDB_LOG(log, "Detaching process error: {0}", error);
   } else {
-    error = Status::FromErrorStringWithFormatv(
-        "error: process {0} in state = {1}, but "
-        "cannot detach it in this state.",
-        GetID(), state);
+    error.SetErrorStringWithFormatv("error: process {0} in state = {1}, but "
+                                    "cannot detach it in this state.",
+                                    GetID(), state);
     LLDB_LOG(log, "error: {0}", error);
   }
   return error;
@@ -188,8 +187,7 @@ Status NativeProcessWindows::Detach() {
 
 Status NativeProcessWindows::Signal(int signo) {
   Status error;
-  error = Status::FromErrorString(
-      "Windows does not support sending signals to processes");
+  error.SetErrorString("Windows does not support sending signals to processes");
   return error;
 }
 
@@ -361,7 +359,7 @@ Status NativeProcessWindows::CacheLoadedModules() {
       return Status();
   }
 
-  error = Status(::GetLastError(), lldb::ErrorType::eErrorTypeWin32);
+  error.SetError(::GetLastError(), lldb::ErrorType::eErrorTypeWin32);
   return error;
 }
 
@@ -379,9 +377,8 @@ Status NativeProcessWindows::GetLoadedModuleFileSpec(const char *module_path,
       return Status();
     }
   }
-  return Status::FromErrorStringWithFormat(
-      "Module (%s) not found in process %" PRIu64 "!",
-      module_file_spec.GetPath().c_str(), GetID());
+  return Status("Module (%s) not found in process %" PRIu64 "!",
+                module_file_spec.GetPath().c_str(), GetID());
 }
 
 Status
@@ -400,9 +397,8 @@ NativeProcessWindows::GetFileLoadAddress(const llvm::StringRef &file_name,
       return Status();
     }
   }
-  return Status::FromErrorStringWithFormat(
-      "Can't get loaded address of file (%s) in process %" PRIu64 "!",
-      file_spec.GetPath().c_str(), GetID());
+  return Status("Can't get loaded address of file (%s) in process %" PRIu64 "!",
+                file_spec.GetPath().c_str(), GetID());
 }
 
 void NativeProcessWindows::OnExitProcess(uint32_t exit_code) {
@@ -548,7 +544,7 @@ NativeProcessWindows::OnDebugException(bool first_chance,
                   << " encountered at address "
                   << llvm::format_hex(record.GetExceptionAddress(), 8);
       StopThread(record.GetThreadID(), StopReason::eStopReasonException,
-                 desc.c_str());
+                 desc_stream.str().c_str());
 
       SetState(eStateStopped, true);
     }

@@ -13,7 +13,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <concepts>
 #include <type_traits>
 
 #include "atomic_helpers.h"

@@ -33,7 +33,6 @@ add_lldb_library(lldbBreakpoint NO_PLUGIN_DEPENDENCIES
     lldbSymbol
     lldbTarget
     lldbUtility
-    lldbValueObject
 
   LINK_COMPONENTS
     Support

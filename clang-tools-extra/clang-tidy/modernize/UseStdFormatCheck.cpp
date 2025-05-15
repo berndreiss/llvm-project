@@ -44,14 +44,14 @@ void UseStdFormatCheck::registerPPCallbacks(const SourceManager &SM,
                                             Preprocessor *PP,
                                             Preprocessor *ModuleExpanderPP) {
   IncludeInserter.registerPreprocessor(PP);
-  this->PP = PP;
 }
 
 void UseStdFormatCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(
       callExpr(argumentCountAtLeast(1),
                hasArgument(0, stringLiteral(isOrdinary())),
-               callee(functionDecl(matchers::matchesAnyListedName(
+               callee(functionDecl(unless(cxxMethodDecl()),
+                                   matchers::matchesAnyListedName(
                                        StrFormatLikeFunctions))
                           .bind("func_decl")))
           .bind("strformat"),
@@ -76,9 +76,9 @@ void UseStdFormatCheck::check(const MatchFinder::MatchResult &Result) {
 
   utils::FormatStringConverter::Configuration ConverterConfig;
   ConverterConfig.StrictMode = StrictMode;
-  utils::FormatStringConverter Converter(
-      Result.Context, StrFormat, FormatArgOffset, ConverterConfig,
-      getLangOpts(), *Result.SourceManager, *PP);
+  utils::FormatStringConverter Converter(Result.Context, StrFormat,
+                                         FormatArgOffset, ConverterConfig,
+                                         getLangOpts());
   const Expr *StrFormatCall = StrFormat->getCallee();
   if (!Converter.canApply()) {
     diag(StrFormat->getBeginLoc(),
@@ -93,8 +93,7 @@ void UseStdFormatCheck::check(const MatchFinder::MatchResult &Result) {
       diag(StrFormatCall->getBeginLoc(), "use '%0' instead of %1")
       << ReplacementFormatFunction << OldFunction->getIdentifier();
   Diag << FixItHint::CreateReplacement(
-      CharSourceRange::getTokenRange(StrFormatCall->getExprLoc(),
-                                     StrFormatCall->getEndLoc()),
+      CharSourceRange::getTokenRange(StrFormatCall->getSourceRange()),
       ReplacementFormatFunction);
   Converter.applyFixes(Diag, *Result.SourceManager);
 

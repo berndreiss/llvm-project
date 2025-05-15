@@ -40,13 +40,18 @@ public:
     int get() const {return int_;}
 };
 
-template <>
-struct std::hash<Emplaceable> {
-  typedef Emplaceable argument_type;
-  typedef std::size_t result_type;
+namespace std {
 
-  std::size_t operator()(const Emplaceable& x) const { return x.get(); }
+template <>
+struct hash<Emplaceable>
+{
+    typedef Emplaceable argument_type;
+    typedef std::size_t result_type;
+
+    std::size_t operator()(const Emplaceable& x) const {return x.get();}
 };
+
+}
 
 #endif // TEST_STD_VER >= 11
 #endif // EMPLACEABLE_H

@@ -10,7 +10,6 @@
 #define LLVM_DEBUGINFO_GSYM_DWARFTRANSFORMER_H
 
 #include "llvm/ADT/StringRef.h"
-#include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/GSYM/ExtractRanges.h"
 #include "llvm/Support/Error.h"
 

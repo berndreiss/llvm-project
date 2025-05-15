@@ -221,7 +221,7 @@ public:
   /// Set nosanitize metadata.
   void SetNoSanitizeMetadata() {
     AddOrRemoveMetadataToCopy(llvm::LLVMContext::MD_nosanitize,
-                              llvm::MDNode::get(getContext(), {}));
+                              llvm::MDNode::get(getContext(), std::nullopt));
   }
 
   /// Collect metadata with IDs \p MetadataKinds from \p Src which should be
@@ -638,7 +638,8 @@ public:
                          Value *ArraySize, Function *MallocF = nullptr,
                          const Twine &Name = "");
   /// Generate the IR for a call to the builtin free function.
-  CallInst *CreateFree(Value *Source, ArrayRef<OperandBundleDef> Bundles = {});
+  CallInst *CreateFree(Value *Source,
+                       ArrayRef<OperandBundleDef> Bundles = std::nullopt);
 
   CallInst *CreateElementUnorderedAtomicMemSet(Value *Ptr, Value *Val,
                                                Value *Size, Align Alignment,
@@ -851,8 +852,9 @@ public:
   ///
   /// The optional argument \p OpBundles specifies operand bundles that are
   /// added to the call instruction.
-  CallInst *CreateAssumption(Value *Cond,
-                             ArrayRef<OperandBundleDef> OpBundles = {});
+  CallInst *
+  CreateAssumption(Value *Cond,
+                   ArrayRef<OperandBundleDef> OpBundles = std::nullopt);
 
   /// Create a llvm.experimental.noalias.scope.decl intrinsic call.
   Instruction *CreateNoAliasScopeDeclaration(Value *Scope);
@@ -1013,18 +1015,6 @@ public:
     return CreateBinaryIntrinsic(Intrinsic::maximum, LHS, RHS, nullptr, Name);
   }
 
-  /// Create call to the minimumnum intrinsic.
-  Value *CreateMinimumNum(Value *LHS, Value *RHS, const Twine &Name = "") {
-    return CreateBinaryIntrinsic(Intrinsic::minimumnum, LHS, RHS, nullptr,
-                                 Name);
-  }
-
-  /// Create call to the maximum intrinsic.
-  Value *CreateMaximumNum(Value *LHS, Value *RHS, const Twine &Name = "") {
-    return CreateBinaryIntrinsic(Intrinsic::maximumnum, LHS, RHS, nullptr,
-                                 Name);
-  }
-
   /// Create call to the copysign intrinsic.
   Value *CreateCopySign(Value *LHS, Value *RHS,
                         Instruction *FMFSource = nullptr,
@@ -1075,15 +1065,6 @@ public:
   CallInst *CreateStackRestore(Value *Ptr, const Twine &Name = "") {
     return CreateIntrinsic(Intrinsic::stackrestore, {Ptr->getType()}, {Ptr},
                            nullptr, Name);
-  }
-
-  /// Create a call to llvm.experimental_cttz_elts
-  Value *CreateCountTrailingZeroElems(Type *ResTy, Value *Mask,
-                                      bool ZeroIsPoison = true,
-                                      const Twine &Name = "") {
-    return CreateIntrinsic(Intrinsic::experimental_cttz_elts,
-                           {ResTy, Mask->getType()},
-                           {Mask, getInt1(ZeroIsPoison)}, nullptr, Name);
   }
 
 private:
@@ -1192,7 +1173,7 @@ public:
   }
   InvokeInst *CreateInvoke(FunctionType *Ty, Value *Callee,
                            BasicBlock *NormalDest, BasicBlock *UnwindDest,
-                           ArrayRef<Value *> Args = {},
+                           ArrayRef<Value *> Args = std::nullopt,
                            const Twine &Name = "") {
     InvokeInst *II =
         InvokeInst::Create(Ty, Callee, NormalDest, UnwindDest, Args);
@@ -1210,7 +1191,8 @@ public:
   }
 
   InvokeInst *CreateInvoke(FunctionCallee Callee, BasicBlock *NormalDest,
-                           BasicBlock *UnwindDest, ArrayRef<Value *> Args = {},
+                           BasicBlock *UnwindDest,
+                           ArrayRef<Value *> Args = std::nullopt,
                            const Twine &Name = "") {
     return CreateInvoke(Callee.getFunctionType(), Callee.getCallee(),
                         NormalDest, UnwindDest, Args, Name);
@@ -1220,7 +1202,7 @@ public:
   CallBrInst *CreateCallBr(FunctionType *Ty, Value *Callee,
                            BasicBlock *DefaultDest,
                            ArrayRef<BasicBlock *> IndirectDests,
-                           ArrayRef<Value *> Args = {},
+                           ArrayRef<Value *> Args = std::nullopt,
                            const Twine &Name = "") {
     return Insert(CallBrInst::Create(Ty, Callee, DefaultDest, IndirectDests,
                                      Args), Name);
@@ -1238,7 +1220,7 @@ public:
 
   CallBrInst *CreateCallBr(FunctionCallee Callee, BasicBlock *DefaultDest,
                            ArrayRef<BasicBlock *> IndirectDests,
-                           ArrayRef<Value *> Args = {},
+                           ArrayRef<Value *> Args = std::nullopt,
                            const Twine &Name = "") {
     return CreateCallBr(Callee.getFunctionType(), Callee.getCallee(),
                         DefaultDest, IndirectDests, Args, Name);
@@ -1274,7 +1256,7 @@ public:
   }
 
   CleanupPadInst *CreateCleanupPad(Value *ParentPad,
-                                   ArrayRef<Value *> Args = {},
+                                   ArrayRef<Value *> Args = std::nullopt,
                                    const Twine &Name = "") {
     return Insert(CleanupPadInst::Create(ParentPad, Args), Name);
   }
@@ -1920,17 +1902,16 @@ public:
   }
 
   Value *CreateConstGEP2_32(Type *Ty, Value *Ptr, unsigned Idx0, unsigned Idx1,
-                            const Twine &Name = "",
-                            GEPNoWrapFlags NWFlags = GEPNoWrapFlags::none()) {
+                            const Twine &Name = "") {
     Value *Idxs[] = {
       ConstantInt::get(Type::getInt32Ty(Context), Idx0),
       ConstantInt::get(Type::getInt32Ty(Context), Idx1)
     };
 
-    if (auto *V = Folder.FoldGEP(Ty, Ptr, Idxs, NWFlags))
+    if (auto *V = Folder.FoldGEP(Ty, Ptr, Idxs, GEPNoWrapFlags::none()))
       return V;
 
-    return Insert(GetElementPtrInst::Create(Ty, Ptr, Idxs, NWFlags), Name);
+    return Insert(GetElementPtrInst::Create(Ty, Ptr, Idxs), Name);
   }
 
   Value *CreateConstInBoundsGEP2_32(Type *Ty, Value *Ptr, unsigned Idx0,
@@ -1994,9 +1975,7 @@ public:
 
   Value *CreateStructGEP(Type *Ty, Value *Ptr, unsigned Idx,
                          const Twine &Name = "") {
-    GEPNoWrapFlags NWFlags =
-        GEPNoWrapFlags::inBounds() | GEPNoWrapFlags::noUnsignedWrap();
-    return CreateConstGEP2_32(Ty, Ptr, 0, Idx, Name, NWFlags);
+    return CreateConstInBoundsGEP2_32(Ty, Ptr, 0, Idx, Name);
   }
 
   Value *CreatePtrAdd(Value *Ptr, Value *Offset, const Twine &Name = "",
@@ -2015,7 +1994,6 @@ public:
   ///
   /// If no module is given via \p M, it is take from the insertion point basic
   /// block.
-  LLVM_DEPRECATED("Use CreateGlobalString instead", "CreateGlobalString")
   Constant *CreateGlobalStringPtr(StringRef Str, const Twine &Name = "",
                                   unsigned AddressSpace = 0,
                                   Module *M = nullptr, bool AddNull = true) {
@@ -2437,8 +2415,8 @@ private:
 
 public:
   CallInst *CreateCall(FunctionType *FTy, Value *Callee,
-                       ArrayRef<Value *> Args = {}, const Twine &Name = "",
-                       MDNode *FPMathTag = nullptr) {
+                       ArrayRef<Value *> Args = std::nullopt,
+                       const Twine &Name = "", MDNode *FPMathTag = nullptr) {
     CallInst *CI = CallInst::Create(FTy, Callee, Args, DefaultOperandBundles);
     if (IsFPConstrained)
       setConstrainedFPCallAttr(CI);
@@ -2458,7 +2436,8 @@ public:
     return Insert(CI, Name);
   }
 
-  CallInst *CreateCall(FunctionCallee Callee, ArrayRef<Value *> Args = {},
+  CallInst *CreateCall(FunctionCallee Callee,
+                       ArrayRef<Value *> Args = std::nullopt,
                        const Twine &Name = "", MDNode *FPMathTag = nullptr) {
     return CreateCall(Callee.getFunctionType(), Callee.getCallee(), Args, Name,
                       FPMathTag);
@@ -2697,17 +2676,17 @@ private:
 public:
   IRBuilder(LLVMContext &C, FolderTy Folder, InserterTy Inserter = InserterTy(),
             MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
+            ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(C, this->Folder, this->Inserter, FPMathTag, OpBundles),
         Folder(Folder), Inserter(Inserter) {}
 
   explicit IRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr,
-                     ArrayRef<OperandBundleDef> OpBundles = {})
+                     ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(C, this->Folder, this->Inserter, FPMathTag, OpBundles) {}
 
   explicit IRBuilder(BasicBlock *TheBB, FolderTy Folder,
                      MDNode *FPMathTag = nullptr,
-                     ArrayRef<OperandBundleDef> OpBundles = {})
+                     ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(TheBB->getContext(), this->Folder, this->Inserter,
                       FPMathTag, OpBundles),
         Folder(Folder) {
@@ -2715,14 +2694,14 @@ public:
   }
 
   explicit IRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr,
-                     ArrayRef<OperandBundleDef> OpBundles = {})
+                     ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(TheBB->getContext(), this->Folder, this->Inserter,
                       FPMathTag, OpBundles) {
     SetInsertPoint(TheBB);
   }
 
   explicit IRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr,
-                     ArrayRef<OperandBundleDef> OpBundles = {})
+                     ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(IP->getContext(), this->Folder, this->Inserter, FPMathTag,
                       OpBundles) {
     SetInsertPoint(IP);
@@ -2730,7 +2709,7 @@ public:
 
   IRBuilder(BasicBlock *TheBB, BasicBlock::iterator IP, FolderTy Folder,
             MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
+            ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(TheBB->getContext(), this->Folder, this->Inserter,
                       FPMathTag, OpBundles),
         Folder(Folder) {
@@ -2739,7 +2718,7 @@ public:
 
   IRBuilder(BasicBlock *TheBB, BasicBlock::iterator IP,
             MDNode *FPMathTag = nullptr,
-            ArrayRef<OperandBundleDef> OpBundles = {})
+            ArrayRef<OperandBundleDef> OpBundles = std::nullopt)
       : IRBuilderBase(TheBB->getContext(), this->Folder, this->Inserter,
                       FPMathTag, OpBundles) {
     SetInsertPoint(TheBB, IP);

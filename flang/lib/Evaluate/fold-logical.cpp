@@ -534,8 +534,7 @@ static Expr<Type<TypeCategory::Logical, KIND>> RewriteOutOfRange(
                   context.languageFeatures().ShouldWarn(
                       common::UsageWarning::OptionalMustBePresent)) {
                 if (auto source{args[2]->sourceLocation()}) {
-                  context.messages().Say(
-                      common::UsageWarning::OptionalMustBePresent, *source,
+                  context.messages().Say(*source,
                       "ROUND= argument to OUT_OF_RANGE() is an optional dummy argument that must be present at execution"_warn_en_US);
                 }
               }

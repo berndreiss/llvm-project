@@ -188,7 +188,13 @@ public:
                      function_ref<StringRef(StringRef)> MapClassName2PassName);
 
   // Shim for old PM.
-  LoopVectorizeResult runImpl(Function &F);
+  LoopVectorizeResult runImpl(Function &F, ScalarEvolution &SE_, LoopInfo &LI_,
+                              TargetTransformInfo &TTI_, DominatorTree &DT_,
+                              BlockFrequencyInfo *BFI_, TargetLibraryInfo *TLI_,
+                              DemandedBits &DB_, AssumptionCache &AC_,
+                              LoopAccessInfoManager &LAIs_,
+                              OptimizationRemarkEmitter &ORE_,
+                              ProfileSummaryInfo *PSI_);
 
   bool processLoop(Loop *L);
 };

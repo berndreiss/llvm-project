@@ -20,6 +20,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "X86.h"
+#include "X86InstrBuilder.h"
 #include "X86InstrInfo.h"
 #include "X86Subtarget.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -51,6 +52,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include <algorithm>
 #include <cassert>
 #include <iterator>
 #include <optional>

@@ -82,7 +82,7 @@ static Status ReadAllBytes(Connection &conn, void *buffer, size_t size) {
     now = steady_clock::now();
   }
   if (total_read_bytes < size)
-    error = Status::FromErrorStringWithFormat(
+    error = Status(
         "Unable to read requested number of bytes. Connection status: %d.",
         status);
   return error;
@@ -104,10 +104,9 @@ Status AdbClient::CreateByDeviceID(const std::string &device_id,
       return error;
 
     if (connected_devices.size() != 1)
-      return Status::FromErrorStringWithFormat(
-          "Expected a single connected device, got instead %zu - try "
-          "setting 'ANDROID_SERIAL'",
-          connected_devices.size());
+      return Status("Expected a single connected device, got instead %zu - try "
+                    "setting 'ANDROID_SERIAL'",
+                    connected_devices.size());
     adb.SetDeviceID(connected_devices.front());
   } else {
     adb.SetDeviceID(android_serial);
@@ -173,7 +172,7 @@ Status AdbClient::SetPortForwarding(const uint16_t local_port,
   snprintf(message, sizeof(message), "forward:tcp:%d;tcp:%d", local_port,
            remote_port);
 
-  Status error = SendDeviceMessage(message);
+  const auto error = SendDeviceMessage(message);
   if (error.Fail())
     return error;
 
@@ -192,7 +191,7 @@ AdbClient::SetPortForwarding(const uint16_t local_port,
   snprintf(message, sizeof(message), "forward:tcp:%d;%s:%s", local_port,
            sock_namespace_str, remote_socket_name.str().c_str());
 
-  Status error = SendDeviceMessage(message);
+  const auto error = SendDeviceMessage(message);
   if (error.Fail())
     return error;
 
@@ -203,7 +202,7 @@ Status AdbClient::DeletePortForwarding(const uint16_t local_port) {
   char message[32];
   snprintf(message, sizeof(message), "killforward:tcp:%d", local_port);
 
-  Status error = SendDeviceMessage(message);
+  const auto error = SendDeviceMessage(message);
   if (error.Fail())
     return error;
 
@@ -271,7 +270,7 @@ Status AdbClient::ReadMessageStream(std::vector<char> &message,
     auto end = steady_clock::now();
     auto elapsed = end - start;
     if (elapsed >= timeout)
-      return Status::FromErrorString("Timed out");
+      return Status("Timed out");
 
     size_t n = m_conn->Read(buffer, sizeof(buffer),
                             duration_cast<microseconds>(timeout - elapsed),
@@ -300,14 +299,15 @@ Status AdbClient::ReadResponseStatus() {
 
 Status AdbClient::GetResponseError(const char *response_id) {
   if (strcmp(response_id, kFAIL) != 0)
-    return Status::FromErrorStringWithFormat(
-        "Got unexpected response id from adb: \"%s\"", response_id);
+    return Status("Got unexpected response id from adb: \"%s\"", response_id);
 
   std::vector<char> error_message;
   auto error = ReadMessage(error_message);
-  if (!error.Success())
-    return error;
-  return Status(std::string(&error_message[0], error_message.size()));
+  if (error.Success())
+    error.SetErrorString(
+        std::string(&error_message[0], error_message.size()).c_str());
+
+  return error;
 }
 
 Status AdbClient::SwitchDeviceTransport() {
@@ -324,13 +324,12 @@ Status AdbClient::SwitchDeviceTransport() {
 Status AdbClient::StartSync() {
   auto error = SwitchDeviceTransport();
   if (error.Fail())
-    return Status::FromErrorStringWithFormat(
-        "Failed to switch to device transport: %s", error.AsCString());
+    return Status("Failed to switch to device transport: %s",
+                  error.AsCString());
 
   error = Sync();
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Sync failed: %s",
-                                             error.AsCString());
+    return Status("Sync failed: %s", error.AsCString());
 
   return error;
 }
@@ -353,8 +352,8 @@ Status AdbClient::internalShell(const char *command, milliseconds timeout,
 
   auto error = SwitchDeviceTransport();
   if (error.Fail())
-    return Status::FromErrorStringWithFormat(
-        "Failed to switch to device transport: %s", error.AsCString());
+    return Status("Failed to switch to device transport: %s",
+                  error.AsCString());
 
   StreamString adb_command;
   adb_command.Printf("shell:%s", command);
@@ -375,9 +374,8 @@ Status AdbClient::internalShell(const char *command, milliseconds timeout,
   static const char *kShellPrefix = "/system/bin/sh:";
   if (output_buf.size() > strlen(kShellPrefix)) {
     if (!memcmp(&output_buf[0], kShellPrefix, strlen(kShellPrefix)))
-      return Status::FromErrorStringWithFormat(
-          "Shell command %s failed: %s", command,
-          std::string(output_buf.begin(), output_buf.end()).c_str());
+      return Status("Shell command %s failed: %s", command,
+                    std::string(output_buf.begin(), output_buf.end()).c_str());
   }
 
   return Status();
@@ -406,14 +404,12 @@ Status AdbClient::ShellToFile(const char *command, milliseconds timeout,
   std::error_code EC;
   llvm::raw_fd_ostream dst(output_filename, EC, llvm::sys::fs::OF_None);
   if (EC)
-    return Status::FromErrorStringWithFormat("Unable to open local file %s",
-                                             output_filename.c_str());
+    return Status("Unable to open local file %s", output_filename.c_str());
 
   dst.write(&output_buffer[0], output_buffer.size());
   dst.close();
   if (dst.has_error())
-    return Status::FromErrorStringWithFormat("Failed to write file %s",
-                                             output_filename.c_str());
+    return Status("Failed to write file %s", output_filename.c_str());
   return Status();
 }
 
@@ -435,8 +431,7 @@ Status AdbClient::SyncService::internalPullFile(const FileSpec &remote_file,
   std::error_code EC;
   llvm::raw_fd_ostream dst(local_file_path, EC, llvm::sys::fs::OF_None);
   if (EC)
-    return Status::FromErrorStringWithFormat("Unable to open local file %s",
-                                             local_file_path.c_str());
+    return Status("Unable to open local file %s", local_file_path.c_str());
 
   const auto remote_file_path = remote_file.GetPath(false);
   auto error = SendSyncRequest(kRECV, remote_file_path.length(),
@@ -455,8 +450,7 @@ Status AdbClient::SyncService::internalPullFile(const FileSpec &remote_file,
   }
   dst.close();
   if (dst.has_error())
-    return Status::FromErrorStringWithFormat("Failed to write file %s",
-                                             local_file_path.c_str());
+    return Status("Failed to write file %s", local_file_path.c_str());
 
   local_file_remover.releaseFile();
   return error;
@@ -467,8 +461,7 @@ Status AdbClient::SyncService::internalPushFile(const FileSpec &local_file,
   const auto local_file_path(local_file.GetPath());
   std::ifstream src(local_file_path.c_str(), std::ios::in | std::ios::binary);
   if (!src.is_open())
-    return Status::FromErrorStringWithFormat("Unable to open local file %s",
-                                             local_file_path.c_str());
+    return Status("Unable to open local file %s", local_file_path.c_str());
 
   std::stringstream file_description;
   file_description << remote_file.GetPath(false).c_str() << "," << kDefaultMode;
@@ -483,8 +476,7 @@ Status AdbClient::SyncService::internalPushFile(const FileSpec &local_file,
     size_t chunk_size = src.gcount();
     error = SendSyncRequest(kDATA, chunk_size, chunk);
     if (error.Fail())
-      return Status::FromErrorStringWithFormat("Failed to send file chunk: %s",
-                                               error.AsCString());
+      return Status("Failed to send file chunk: %s", error.AsCString());
   }
   error = SendSyncRequest(
       kDONE, llvm::sys::toTimeT(FileSystem::Instance().GetModificationTime(local_file)),
@@ -496,25 +488,20 @@ Status AdbClient::SyncService::internalPushFile(const FileSpec &local_file,
   uint32_t data_len;
   error = ReadSyncHeader(response_id, data_len);
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to read DONE response: %s",
-                                             error.AsCString());
+    return Status("Failed to read DONE response: %s", error.AsCString());
   if (response_id == kFAIL) {
     std::string error_message(data_len, 0);
     error = ReadAllBytes(&error_message[0], data_len);
     if (error.Fail())
-      return Status::FromErrorStringWithFormat(
-          "Failed to read DONE error message: %s", error.AsCString());
-    return Status::FromErrorStringWithFormat("Failed to push file: %s",
-                                             error_message.c_str());
+      return Status("Failed to read DONE error message: %s", error.AsCString());
+    return Status("Failed to push file: %s", error_message.c_str());
   } else if (response_id != kOKAY)
-    return Status::FromErrorStringWithFormat("Got unexpected DONE response: %s",
-                                             response_id.c_str());
+    return Status("Got unexpected DONE response: %s", response_id.c_str());
 
   // If there was an error reading the source file, finish the adb file
   // transfer first so that adb isn't expecting any more data.
   if (src.bad())
-    return Status::FromErrorStringWithFormat("Failed read on %s",
-                                             local_file_path.c_str());
+    return Status("Failed read on %s", local_file_path.c_str());
   return error;
 }
 
@@ -525,8 +512,7 @@ Status AdbClient::SyncService::internalStat(const FileSpec &remote_file,
   auto error = SendSyncRequest(kSTAT, remote_file_path.length(),
                                remote_file_path.c_str());
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to send request: %s",
-                                             error.AsCString());
+    return Status("Failed to send request: %s", error.AsCString());
 
   static const size_t stat_len = strlen(kSTAT);
   static const size_t response_len = stat_len + (sizeof(uint32_t) * 3);
@@ -534,8 +520,7 @@ Status AdbClient::SyncService::internalStat(const FileSpec &remote_file,
   std::vector<char> buffer(response_len);
   error = ReadAllBytes(&buffer[0], buffer.size());
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to read response: %s",
-                                             error.AsCString());
+    return Status("Failed to read response: %s", error.AsCString());
 
   DataExtractor extractor(&buffer[0], buffer.size(), eByteOrderLittle,
                           sizeof(void *));
@@ -543,11 +528,10 @@ Status AdbClient::SyncService::internalStat(const FileSpec &remote_file,
 
   const void *command = extractor.GetData(&offset, stat_len);
   if (!command)
-    return Status::FromErrorStringWithFormat("Failed to get response command");
+    return Status("Failed to get response command");
   const char *command_str = static_cast<const char *>(command);
   if (strncmp(command_str, kSTAT, stat_len))
-    return Status::FromErrorStringWithFormat("Got invalid stat command: %s",
-                                             command_str);
+    return Status("Got invalid stat command: %s", command_str);
 
   mode = extractor.GetU32(&offset);
   size = extractor.GetU32(&offset);
@@ -586,9 +570,9 @@ AdbClient::SyncService::SyncService(std::unique_ptr<Connection> &&conn)
 Status
 AdbClient::SyncService::executeCommand(const std::function<Status()> &cmd) {
   if (!m_conn)
-    return Status::FromErrorString("SyncService is disconnected");
+    return Status("SyncService is disconnected");
 
-  Status error = cmd();
+  const auto error = cmd();
   if (error.Fail())
     m_conn.reset();
 
@@ -651,13 +635,10 @@ Status AdbClient::SyncService::PullFileChunk(std::vector<char> &buffer,
     std::string error_message(data_len, 0);
     error = ReadAllBytes(&error_message[0], data_len);
     if (error.Fail())
-      return Status::FromErrorStringWithFormat(
-          "Failed to read pull error message: %s", error.AsCString());
-    return Status::FromErrorStringWithFormat("Failed to pull file: %s",
-                                             error_message.c_str());
+      return Status("Failed to read pull error message: %s", error.AsCString());
+    return Status("Failed to pull file: %s", error_message.c_str());
   } else
-    return Status::FromErrorStringWithFormat(
-        "Pull failed with unknown response: %s", response_id.c_str());
+    return Status("Pull failed with unknown response: %s", response_id.c_str());
 
   return Status();
 }

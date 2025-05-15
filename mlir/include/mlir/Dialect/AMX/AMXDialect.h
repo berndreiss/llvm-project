@@ -21,9 +21,6 @@
 
 #include "mlir/Dialect/AMX/AMXDialect.h.inc"
 
-#define GET_TYPEDEF_CLASSES
-#include "mlir/Dialect/AMX/AMXTypes.h.inc"
-
 #define GET_OP_CLASSES
 #include "mlir/Dialect/AMX/AMX.h.inc"
 

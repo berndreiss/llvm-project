@@ -13,7 +13,6 @@
 #include <unistd.h>
 #endif
 
-#include "DAP.h"
 #include "OutputRedirector.h"
 #include "llvm/ADT/StringRef.h"
 
@@ -43,7 +42,7 @@ Error RedirectFd(int fd, std::function<void(llvm::StringRef)> callback) {
 
   int read_fd = new_fd[0];
   std::thread t([read_fd, callback]() {
-    char buffer[OutputBufferSize];
+    char buffer[4096];
     while (true) {
       ssize_t bytes_count = read(read_fd, &buffer, sizeof(buffer));
       if (bytes_count == 0)

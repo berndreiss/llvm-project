@@ -139,15 +139,6 @@ CtorInitializerListTest::CtorInitializerListTest(float) try : exc(RegularExcepti
   RegularException();
 }
 
-namespace GH115055 {
-class CtorInitializerListTest2 {
- public:
-  CtorInitializerListTest2() {}
- private:
-  RegularException exc{};
-};
-}  // namespace GH115055
-
 RegularException funcReturningExceptionTest(int i) {
   return RegularException();
 }

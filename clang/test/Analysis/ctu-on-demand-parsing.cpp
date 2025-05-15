@@ -35,7 +35,6 @@
 //
 // FIXME: Path handling should work on all platforms.
 // REQUIRES: system-linux
-// UNSUPPORTED: target={{.*}}-zos{{.*}}
 
 #include "ctu-hdr.h"
 

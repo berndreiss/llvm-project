@@ -101,6 +101,3 @@ def Three : BaseClassForSet;
 }
 // CHECK: [[FILE]]:[[@LINE+1]]:1: note: TheSet = [Subset_One, Subset_Two, Three]
 dump "TheSet = " # !repr(TheSet);
-
-// CHECK: [[FILE]]:[[@LINE+1]]:1: note: 0
-dump !repr(!exists<BaseClassForSet>("non-existent-record"));

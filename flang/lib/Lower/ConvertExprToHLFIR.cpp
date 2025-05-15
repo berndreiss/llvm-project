@@ -579,8 +579,7 @@ private:
       return createVectorSubscriptElementAddrOp(partInfo, baseType,
                                                 resultExtents);
 
-    mlir::Type resultType =
-        mlir::cast<fir::SequenceType>(baseType).getElementType();
+    mlir::Type resultType = mlir::cast<fir::SequenceType>(baseType).getEleTy();
     if (!resultTypeShape.empty()) {
       // Ranked array section. The result shape comes from the array section
       // subscripts.
@@ -812,7 +811,7 @@ private:
       }
     }
     builder.setInsertionPoint(elementalAddrOp);
-    return mlir::cast<fir::SequenceType>(baseType).getElementType();
+    return mlir::cast<fir::SequenceType>(baseType).getEleTy();
   }
 
   /// Yield the designator for the final part-ref inside the
@@ -1219,7 +1218,7 @@ struct BinaryOp<Fortran::evaluate::ComplexConstructor<KIND>> {
                                          fir::FirOpBuilder &builder, const Op &,
                                          hlfir::Entity lhs, hlfir::Entity rhs) {
     mlir::Value res =
-        fir::factory::Complex{builder, loc}.createComplex(lhs, rhs);
+        fir::factory::Complex{builder, loc}.createComplex(KIND, lhs, rhs);
     return hlfir::EntityWithAttributes{res};
   }
 };
@@ -1585,14 +1584,9 @@ private:
       auto rightVal = hlfir::loadTrivialScalar(l, b, rightElement);
       return binaryOp.gen(l, b, op.derived(), leftVal, rightVal);
     };
-    auto iofBackup = builder.getIntegerOverflowFlags();
-    // nsw is never added to operations on vector subscripts
-    // even if -fno-wrapv is enabled.
-    builder.setIntegerOverflowFlags(mlir::arith::IntegerOverflowFlags::none);
     mlir::Value elemental = hlfir::genElementalOp(loc, builder, elementType,
                                                   shape, typeParams, genKernel,
                                                   /*isUnordered=*/true);
-    builder.setIntegerOverflowFlags(iofBackup);
     fir::FirOpBuilder *bldr = &builder;
     getStmtCtx().attachCleanup(
         [=]() { bldr->create<hlfir::DestroyOp>(loc, elemental); });
@@ -1905,17 +1899,10 @@ private:
 template <typename T>
 hlfir::Entity
 HlfirDesignatorBuilder::genSubscript(const Fortran::evaluate::Expr<T> &expr) {
-  fir::FirOpBuilder &builder = getBuilder();
-  mlir::arith::IntegerOverflowFlags iofBackup{};
-  if (!getConverter().getLoweringOptions().getIntegerWrapAround()) {
-    iofBackup = builder.getIntegerOverflowFlags();
-    builder.setIntegerOverflowFlags(mlir::arith::IntegerOverflowFlags::nsw);
-  }
   auto loweredExpr =
       HlfirBuilder(getLoc(), getConverter(), getSymMap(), getStmtCtx())
           .gen(expr);
-  if (!getConverter().getLoweringOptions().getIntegerWrapAround())
-    builder.setIntegerOverflowFlags(iofBackup);
+  fir::FirOpBuilder &builder = getBuilder();
   // Skip constant conversions that litters designators and makes generated
   // IR harder to read: directly use index constants for constant subscripts.
   mlir::Type idxTy = builder.getIndexType();

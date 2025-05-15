@@ -128,28 +128,7 @@ getFunctionSourceAfterReplacements(const FunctionDecl *FD,
       SM.getBufferData(SM.getMainFileID()), Replacements);
   if (!QualifiedFunc)
     return QualifiedFunc.takeError();
-
-  std::string TemplatePrefix;
-  if (auto *MD = llvm::dyn_cast<CXXMethodDecl>(FD)) {
-    for (const CXXRecordDecl *Parent = MD->getParent(); Parent;
-         Parent =
-             llvm::dyn_cast_or_null<const CXXRecordDecl>(Parent->getParent())) {
-      if (const TemplateParameterList *Params =
-              Parent->getDescribedTemplateParams()) {
-        std::string S;
-        llvm::raw_string_ostream Stream(S);
-        Params->print(Stream, FD->getASTContext());
-        if (!S.empty())
-          *S.rbegin() = '\n'; // Replace space with newline
-        TemplatePrefix.insert(0, S);
-      }
-    }
-  }
-
-  auto Source = QualifiedFunc->substr(FuncBegin, FuncEnd - FuncBegin + 1);
-  if (!TemplatePrefix.empty())
-    Source.insert(0, TemplatePrefix);
-  return Source;
+  return QualifiedFunc->substr(FuncBegin, FuncEnd - FuncBegin + 1);
 }
 
 // Returns replacements to delete tokens with kind `Kind` in the range
@@ -233,13 +212,9 @@ getFunctionSourceCode(const FunctionDecl *FD, const DeclContext *TargetContext,
           }
         }
         const NamedDecl *ND = Ref.Targets.front();
-        std::string Qualifier =
+        const std::string Qualifier =
             getQualification(AST, TargetContext,
                              SM.getLocForStartOfFile(SM.getMainFileID()), ND);
-        if (ND->getDeclContext()->isDependentContext() &&
-            llvm::isa<TypeDecl>(ND)) {
-          Qualifier.insert(0, "typename ");
-        }
         if (auto Err = DeclarationCleanups.add(
                 tooling::Replacement(SM, Ref.NameLoc, 0, Qualifier)))
           Errors = llvm::joinErrors(std::move(Errors), std::move(Err));
@@ -432,23 +407,10 @@ public:
       return !SameFile;
     }
 
-    for (const CXXRecordDecl *Parent = MD->getParent(); Parent;
-         Parent =
-             llvm::dyn_cast_or_null<const CXXRecordDecl>(Parent->getParent())) {
-      if (const TemplateParameterList *Params =
-              Parent->getDescribedTemplateParams()) {
-
-        // Class template member functions must be defined in the
-        // same file.
-        SameFile = true;
-
-        // Bail out if the template parameter is unnamed.
-        for (NamedDecl *P : *Params) {
-          if (!P->getIdentifier())
-            return false;
-        }
-      }
-    }
+    // Bail out in templated classes, as it is hard to spell the class name,
+    // i.e if the template parameter is unnamed.
+    if (MD->getParent()->isTemplated())
+      return false;
 
     // The refactoring is meaningless for unnamed classes and namespaces,
     // unless we're outlining in the same file

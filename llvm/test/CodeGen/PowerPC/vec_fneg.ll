@@ -15,7 +15,7 @@ define void @test_float(ptr %A) {
 
 ; CHECK: xvnegsp
 ; CHECK: blr
-; CHECK-NOVSX: vxor
+; CHECK-NOVSX: vsubfp
 ; CHECK-NOVSX: blr
 
 }

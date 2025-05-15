@@ -207,10 +207,6 @@ void initializeSystemZPostRewritePass(PassRegistry &);
 void initializeSystemZShortenInstPass(PassRegistry &);
 void initializeSystemZTDCPassPass(PassRegistry &);
 
-namespace SYSTEMZAS {
-enum : unsigned { PTR32 = 1 };
-} // namespace SYSTEMZAS
-
 } // end namespace llvm
 
 #endif

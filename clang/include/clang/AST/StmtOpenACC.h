@@ -114,6 +114,7 @@ public:
   }
 };
 
+class OpenACCLoopConstruct;
 /// This class represents a compute construct, representing a 'Kind' of
 /// `parallel', 'serial', or 'kernel'. These constructs are associated with a
 /// 'structured block', defined as:
@@ -182,7 +183,8 @@ public:
   static OpenACCComputeConstruct *
   Create(const ASTContext &C, OpenACCDirectiveKind K, SourceLocation BeginLoc,
          SourceLocation DirectiveLoc, SourceLocation EndLoc,
-         ArrayRef<const OpenACCClause *> Clauses, Stmt *StructuredBlock);
+         ArrayRef<const OpenACCClause *> Clauses, Stmt *StructuredBlock,
+         ArrayRef<OpenACCLoopConstruct *> AssociatedLoopConstructs);
 
   Stmt *getStructuredBlock() { return getAssociatedStmt(); }
   const Stmt *getStructuredBlock() const {
@@ -196,10 +198,12 @@ class OpenACCLoopConstruct final
     : public OpenACCAssociatedStmtConstruct,
       public llvm::TrailingObjects<OpenACCLoopConstruct,
                                    const OpenACCClause *> {
-  // The compute/combined construct kind this loop is associated with, or
-  // invalid if this is an orphaned loop construct.
-  OpenACCDirectiveKind ParentComputeConstructKind =
-      OpenACCDirectiveKind::Invalid;
+  // The compute construct this loop is associated with, or nullptr if this is
+  // an orphaned loop construct, or if it hasn't been set yet.  Because we
+  // construct the directives at the end of their statement, the 'parent'
+  // construct is not yet available at the time of construction, so this needs
+  // to be set 'later'.
+  const OpenACCComputeConstruct *ParentComputeConstruct = nullptr;
 
   friend class ASTStmtWriter;
   friend class ASTStmtReader;
@@ -208,9 +212,15 @@ class OpenACCLoopConstruct final
 
   OpenACCLoopConstruct(unsigned NumClauses);
 
-  OpenACCLoopConstruct(OpenACCDirectiveKind ParentKind, SourceLocation Start,
-                       SourceLocation DirLoc, SourceLocation End,
+  OpenACCLoopConstruct(SourceLocation Start, SourceLocation DirLoc,
+                       SourceLocation End,
                        ArrayRef<const OpenACCClause *> Clauses, Stmt *Loop);
+  void setLoop(Stmt *Loop);
+
+  void setParentComputeConstruct(OpenACCComputeConstruct *CC) {
+    assert(!ParentComputeConstruct && "Parent already set?");
+    ParentComputeConstruct = CC;
+  }
 
 public:
   static bool classof(const Stmt *T) {
@@ -221,9 +231,9 @@ public:
                                            unsigned NumClauses);
 
   static OpenACCLoopConstruct *
-  Create(const ASTContext &C, OpenACCDirectiveKind ParentKind,
-         SourceLocation BeginLoc, SourceLocation DirLoc, SourceLocation EndLoc,
-         ArrayRef<const OpenACCClause *> Clauses, Stmt *Loop);
+  Create(const ASTContext &C, SourceLocation BeginLoc, SourceLocation DirLoc,
+         SourceLocation EndLoc, ArrayRef<const OpenACCClause *> Clauses,
+         Stmt *Loop);
 
   Stmt *getLoop() { return getAssociatedStmt(); }
   const Stmt *getLoop() const {
@@ -236,11 +246,10 @@ public:
   /// loop construct is the nearest compute construct that lexically contains
   /// the loop construct.
   bool isOrphanedLoopConstruct() const {
-    return ParentComputeConstructKind == OpenACCDirectiveKind::Invalid;
+    return ParentComputeConstruct == nullptr;
   }
-
-  OpenACCDirectiveKind getParentComputeConstructKind() const {
-    return ParentComputeConstructKind;
+  const OpenACCComputeConstruct *getParentComputeConstruct() const {
+    return ParentComputeConstruct;
   }
 };
 } // namespace clang

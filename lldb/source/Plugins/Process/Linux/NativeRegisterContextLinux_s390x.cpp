@@ -190,14 +190,13 @@ Status
 NativeRegisterContextLinux_s390x::ReadRegister(const RegisterInfo *reg_info,
                                                RegisterValue &reg_value) {
   if (!reg_info)
-    return Status::FromErrorString("reg_info NULL");
+    return Status("reg_info NULL");
 
   const uint32_t reg = reg_info->kinds[lldb::eRegisterKindLLDB];
   if (reg == LLDB_INVALID_REGNUM)
-    return Status::FromErrorStringWithFormat(
-        "register \"%s\" is an internal-only lldb register, cannot "
-        "read directly",
-        reg_info->name);
+    return Status("register \"%s\" is an internal-only lldb register, cannot "
+                  "read directly",
+                  reg_info->name);
 
   if (IsGPR(reg)) {
     Status error = ReadGPR();
@@ -215,8 +214,7 @@ NativeRegisterContextLinux_s390x::ReadRegister(const RegisterInfo *reg_info,
       break;
     default:
       assert(false && "Unhandled data size.");
-      return Status::FromErrorStringWithFormat("unhandled byte size: %" PRIu32,
-                                               reg_info->byte_size);
+      return Status("unhandled byte size: %" PRIu32, reg_info->byte_size);
     }
     return Status();
   }
@@ -238,8 +236,7 @@ NativeRegisterContextLinux_s390x::ReadRegister(const RegisterInfo *reg_info,
       break;
     default:
       assert(false && "Unhandled data size.");
-      return Status::FromErrorStringWithFormat("unhandled byte size: %" PRIu32,
-                                               reg_info->byte_size);
+      return Status("unhandled byte size: %" PRIu32, reg_info->byte_size);
     }
     return Status();
   }
@@ -264,20 +261,19 @@ NativeRegisterContextLinux_s390x::ReadRegister(const RegisterInfo *reg_info,
     return Status();
   }
 
-  return Status::FromErrorString("failed - register wasn't recognized");
+  return Status("failed - register wasn't recognized");
 }
 
 Status NativeRegisterContextLinux_s390x::WriteRegister(
     const RegisterInfo *reg_info, const RegisterValue &reg_value) {
   if (!reg_info)
-    return Status::FromErrorString("reg_info NULL");
+    return Status("reg_info NULL");
 
   const uint32_t reg = reg_info->kinds[lldb::eRegisterKindLLDB];
   if (reg == LLDB_INVALID_REGNUM)
-    return Status::FromErrorStringWithFormat(
-        "register \"%s\" is an internal-only lldb register, cannot "
-        "write directly",
-        reg_info->name);
+    return Status("register \"%s\" is an internal-only lldb register, cannot "
+                  "write directly",
+                  reg_info->name);
 
   if (IsGPR(reg)) {
     Status error = ReadGPR();
@@ -295,8 +291,7 @@ Status NativeRegisterContextLinux_s390x::WriteRegister(
       break;
     default:
       assert(false && "Unhandled data size.");
-      return Status::FromErrorStringWithFormat("unhandled byte size: %" PRIu32,
-                                               reg_info->byte_size);
+      return Status("unhandled byte size: %" PRIu32, reg_info->byte_size);
     }
     return WriteGPR();
   }
@@ -318,14 +313,13 @@ Status NativeRegisterContextLinux_s390x::WriteRegister(
       break;
     default:
       assert(false && "Unhandled data size.");
-      return Status::FromErrorStringWithFormat("unhandled byte size: %" PRIu32,
-                                               reg_info->byte_size);
+      return Status("unhandled byte size: %" PRIu32, reg_info->byte_size);
     }
     return WriteFPR();
   }
 
   if (reg == lldb_last_break_s390x) {
-    return Status::FromErrorString("The last break address is read-only");
+    return Status("The last break address is read-only");
   }
 
   if (reg == lldb_system_call_s390x) {
@@ -333,7 +327,7 @@ Status NativeRegisterContextLinux_s390x::WriteRegister(
     return DoWriteRegisterSet(NT_S390_SYSTEM_CALL, &system_call, 4);
   }
 
-  return Status::FromErrorString("failed - register wasn't recognized");
+  return Status("failed - register wasn't recognized");
 }
 
 Status NativeRegisterContextLinux_s390x::ReadAllRegisterValues(
@@ -373,14 +367,14 @@ Status NativeRegisterContextLinux_s390x::WriteAllRegisterValues(
   Status error;
 
   if (!data_sp) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "NativeRegisterContextLinux_s390x::%s invalid data_sp provided",
         __FUNCTION__);
     return error;
   }
 
   if (data_sp->GetByteSize() != REG_CONTEXT_SIZE) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "NativeRegisterContextLinux_s390x::%s data_sp contained mismatched "
         "data size, expected %" PRIu64 ", actual %" PRIu64,
         __FUNCTION__, REG_CONTEXT_SIZE, data_sp->GetByteSize());
@@ -389,11 +383,10 @@ Status NativeRegisterContextLinux_s390x::WriteAllRegisterValues(
 
   const uint8_t *src = data_sp->GetBytes();
   if (src == nullptr) {
-    error = Status::FromErrorStringWithFormat(
-        "NativeRegisterContextLinux_s390x::%s "
-        "DataBuffer::GetBytes() returned a null "
-        "pointer",
-        __FUNCTION__);
+    error.SetErrorStringWithFormat("NativeRegisterContextLinux_s390x::%s "
+                                   "DataBuffer::GetBytes() returned a null "
+                                   "pointer",
+                                   __FUNCTION__);
     return error;
   }
 
@@ -419,12 +412,12 @@ Status NativeRegisterContextLinux_s390x::WriteAllRegisterValues(
 Status NativeRegisterContextLinux_s390x::DoReadRegisterValue(
     uint32_t offset, const char *reg_name, uint32_t size,
     RegisterValue &value) {
-  return Status::FromErrorString("DoReadRegisterValue unsupported");
+  return Status("DoReadRegisterValue unsupported");
 }
 
 Status NativeRegisterContextLinux_s390x::DoWriteRegisterValue(
     uint32_t offset, const char *reg_name, const RegisterValue &value) {
-  return Status::FromErrorString("DoWriteRegisterValue unsupported");
+  return Status("DoWriteRegisterValue unsupported");
 }
 
 Status NativeRegisterContextLinux_s390x::PeekUserArea(uint32_t offset,
@@ -496,7 +489,7 @@ Status NativeRegisterContextLinux_s390x::IsWatchpointHit(uint32_t wp_index,
   per_lowcore_bits per_lowcore;
 
   if (wp_index >= NumSupportedHardwareWatchpoints())
-    return Status::FromErrorString("Watchpoint index out of range");
+    return Status("Watchpoint index out of range");
 
   if (m_watchpoint_addr == LLDB_INVALID_ADDRESS) {
     is_hit = false;
@@ -543,7 +536,7 @@ Status NativeRegisterContextLinux_s390x::GetWatchpointHitIndex(
 Status NativeRegisterContextLinux_s390x::IsWatchpointVacant(uint32_t wp_index,
                                                             bool &is_vacant) {
   if (wp_index >= NumSupportedHardwareWatchpoints())
-    return Status::FromErrorString("Watchpoint index out of range");
+    return Status("Watchpoint index out of range");
 
   is_vacant = m_watchpoint_addr == LLDB_INVALID_ADDRESS;
 
@@ -579,7 +572,7 @@ bool NativeRegisterContextLinux_s390x::ClearHardwareWatchpoint(
 Status NativeRegisterContextLinux_s390x::ClearAllHardwareWatchpoints() {
   if (ClearHardwareWatchpoint(0))
     return Status();
-  return Status::FromErrorString("Clearing all hardware watchpoints failed.");
+  return Status("Clearing all hardware watchpoints failed.");
 }
 
 uint32_t NativeRegisterContextLinux_s390x::SetHardwareWatchpoint(

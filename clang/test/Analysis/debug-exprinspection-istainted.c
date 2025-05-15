@@ -1,7 +1,7 @@
 // RUN: %clang_analyze_cc1 -verify %s \
 // RUN:   -analyzer-checker=core \
 // RUN:   -analyzer-checker=debug.ExprInspection \
-// RUN:   -analyzer-checker=optin.taint
+// RUN:   -analyzer-checker=alpha.security.taint
 
 int scanf(const char *restrict format, ...);
 void clang_analyzer_isTainted(char);

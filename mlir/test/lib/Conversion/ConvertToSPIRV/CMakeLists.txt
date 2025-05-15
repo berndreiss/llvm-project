@@ -1,7 +1,6 @@
 # Exclude tests from libMLIR.so
 add_mlir_library(MLIRTestConvertToSPIRV
   TestSPIRVFuncSignatureConversion.cpp
-  TestSPIRVVectorUnrolling.cpp
 
   EXCLUDE_FROM_LIBMLIR
 
@@ -14,5 +13,4 @@ add_mlir_library(MLIRTestConvertToSPIRV
   MLIRTransformUtils
   MLIRTransforms
   MLIRVectorDialect
-  MLIRVectorTransforms
   )

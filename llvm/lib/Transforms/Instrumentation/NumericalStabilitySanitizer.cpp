@@ -16,6 +16,7 @@
 #include "llvm/Transforms/Instrumentation/NumericalStabilitySanitizer.h"
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
@@ -31,12 +32,15 @@
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/Instrumentation.h"
+#include "llvm/Transforms/Utils/EscapeEnumerator.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 
@@ -489,60 +493,6 @@ private:
   DenseMap<Value *, Value *> Map;
 };
 
-class NsanMemOpFn {
-public:
-  NsanMemOpFn(Module &M, ArrayRef<StringRef> Sized, StringRef Fallback,
-              size_t NumArgs);
-  FunctionCallee getFunctionFor(uint64_t MemOpSize) const;
-  FunctionCallee getFallback() const;
-
-private:
-  SmallVector<FunctionCallee> Funcs;
-  size_t NumSizedFuncs;
-};
-
-NsanMemOpFn::NsanMemOpFn(Module &M, ArrayRef<StringRef> Sized,
-                         StringRef Fallback, size_t NumArgs) {
-  LLVMContext &Ctx = M.getContext();
-  AttributeList Attr;
-  Attr = Attr.addFnAttribute(Ctx, Attribute::NoUnwind);
-  Type *PtrTy = PointerType::getUnqual(Ctx);
-  Type *VoidTy = Type::getVoidTy(Ctx);
-  IntegerType *IntptrTy = M.getDataLayout().getIntPtrType(Ctx);
-  FunctionType *SizedFnTy = nullptr;
-
-  NumSizedFuncs = Sized.size();
-
-  // First entry is fallback function
-  if (NumArgs == 3) {
-    Funcs.push_back(
-        M.getOrInsertFunction(Fallback, Attr, VoidTy, PtrTy, PtrTy, IntptrTy));
-    SizedFnTy = FunctionType::get(VoidTy, {PtrTy, PtrTy}, false);
-  } else if (NumArgs == 2) {
-    Funcs.push_back(
-        M.getOrInsertFunction(Fallback, Attr, VoidTy, PtrTy, IntptrTy));
-    SizedFnTy = FunctionType::get(VoidTy, {PtrTy}, false);
-  } else {
-    llvm_unreachable("Unexpected value of sized functions arguments");
-  }
-
-  for (size_t i = 0; i < NumSizedFuncs; ++i)
-    Funcs.push_back(M.getOrInsertFunction(Sized[i], SizedFnTy, Attr));
-}
-
-FunctionCallee NsanMemOpFn::getFunctionFor(uint64_t MemOpSize) const {
-  // Now `getFunctionFor` operates on `Funcs` of size 4 (at least) and the
-  // following code assumes that the number of functions in `Func` is sufficient
-  assert(NumSizedFuncs >= 3 && "Unexpected number of sized functions");
-
-  size_t Idx =
-      MemOpSize == 4 ? 1 : (MemOpSize == 8 ? 2 : (MemOpSize == 16 ? 3 : 0));
-
-  return Funcs[Idx];
-}
-
-FunctionCallee NsanMemOpFn::getFallback() const { return Funcs[0]; }
-
 /// Instantiating NumericalStabilitySanitizer inserts the nsan runtime library
 /// API function declarations into the module if they don't exist already.
 /// Instantiating ensures the __nsan_init function is in the list of global
@@ -600,16 +550,12 @@ private:
   LLVMContext &Context;
   MappingConfig Config;
   IntegerType *IntptrTy = nullptr;
-
-  // TODO: Use std::array instead?
   FunctionCallee NsanGetShadowPtrForStore[FTValueType::kNumValueTypes] = {};
   FunctionCallee NsanGetShadowPtrForLoad[FTValueType::kNumValueTypes] = {};
   FunctionCallee NsanCheckValue[FTValueType::kNumValueTypes] = {};
   FunctionCallee NsanFCmpFail[FTValueType::kNumValueTypes] = {};
-
-  NsanMemOpFn NsanCopyFns;
-  NsanMemOpFn NsanSetUnknownFns;
-
+  FunctionCallee NsanCopyValues;
+  FunctionCallee NsanSetValueUnknown;
   FunctionCallee NsanGetRawShadowTypePtr;
   FunctionCallee NsanGetRawShadowPtr;
   GlobalValue *NsanShadowRetTag = nullptr;
@@ -652,14 +598,7 @@ static GlobalValue *createThreadLocalGV(const char *Name, Module &M, Type *Ty) {
 }
 
 NumericalStabilitySanitizer::NumericalStabilitySanitizer(Module &M)
-    : DL(M.getDataLayout()), Context(M.getContext()), Config(Context),
-      NsanCopyFns(M, {"__nsan_copy_4", "__nsan_copy_8", "__nsan_copy_16"},
-                  "__nsan_copy_values", /*NumArgs=*/3),
-      NsanSetUnknownFns(M,
-                        {"__nsan_set_value_unknown_4",
-                         "__nsan_set_value_unknown_8",
-                         "__nsan_set_value_unknown_16"},
-                        "__nsan_set_value_unknown", /*NumArgs=*/2) {
+    : DL(M.getDataLayout()), Context(M.getContext()), Config(Context) {
   IntptrTy = DL.getIntPtrType(Context);
   Type *PtrTy = PointerType::getUnqual(Context);
   Type *Int32Ty = Type::getInt32Ty(Context);
@@ -694,6 +633,11 @@ NumericalStabilitySanitizer::NumericalStabilitySanitizer(Module &M)
             ShadowConfig.getNsanTypeId(),
         Attr, VoidTy, VTTy, VTTy, ShadowTy, ShadowTy, Int32Ty, Int1Ty, Int1Ty);
   }
+
+  NsanCopyValues = M.getOrInsertFunction("__nsan_copy_values", Attr, VoidTy,
+                                         PtrTy, PtrTy, IntptrTy);
+  NsanSetValueUnknown = M.getOrInsertFunction("__nsan_set_value_unknown", Attr,
+                                              VoidTy, PtrTy, IntptrTy);
 
   // TODO: Add attributes nofree, nosync, readnone, readonly,
   NsanGetRawShadowTypePtr = M.getOrInsertFunction(
@@ -1711,7 +1655,7 @@ Value *NumericalStabilitySanitizer::createShadowValueWithOperandsAvailable(
                                Map.getShadow(BinOp->getOperand(1)));
 
   if (isa<UIToFPInst>(&Inst) || isa<SIToFPInst>(&Inst)) {
-    auto *Cast = cast<CastInst>(&Inst);
+    auto *Cast = dyn_cast<CastInst>(&Inst);
     return Builder.CreateCast(Cast->getOpcode(), Cast->getOperand(0),
                               ExtendedVT);
   }
@@ -1720,9 +1664,6 @@ Value *NumericalStabilitySanitizer::createShadowValueWithOperandsAvailable(
     return Builder.CreateSelect(S->getCondition(),
                                 Map.getShadow(S->getTrueValue()),
                                 Map.getShadow(S->getFalseValue()));
-
-  if (auto *Freeze = dyn_cast<FreezeInst>(&Inst))
-    return Builder.CreateFreeze(Map.getShadow(Freeze->getOperand(0)));
 
   if (auto *Extract = dyn_cast<ExtractElementInst>(&Inst))
     return Builder.CreateExtractElement(
@@ -1939,7 +1880,7 @@ void NumericalStabilitySanitizer::propagateNonFTStore(
     }
   }
   // All other stores just reset the shadow value to unknown.
-  Builder.CreateCall(NsanSetUnknownFns.getFallback(), {Dst, ValueSize});
+  Builder.CreateCall(NsanSetValueUnknown, {Dst, ValueSize});
 }
 
 void NumericalStabilitySanitizer::propagateShadowValues(
@@ -2034,8 +1975,7 @@ static void moveFastMathFlags(Function &F,
 
 bool NumericalStabilitySanitizer::sanitizeFunction(
     Function &F, const TargetLibraryInfo &TLI) {
-  if (!F.hasFnAttribute(Attribute::SanitizeNumericalStability) ||
-      F.isDeclaration())
+  if (!F.hasFnAttribute(Attribute::SanitizeNumericalStability))
     return false;
 
   // This is required to prevent instrumenting call to __nsan_init from within
@@ -2165,7 +2105,7 @@ bool NumericalStabilitySanitizer::sanitizeFunction(
 
   // The last pass populates shadow phis with shadow values.
   for (PHINode *Phi : OriginalPhis) {
-    PHINode *ShadowPhi = cast<PHINode>(ValueToShadow.getShadow(Phi));
+    PHINode *ShadowPhi = dyn_cast<PHINode>(ValueToShadow.getShadow(Phi));
     for (unsigned I : seq(Phi->getNumOperands())) {
       Value *V = Phi->getOperand(I);
       Value *Shadow = ValueToShadow.getShadow(V);
@@ -2183,45 +2123,21 @@ bool NumericalStabilitySanitizer::sanitizeFunction(
   return !ValueToShadow.empty();
 }
 
-static uint64_t GetMemOpSize(Value *V) {
-  uint64_t OpSize = 0;
-  if (Constant *C = dyn_cast<Constant>(V)) {
-    auto *CInt = dyn_cast<ConstantInt>(C);
-    if (CInt && CInt->getValue().getBitWidth() <= 64)
-      OpSize = CInt->getValue().getZExtValue();
-  }
-
-  return OpSize;
-}
-
 // Instrument the memory intrinsics so that they properly modify the shadow
 // memory.
 bool NumericalStabilitySanitizer::instrumentMemIntrinsic(MemIntrinsic *MI) {
   IRBuilder<> Builder(MI);
   if (auto *M = dyn_cast<MemSetInst>(MI)) {
-    FunctionCallee SetUnknownFn =
-        NsanSetUnknownFns.getFunctionFor(GetMemOpSize(M->getArgOperand(2)));
-    if (SetUnknownFn.getFunctionType()->getNumParams() == 1)
-      Builder.CreateCall(SetUnknownFn, {/*Address=*/M->getArgOperand(0)});
-    else
-      Builder.CreateCall(SetUnknownFn,
-                         {/*Address=*/M->getArgOperand(0),
-                          /*Size=*/Builder.CreateIntCast(M->getArgOperand(2),
-                                                         IntptrTy, false)});
-
+    Builder.CreateCall(
+        NsanSetValueUnknown,
+        {/*Address=*/M->getArgOperand(0),
+         /*Size=*/Builder.CreateIntCast(M->getArgOperand(2), IntptrTy, false)});
   } else if (auto *M = dyn_cast<MemTransferInst>(MI)) {
-    FunctionCallee CopyFn =
-        NsanCopyFns.getFunctionFor(GetMemOpSize(M->getArgOperand(2)));
-
-    if (CopyFn.getFunctionType()->getNumParams() == 2)
-      Builder.CreateCall(CopyFn, {/*Destination=*/M->getArgOperand(0),
-                                  /*Source=*/M->getArgOperand(1)});
-    else
-      Builder.CreateCall(CopyFn, {/*Destination=*/M->getArgOperand(0),
-                                  /*Source=*/M->getArgOperand(1),
-                                  /*Size=*/
-                                  Builder.CreateIntCast(M->getArgOperand(2),
-                                                        IntptrTy, false)});
+    Builder.CreateCall(
+        NsanCopyValues,
+        {/*Destination=*/M->getArgOperand(0),
+         /*Source=*/M->getArgOperand(1),
+         /*Size=*/Builder.CreateIntCast(M->getArgOperand(2), IntptrTy, false)});
   }
   return false;
 }

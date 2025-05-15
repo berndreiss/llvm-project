@@ -2,7 +2,6 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-load("@rules_python//python:defs.bzl", "py_binary")
 load(
     "//:vars.bzl",
     "LLVM_VERSION_MAJOR",
@@ -22,6 +21,15 @@ package(
 )
 
 licenses(["notice"])
+
+exports_files([
+    "tools/clang-format/clang-format.el",
+    "tools/clang-format/clang-format-test.el",
+    "tools/clang-format/clang-format.py",
+    "tools/clang-rename/clang-rename.el",
+    "tools/extra/clang-include-fixer/tool/clang-include-fixer.el",
+    "tools/extra/clang-include-fixer/tool/clang-include-fixer-test.el",
+])
 
 cc_binary(
     name = "clang-tblgen",
@@ -84,7 +92,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_neon.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
@@ -100,7 +107,6 @@ gentbl(
     td_file = "include/clang/Basic/arm_fp16.td",
     td_srcs = [
         "include/clang/Basic/arm_fp16.td",
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
 )
@@ -114,7 +120,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_mve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_mve.td",
         "include/clang/Basic/arm_mve_defs.td",
     ],
@@ -129,7 +134,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -144,22 +148,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
-        "include/clang/Basic/arm_sve.td",
-        "include/clang/Basic/arm_sve_sme_incl.td",
-    ],
-)
-
-gentbl(
-    name = "basic_arm_sve_immcheck_types_gen",
-    tbl_outs = [(
-        "-gen-arm-immcheck-types",
-        "include/clang/Basic/arm_immcheck_types.inc",
-    )],
-    tblgen = ":clang-tblgen",
-    td_file = "include/clang/Basic/arm_sve.td",
-    td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -174,7 +162,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -189,7 +176,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -204,7 +190,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -219,7 +204,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sme.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -236,7 +220,6 @@ gentbl(
     td_srcs = [
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
-        "include/clang/Basic/arm_immcheck_incl.td",
     ],
 )
 
@@ -249,7 +232,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sme.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -264,7 +246,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sme.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -279,7 +260,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sme.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -351,21 +331,6 @@ gentbl(
     td_file = "include/clang/Basic/BuiltinsRISCV.td",
     td_srcs = [
         "include/clang/Basic/BuiltinsRISCV.td",
-        "include/clang/Basic/BuiltinsRISCVXCV.td",
-        "include/clang/Basic/BuiltinsBase.td",
-    ],
-)
-
-gentbl(
-    name="basic_builtins_x86_gen",
-    tbl_outs = [(
-        "-gen-clang-builtins",
-        "include/clang/Basic/BuiltinsX86.inc",
-    )],
-    tblgen = ":clang-tblgen",
-    td_file = "include/clang/Basic/BuiltinsX86.td",
-    td_srcs = [
-        "include/clang/Basic/BuiltinsX86.td",
         "include/clang/Basic/BuiltinsBase.td",
     ],
 )
@@ -664,7 +629,6 @@ cc_library(
     textual_hdrs = [
         "include/clang/Basic/arm_fp16.inc",
         "include/clang/Basic/arm_mve_builtins.inc",
-        "include/clang/Basic/arm_immcheck_types.inc",
         "include/clang/Basic/arm_mve_builtin_aliases.inc",
         "include/clang/Basic/arm_mve_builtin_cg.inc",
         "include/clang/Basic/arm_mve_builtin_sema.inc",
@@ -707,7 +671,6 @@ cc_library(
         ":basic_builtins_bpf_gen",
         ":basic_builtins_gen",
         ":basic_builtins_riscv_gen",
-        ":basic_builtins_x86_gen",
         ":basic_internal_headers",
         ":basic_riscv_sifive_vector_builtins_gen",
         ":basic_riscv_vector_builtin_cg_gen",
@@ -715,7 +678,6 @@ cc_library(
         ":config",
         ":diagnostic_defs_gen",
         ":sema_attr_gen",
-        ":support",
         "//llvm:Core",
         "//llvm:FrontendDebug",
         "//llvm:FrontendDriver",
@@ -742,7 +704,6 @@ cc_library(
     deps = [
         ":basic",
         ":config",
-        ":support",
         "//llvm:Support",
         "//llvm:TargetParser",
     ],
@@ -891,14 +852,14 @@ gentbl(
 )
 
 gentbl(
-    name = "ast_bytecode_opcodes_gen",
+    name = "ast_interp_opcodes_gen",
     tbl_outs = [(
         "-gen-clang-opcodes",
-        "lib/AST/ByteCode/Opcodes.inc",
+        "lib/AST/Interp/Opcodes.inc",
     )],
     tblgen = ":clang-tblgen",
-    td_file = "lib/AST/ByteCode/Opcodes.td",
-    td_srcs = ["lib/AST/ByteCode/Opcodes.td"],
+    td_file = "lib/AST/Interp/Opcodes.td",
+    td_srcs = ["lib/AST/Interp/Opcodes.td"],
 )
 
 gentbl(
@@ -961,11 +922,11 @@ cc_library(
     srcs = glob([
         "lib/AST/*.cpp",
         "lib/AST/*.h",
-        "lib/AST/ByteCode/*.cpp",
-        "lib/AST/ByteCode/*.h",
+        "lib/AST/Interp/*.cpp",
+        "lib/AST/Interp/*.h",
     ]) + [
         "lib/AST/AttrDocTable.inc",
-        "lib/AST/ByteCode/Opcodes.inc",
+        "lib/AST/Interp/Opcodes.inc",
     ],
     hdrs = glob([
         "include/clang/AST/*.h",
@@ -981,7 +942,7 @@ cc_library(
         # this library because it contains files that collide easily with system
         # headers such as `CXXABI.h`.
         "-I$(GENDIR)/$(WORKSPACE_ROOT)/clang/lib/AST",
-        "-I$(GENDIR)/$(WORKSPACE_ROOT)/clang/lib/AST/ByteCode",
+        "-I$(GENDIR)/$(WORKSPACE_ROOT)/clang/lib/AST/Interp",
     ],
     textual_hdrs = [
         "include/clang/AST/AttrImpl.inc",
@@ -1006,13 +967,13 @@ cc_library(
     ],
     deps = [
         ":ast_attr_gen",
-        ":ast_bytecode_opcodes_gen",
         ":ast_comment_command_info_gen",
         ":ast_comment_html_named_character_references_gen",
         ":ast_comment_html_tags_gen",
         ":ast_comment_html_tags_properties_gen",
         ":ast_comment_nodes_gen",
         ":ast_decl_nodes_gen",
+        ":ast_interp_opcodes_gen",
         ":ast_properties_base_gen",
         ":ast_stmt_data_collectors_gen",
         ":ast_stmt_nodes_gen",
@@ -1020,7 +981,6 @@ cc_library(
         ":basic",
         ":basic_builtins_gen",
         ":lex",
-        ":support",
         ":type_nodes_gen",
         "//llvm:BinaryFormat",
         "//llvm:Core",
@@ -1091,7 +1051,6 @@ cc_library(
         ":ast_matchers",
         ":basic",
         ":lex",
-        ":support",
         "//llvm:Support",
     ],
 )
@@ -1244,7 +1203,6 @@ cc_library(
         ":ast",
         ":basic",
         ":lex",
-        ":support",
         "//llvm:Support",
     ],
 )
@@ -1291,9 +1249,6 @@ cc_library(
     ]),
     hdrs = glob(["include/clang/Testing/*.h"]),
     includes = ["include"],
-    textual_hdrs = [
-        "include/clang/Testing/TestLanguage.def",
-    ],
     deps = [
         ":basic",
         ":frontend",
@@ -1341,7 +1296,6 @@ cc_library(
         ":frontend",
         ":lex",
         ":rewrite",
-        ":support",
         ":tooling_core",
         "//llvm:Option",
         "//llvm:Support",
@@ -1680,7 +1634,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_neon.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
@@ -1696,7 +1649,6 @@ gentbl(
     td_file = "include/clang/Basic/arm_fp16.td",
     td_srcs = [
         "include/clang/Basic/arm_fp16.td",
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
 )
@@ -1738,7 +1690,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sve.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sve.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -1754,7 +1705,6 @@ gentbl(
     td_file = "include/clang/Basic/arm_bf16.td",
     td_srcs = [
         "include/clang/Basic/arm_bf16.td",
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
 )
@@ -1772,7 +1722,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_sme.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_sme.td",
         "include/clang/Basic/arm_sve_sme_incl.td",
     ],
@@ -1787,7 +1736,6 @@ gentbl(
     tblgen = ":clang-tblgen",
     td_file = "include/clang/Basic/arm_neon.td",
     td_srcs = [
-        "include/clang/Basic/arm_immcheck_incl.td",
         "include/clang/Basic/arm_neon.td",
         "include/clang/Basic/arm_neon_incl.td",
     ],
@@ -1879,7 +1827,6 @@ cc_library(
         ":sema",
         ":serialization",
         ":static_analyzer_core_options",
-        ":support",
         "//llvm:BinaryFormat",
         "//llvm:BitReader",
         "//llvm:BitstreamReader",
@@ -1962,7 +1909,6 @@ cc_library(
         "//llvm:Support",
         "//llvm:Target",
         "//llvm:TargetParser",
-        "//llvm:config",
     ],
 )
 
@@ -2149,7 +2095,6 @@ cc_library(
         "//llvm:BitstreamReader",
         "//llvm:BitstreamWriter",
         "//llvm:FrontendOpenMP",
-        "//llvm:Object",
         "//llvm:Support",
         "//llvm:TargetParser",
     ],
@@ -2600,6 +2545,20 @@ cc_binary(
         ":format",
         ":frontend",
         ":lex",
+        ":rewrite",
+        ":tooling",
+        ":tooling_refactoring",
+        "//llvm:Support",
+    ],
+)
+
+cc_binary(
+    name = "clang-rename",
+    srcs = glob(["tools/clang-rename/*.cpp"]),
+    stamp = 0,
+    deps = [
+        ":basic",
+        ":frontend",
         ":rewrite",
         ":tooling",
         ":tooling_refactoring",

@@ -436,9 +436,8 @@ bool AMDGPUPrintfRuntimeBindingImpl::run(Module &M) {
   if (TT.getArch() == Triple::r600)
     return false;
 
-  auto *PrintfFunction = M.getFunction("printf");
-  if (!PrintfFunction || !PrintfFunction->isDeclaration() ||
-      M.getModuleFlag("openmp"))
+  auto PrintfFunction = M.getFunction("printf");
+  if (!PrintfFunction || !PrintfFunction->isDeclaration())
     return false;
 
   for (auto &U : PrintfFunction->uses()) {

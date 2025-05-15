@@ -21,7 +21,6 @@ public:
       : Banner(Banner) {}
   PreservedAnalyses run(MachineFunction &MF,
                         MachineFunctionAnalysisManager &MFAM);
-  static bool isRequired() { return true; }
 };
 
 } // namespace llvm

@@ -705,7 +705,7 @@ Error writeImportLibrary(StringRef ImportName, StringRef Path,
         Name = std::string(SymbolName);
       } else {
         Expected<std::string> ReplacedName =
-            object::replace(SymbolName, E.Name, E.ExtName);
+            replace(SymbolName, E.Name, E.ExtName);
         if (!ReplacedName)
           return ReplacedName.takeError();
         Name.swap(*ReplacedName);

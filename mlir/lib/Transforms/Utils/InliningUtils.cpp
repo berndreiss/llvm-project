@@ -25,37 +25,22 @@
 
 using namespace mlir;
 
-/// Remap all locations reachable from the inlined blocks with CallSiteLoc
-/// locations with the provided caller location.
+/// Remap locations from the inlined blocks with CallSiteLoc locations with the
+/// provided caller location.
 static void
 remapInlinedLocations(iterator_range<Region::iterator> inlinedBlocks,
                       Location callerLoc) {
-  DenseMap<Location, LocationAttr> mappedLocations;
-  auto remapLoc = [&](Location loc) {
-    auto [it, inserted] = mappedLocations.try_emplace(loc);
-    // Only query the attribute uniquer once per callsite attribute.
-    if (inserted) {
-      auto newLoc = CallSiteLoc::get(loc, callerLoc);
-      it->getSecond() = newLoc;
+  DenseMap<Location, Location> mappedLocations;
+  auto remapOpLoc = [&](Operation *op) {
+    auto it = mappedLocations.find(op->getLoc());
+    if (it == mappedLocations.end()) {
+      auto newLoc = CallSiteLoc::get(op->getLoc(), callerLoc);
+      it = mappedLocations.try_emplace(op->getLoc(), newLoc).first;
     }
-    return it->second;
+    op->setLoc(it->second);
   };
-
-  AttrTypeReplacer attrReplacer;
-  attrReplacer.addReplacement(
-      [&](LocationAttr loc) -> std::pair<LocationAttr, WalkResult> {
-        return {remapLoc(loc), WalkResult::skip()};
-      });
-
-  for (Block &block : inlinedBlocks) {
-    for (BlockArgument &arg : block.getArguments())
-      if (LocationAttr newLoc = remapLoc(arg.getLoc()))
-        arg.setLoc(newLoc);
-
-    for (Operation &op : block)
-      attrReplacer.recursivelyReplaceElementsIn(&op, /*replaceAttrs=*/false,
-                                                /*replaceLocs=*/true);
-  }
+  for (auto &block : inlinedBlocks)
+    block.walk(remapOpLoc);
 }
 
 static void remapInlinedOperands(iterator_range<Region::iterator> inlinedBlocks,

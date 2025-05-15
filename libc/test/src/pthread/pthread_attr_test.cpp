@@ -6,7 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "hdr/errno_macros.h"
 #include "src/pthread/pthread_attr_destroy.h"
 #include "src/pthread/pthread_attr_getdetachstate.h"
 #include "src/pthread/pthread_attr_getguardsize.h"
@@ -20,6 +19,7 @@
 
 #include "test/UnitTest/Test.h"
 
+#include <errno.h>
 #include <linux/param.h> // For EXEC_PAGESIZE.
 #include <pthread.h>
 

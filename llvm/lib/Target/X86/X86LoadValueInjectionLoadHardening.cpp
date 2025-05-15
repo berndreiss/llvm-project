@@ -53,6 +53,7 @@
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RDFGraph.h"
 #include "llvm/CodeGen/RDFLiveness.h"
 #include "llvm/InitializePasses.h"

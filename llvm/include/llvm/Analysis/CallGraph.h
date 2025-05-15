@@ -46,6 +46,7 @@
 #define LLVM_ANALYSIS_CALLGRAPH_H
 
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Pass.h"

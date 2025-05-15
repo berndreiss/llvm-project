@@ -21,8 +21,6 @@
 
 using namespace mlir;
 using namespace mlir::tblgen;
-using llvm::formatv;
-using llvm::RecordKeeper;
 
 static llvm::cl::OptionCategory passGenCat("Options for -gen-pass-decls");
 static llvm::cl::opt<std::string>
@@ -30,10 +28,10 @@ static llvm::cl::opt<std::string>
               llvm::cl::cat(passGenCat));
 
 /// Extract the list of passes from the TableGen records.
-static std::vector<Pass> getPasses(const RecordKeeper &records) {
+static std::vector<Pass> getPasses(const llvm::RecordKeeper &recordKeeper) {
   std::vector<Pass> passes;
 
-  for (const auto *def : records.getAllDerivedDefinitions("PassBase"))
+  for (const auto *def : recordKeeper.getAllDerivedDefinitions("PassBase"))
     passes.emplace_back(def);
 
   return passes;
@@ -93,15 +91,15 @@ static void emitPassOptionsStruct(const Pass &pass, raw_ostream &os) {
   if (options.empty())
     return;
 
-  os << formatv("struct {0}Options {{\n", passName);
+  os << llvm::formatv("struct {0}Options {{\n", passName);
 
   for (const PassOption &opt : options) {
     std::string type = opt.getType().str();
 
     if (opt.isListOption())
-      type = "::llvm::SmallVector<" + type + ">";
+      type = "::llvm::ArrayRef<" + type + ">";
 
-    os.indent(2) << formatv("{0} {1}", type, opt.getCppVariableName());
+    os.indent(2) << llvm::formatv("{0} {1}", type, opt.getCppVariableName());
 
     if (std::optional<StringRef> defaultVal = opt.getDefaultValue())
       os << " = " << defaultVal;
@@ -130,9 +128,9 @@ static void emitPassDecls(const Pass &pass, raw_ostream &os) {
 
     // Declaration of the constructor with options.
     if (ArrayRef<PassOption> options = pass.getOptions(); !options.empty())
-      os << formatv("std::unique_ptr<::mlir::Pass> create{0}("
-                    "{0}Options options);\n",
-                    passName);
+      os << llvm::formatv("std::unique_ptr<::mlir::Pass> create{0}(const "
+                          "{0}Options &options);\n",
+                          passName);
   }
 
   os << "#undef " << enableVarName << "\n";
@@ -149,13 +147,14 @@ static void emitRegistrations(llvm::ArrayRef<Pass> passes, raw_ostream &os) {
     if (StringRef constructor = pass.getConstructor(); !constructor.empty())
       constructorCall = constructor.str();
     else
-      constructorCall = formatv("create{0}()", pass.getDef()->getName()).str();
+      constructorCall =
+          llvm::formatv("create{0}()", pass.getDef()->getName()).str();
 
-    os << formatv(passRegistrationCode, pass.getDef()->getName(),
-                  constructorCall);
+    os << llvm::formatv(passRegistrationCode, pass.getDef()->getName(),
+                        constructorCall);
   }
 
-  os << formatv(passGroupRegistrationCode, groupName);
+  os << llvm::formatv(passGroupRegistrationCode, groupName);
 
   for (const Pass &pass : passes)
     os << "  register" << pass.getDef()->getName() << "();\n";
@@ -237,7 +236,7 @@ namespace impl {{
 
 const char *const friendDefaultConstructorWithOptionsDeclTemplate = R"(
 namespace impl {{
-  std::unique_ptr<::mlir::Pass> create{0}({0}Options options);
+  std::unique_ptr<::mlir::Pass> create{0}(const {0}Options &options);
 } // namespace impl
 )";
 
@@ -248,8 +247,8 @@ const char *const friendDefaultConstructorDefTemplate = R"(
 )";
 
 const char *const friendDefaultConstructorWithOptionsDefTemplate = R"(
-  friend std::unique_ptr<::mlir::Pass> create{0}({0}Options options) {{
-    return std::make_unique<DerivedT>(std::move(options));
+  friend std::unique_ptr<::mlir::Pass> create{0}(const {0}Options &options) {{
+    return std::make_unique<DerivedT>(options);
   }
 )";
 
@@ -260,8 +259,8 @@ std::unique_ptr<::mlir::Pass> create{0}() {{
 )";
 
 const char *const defaultConstructorWithOptionsDefTemplate = R"(
-std::unique_ptr<::mlir::Pass> create{0}({0}Options options) {{
-  return impl::create{0}(std::move(options));
+std::unique_ptr<::mlir::Pass> create{0}(const {0}Options &options) {{
+  return impl::create{0}(options);
 }
 )";
 
@@ -271,9 +270,9 @@ static void emitPassOptionDecls(const Pass &pass, raw_ostream &os) {
     os.indent(2) << "::mlir::Pass::"
                  << (opt.isListOption() ? "ListOption" : "Option");
 
-    os << formatv(R"(<{0}> {1}{{*this, "{2}", ::llvm::cl::desc("{3}"))",
-                  opt.getType(), opt.getCppVariableName(), opt.getArgument(),
-                  opt.getDescription());
+    os << llvm::formatv(R"(<{0}> {1}{{*this, "{2}", ::llvm::cl::desc("{3}"))",
+                        opt.getType(), opt.getCppVariableName(),
+                        opt.getArgument(), opt.getDescription());
     if (std::optional<StringRef> defaultVal = opt.getDefaultValue())
       os << ", ::llvm::cl::init(" << defaultVal << ")";
     if (std::optional<StringRef> additionalFlags = opt.getAdditionalFlags())
@@ -285,9 +284,9 @@ static void emitPassOptionDecls(const Pass &pass, raw_ostream &os) {
 /// Emit the declarations for each of the pass statistics.
 static void emitPassStatisticDecls(const Pass &pass, raw_ostream &os) {
   for (const PassStatistic &stat : pass.getStatistics()) {
-    os << formatv("  ::mlir::Pass::Statistic {0}{{this, \"{1}\", \"{2}\"};\n",
-                  stat.getCppVariableName(), stat.getName(),
-                  stat.getDescription());
+    os << llvm::formatv(
+        "  ::mlir::Pass::Statistic {0}{{this, \"{1}\", \"{2}\"};\n",
+        stat.getCppVariableName(), stat.getName(), stat.getDescription());
   }
 }
 
@@ -301,10 +300,11 @@ static void emitPassDefs(const Pass &pass, raw_ostream &os) {
   os << "#ifdef " << enableVarName << "\n";
 
   if (emitDefaultConstructors) {
-    os << formatv(friendDefaultConstructorDeclTemplate, passName);
+    os << llvm::formatv(friendDefaultConstructorDeclTemplate, passName);
 
     if (emitDefaultConstructorWithOptions)
-      os << formatv(friendDefaultConstructorWithOptionsDeclTemplate, passName);
+      os << llvm::formatv(friendDefaultConstructorWithOptionsDeclTemplate,
+                          passName);
   }
 
   std::string dependentDialectRegistrations;
@@ -313,23 +313,24 @@ static void emitPassDefs(const Pass &pass, raw_ostream &os) {
     llvm::interleave(
         pass.getDependentDialects(), dialectsOs,
         [&](StringRef dependentDialect) {
-          dialectsOs << formatv(dialectRegistrationTemplate, dependentDialect);
+          dialectsOs << llvm::formatv(dialectRegistrationTemplate,
+                                      dependentDialect);
         },
         "\n    ");
   }
 
   os << "namespace impl {\n";
-  os << formatv(baseClassBegin, passName, pass.getBaseClass(),
-                pass.getArgument(), pass.getSummary(),
-                dependentDialectRegistrations);
+  os << llvm::formatv(baseClassBegin, passName, pass.getBaseClass(),
+                      pass.getArgument(), pass.getSummary(),
+                      dependentDialectRegistrations);
 
   if (ArrayRef<PassOption> options = pass.getOptions(); !options.empty()) {
-    os.indent(2) << formatv("{0}Base({0}Options options) : {0}Base() {{\n",
-                            passName);
+    os.indent(2) << llvm::formatv(
+        "{0}Base(const {0}Options &options) : {0}Base() {{\n", passName);
 
     for (const PassOption &opt : pass.getOptions())
-      os.indent(4) << formatv("{0} = std::move(options.{0});\n",
-                              opt.getCppVariableName());
+      os.indent(4) << llvm::formatv("{0} = options.{0};\n",
+                                    opt.getCppVariableName());
 
     os.indent(2) << "}\n";
   }
@@ -343,20 +344,21 @@ static void emitPassDefs(const Pass &pass, raw_ostream &os) {
   os << "private:\n";
 
   if (emitDefaultConstructors) {
-    os << formatv(friendDefaultConstructorDefTemplate, passName);
+    os << llvm::formatv(friendDefaultConstructorDefTemplate, passName);
 
     if (!pass.getOptions().empty())
-      os << formatv(friendDefaultConstructorWithOptionsDefTemplate, passName);
+      os << llvm::formatv(friendDefaultConstructorWithOptionsDefTemplate,
+                          passName);
   }
 
   os << "};\n";
   os << "} // namespace impl\n";
 
   if (emitDefaultConstructors) {
-    os << formatv(defaultConstructorDefTemplate, passName);
+    os << llvm::formatv(defaultConstructorDefTemplate, passName);
 
     if (emitDefaultConstructorWithOptions)
-      os << formatv(defaultConstructorWithOptionsDefTemplate, passName);
+      os << llvm::formatv(defaultConstructorWithOptionsDefTemplate, passName);
   }
 
   os << "#undef " << enableVarName << "\n";
@@ -365,7 +367,7 @@ static void emitPassDefs(const Pass &pass, raw_ostream &os) {
 
 static void emitPass(const Pass &pass, raw_ostream &os) {
   StringRef passName = pass.getDef()->getName();
-  os << formatv(passHeader, passName);
+  os << llvm::formatv(passHeader, passName);
 
   emitPassDecls(pass, os);
   emitPassDefs(pass, os);
@@ -434,20 +436,22 @@ static void emitOldPassDecl(const Pass &pass, raw_ostream &os) {
     llvm::interleave(
         pass.getDependentDialects(), dialectsOs,
         [&](StringRef dependentDialect) {
-          dialectsOs << formatv(dialectRegistrationTemplate, dependentDialect);
+          dialectsOs << llvm::formatv(dialectRegistrationTemplate,
+                                      dependentDialect);
         },
         "\n    ");
   }
-  os << formatv(oldPassDeclBegin, defName, pass.getBaseClass(),
-                pass.getArgument(), pass.getSummary(),
-                dependentDialectRegistrations);
+  os << llvm::formatv(oldPassDeclBegin, defName, pass.getBaseClass(),
+                      pass.getArgument(), pass.getSummary(),
+                      dependentDialectRegistrations);
   emitPassOptionDecls(pass, os);
   emitPassStatisticDecls(pass, os);
   os << "};\n";
 }
 
-static void emitPasses(const RecordKeeper &records, raw_ostream &os) {
-  std::vector<Pass> passes = getPasses(records);
+static void emitPasses(const llvm::RecordKeeper &recordKeeper,
+                       raw_ostream &os) {
+  std::vector<Pass> passes = getPasses(recordKeeper);
   os << "/* Autogenerated by mlir-tblgen; don't manually edit */\n";
 
   os << "\n";
@@ -475,7 +479,7 @@ static void emitPasses(const RecordKeeper &records, raw_ostream &os) {
 
 static mlir::GenRegistration
     genPassDecls("gen-pass-decls", "Generate pass declarations",
-                 [](const RecordKeeper &records, raw_ostream &os) {
+                 [](const llvm::RecordKeeper &records, raw_ostream &os) {
                    emitPasses(records, os);
                    return false;
                  });

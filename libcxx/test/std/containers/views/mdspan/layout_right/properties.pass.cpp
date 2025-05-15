@@ -26,11 +26,10 @@
 //   };
 // }
 
-#include <cassert>
-#include <cstddef>
 #include <mdspan>
-#include <span> // dynamic_extent
-#include <utility>
+#include <type_traits>
+#include <concepts>
+#include <cassert>
 
 #include "test_macros.h"
 

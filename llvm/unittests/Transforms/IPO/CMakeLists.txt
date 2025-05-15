@@ -13,5 +13,4 @@ add_llvm_unittest(IPOTests
   WholeProgramDevirt.cpp
   AttributorTest.cpp
   FunctionSpecializationTest.cpp
-  ImportIDTableTests.cpp
   )

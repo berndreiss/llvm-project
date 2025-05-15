@@ -27,6 +27,7 @@ From the git doc:
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -69,6 +70,14 @@ def ask_confirm(prompt):
         return query.lower() == "y"
 
 
+def get_dev_null():
+    """Lazily create a /dev/null fd for use in shell()"""
+    global dev_null_fd
+    if dev_null_fd is None:
+        dev_null_fd = open(os.devnull, "w")
+    return dev_null_fd
+
+
 def shell(
     cmd,
     strip=True,
@@ -86,8 +95,10 @@ def shell(
         cwd_msg = " in %s" % cwd
     log_verbose("Running%s: %s" % (cwd_msg, " ".join(quoted_cmd)))
 
-    # Silence errors if requested.
-    err_pipe = subprocess.DEVNULL if ignore_errors else subprocess.PIPE
+    err_pipe = subprocess.PIPE
+    if ignore_errors:
+        # Silence errors if requested.
+        err_pipe = get_dev_null()
 
     start = time.time()
     p = subprocess.Popen(

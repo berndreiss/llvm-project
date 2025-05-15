@@ -15,7 +15,6 @@
 #ifndef MLIR_INTERFACES_DATALAYOUTINTERFACES_H
 #define MLIR_INTERFACES_DATALAYOUTINTERFACES_H
 
-#include "mlir/IR/Attributes.h"
 #include "mlir/IR/DialectInterface.h"
 #include "mlir/IR/OpDefinition.h"
 #include "llvm/ADT/DenseMap.h"
@@ -24,7 +23,6 @@
 namespace mlir {
 class DataLayout;
 class DataLayoutEntryInterface;
-class DLTIQueryInterface;
 class TargetDeviceSpecInterface;
 class TargetSystemSpecInterface;
 using DataLayoutEntryKey = llvm::PointerUnion<Type, StringAttr>;
@@ -33,7 +31,10 @@ using DataLayoutEntryKey = llvm::PointerUnion<Type, StringAttr>;
 using DataLayoutEntryList = llvm::SmallVector<DataLayoutEntryInterface, 4>;
 using DataLayoutEntryListRef = llvm::ArrayRef<DataLayoutEntryInterface>;
 using TargetDeviceSpecListRef = llvm::ArrayRef<TargetDeviceSpecInterface>;
-using TargetDeviceSpecEntry = std::pair<StringAttr, TargetDeviceSpecInterface>;
+using DeviceIDTargetDeviceSpecPair =
+    std::pair<StringAttr, TargetDeviceSpecInterface>;
+using DeviceIDTargetDeviceSpecPairListRef =
+    llvm::ArrayRef<DeviceIDTargetDeviceSpecPair>;
 class DataLayoutOpInterface;
 class DataLayoutSpecInterface;
 class ModuleOp;

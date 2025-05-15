@@ -127,12 +127,6 @@ static std::optional<parser::Message> WhyNotDefinableBase(parser::CharBlock at,
       (!IsPointer(ultimate) || (isWholeSymbol && isPointerDefinition))) {
     return BlameSymbol(
         at, "'%s' is an INTENT(IN) dummy argument"_en_US, original);
-  } else if (acceptAllocatable && IsAllocatable(ultimate) &&
-      !flags.test(DefinabilityFlag::SourcedAllocation)) {
-    // allocating a function result doesn't count as a def'n
-    // unless there's SOURCE=
-  } else if (!flags.test(DefinabilityFlag::DoNotNoteDefinition)) {
-    scope.context().NoteDefinedSymbol(ultimate);
   }
   if (const Scope * pure{FindPureProcedureContaining(scope)}) {
     // Additional checking for pure subprograms.
@@ -223,8 +217,7 @@ static std::optional<parser::Message> WhyNotDefinableLast(parser::CharBlock at,
       }
       if (const DerivedTypeSpec * derived{GetDerivedTypeSpec(dyType)}) {
         if (!flags.test(DefinabilityFlag::PolymorphicOkInPure)) {
-          if (auto bad{
-                  FindPolymorphicAllocatablePotentialComponent(*derived)}) {
+          if (auto bad{FindPolymorphicAllocatableUltimateComponent(*derived)}) {
             return BlameSymbol(at,
                 "'%s' has polymorphic component '%s' in a pure subprogram"_en_US,
                 original, bad.BuildResultDesignatorName());
@@ -349,8 +342,7 @@ std::optional<parser::Message> WhyNotDefinable(parser::CharBlock at,
                 if (!portabilityWarning &&
                     scope.context().languageFeatures().ShouldWarn(
                         common::UsageWarning::VectorSubscriptFinalization)) {
-                  portabilityWarning = parser::Message{
-                      common::UsageWarning::VectorSubscriptFinalization, at,
+                  portabilityWarning = parser::Message{at,
                       "Variable '%s' has a vector subscript and will be finalized by non-elemental subroutine '%s'"_port_en_US,
                       expr.AsFortran(), anyRankMatch->name()};
                 }

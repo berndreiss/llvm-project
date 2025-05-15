@@ -528,7 +528,7 @@ static ParseResult parseSwitchOpCases(
     int64_t value = 0;
     if (failed(parser.parseInteger(value)))
       return failure();
-    values.push_back(APInt(bitWidth, value, /*isSigned=*/true));
+    values.push_back(APInt(bitWidth, value));
 
     Block *destination;
     SmallVector<OpAsmParser::UnresolvedOperand> operands;

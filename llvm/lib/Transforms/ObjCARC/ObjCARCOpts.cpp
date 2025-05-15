@@ -36,6 +36,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/ObjCARCAliasAnalysis.h"
 #include "llvm/Analysis/ObjCARCAnalysisUtils.h"
 #include "llvm/Analysis/ObjCARCInstKind.h"
 #include "llvm/Analysis/ObjCARCUtil.h"
@@ -993,7 +994,7 @@ void ObjCARCOpt::OptimizeIndividualCallImpl(Function &F, Instruction *Inst,
       CallInst *NewCall = CallInst::Create(Decl, Call->getArgOperand(0), "",
                                            Call->getIterator());
       NewCall->setMetadata(MDKindCache.get(ARCMDKindID::ImpreciseRelease),
-                           MDNode::get(C, {}));
+                           MDNode::get(C, std::nullopt));
 
       LLVM_DEBUG(dbgs() << "Replacing autorelease{,RV}(x) with objc_release(x) "
                            "since x is otherwise unused.\nOld: "

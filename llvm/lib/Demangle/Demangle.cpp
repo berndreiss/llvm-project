@@ -38,9 +38,8 @@ std::string llvm::demangle(std::string_view MangledName) {
 }
 
 static bool isItaniumEncoding(std::string_view S) {
-  // Itanium demangler supports prefixes with 1-4 underscores.
-  const size_t Pos = S.find_first_not_of('_');
-  return Pos > 0 && Pos <= 4 && S[Pos] == 'Z';
+  // Itanium encoding requires 1 or 3 leading underscores, followed by 'Z'.
+  return starts_with(S, "_Z") || starts_with(S, "___Z");
 }
 
 static bool isRustEncoding(std::string_view S) { return starts_with(S, "_R"); }

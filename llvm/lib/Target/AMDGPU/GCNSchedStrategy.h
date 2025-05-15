@@ -70,12 +70,6 @@ protected:
   // Pointer to the current SchedStageID.
   SmallVectorImpl<GCNSchedStageID>::iterator CurrentStage = nullptr;
 
-  // GCN RP Tracker for top-down scheduling
-  mutable GCNDownwardRPTracker DownwardTracker;
-
-  // GCN RP Tracker for botttom-up scheduling
-  mutable GCNUpwardRPTracker UpwardTracker;
-
 public:
   // schedule() have seen register pressure over the critical limits and had to
   // track register pressure for actual scheduling heuristics.
@@ -108,8 +102,6 @@ public:
 
   SUnit *pickNode(bool &IsTopNode) override;
 
-  void schedNode(SUnit *SU, bool IsTopNode) override;
-
   void initialize(ScheduleDAGMI *DAG) override;
 
   unsigned getTargetOccupancy() { return TargetOccupancy; }
@@ -124,18 +116,13 @@ public:
   bool hasNextStage() const;
 
   GCNSchedStageID getNextStage() const;
-
-  GCNDownwardRPTracker *getDownwardTracker() { return &DownwardTracker; }
-
-  GCNUpwardRPTracker *getUpwardTracker() { return &UpwardTracker; }
 };
 
 /// The goal of this scheduling strategy is to maximize kernel occupancy (i.e.
 /// maximum number of waves per simd).
 class GCNMaxOccupancySchedStrategy final : public GCNSchedStrategy {
 public:
-  GCNMaxOccupancySchedStrategy(const MachineSchedContext *C,
-                               bool IsLegacyScheduler = false);
+  GCNMaxOccupancySchedStrategy(const MachineSchedContext *C);
 };
 
 /// The goal of this scheduling strategy is to maximize ILP for a single wave
@@ -176,32 +163,6 @@ inline raw_ostream &operator<<(raw_ostream &OS, const ScheduleMetrics &Sm) {
   return OS;
 }
 
-class GCNScheduleDAGMILive;
-class RegionPressureMap {
-  GCNScheduleDAGMILive *DAG;
-  // The live in/out pressure as indexed by the first or last MI in the region
-  // before scheduling.
-  DenseMap<MachineInstr *, GCNRPTracker::LiveRegSet> RegionLiveRegMap;
-  // The mapping of RegionIDx to key instruction
-  DenseMap<unsigned, MachineInstr *> IdxToInstruction;
-  // Whether we are calculating LiveOuts or LiveIns
-  bool IsLiveOut;
-
-public:
-  RegionPressureMap() {}
-  RegionPressureMap(GCNScheduleDAGMILive *GCNDAG, bool LiveOut)
-      : DAG(GCNDAG), IsLiveOut(LiveOut) {}
-  // Build the Instr->LiveReg and RegionIdx->Instr maps
-  void buildLiveRegMap();
-
-  // Retrieve the LiveReg for a given RegionIdx
-  GCNRPTracker::LiveRegSet &getLiveRegsForRegionIdx(unsigned RegionIdx) {
-    assert(IdxToInstruction.find(RegionIdx) != IdxToInstruction.end());
-    MachineInstr *Key = IdxToInstruction[RegionIdx];
-    return RegionLiveRegMap[Key];
-  }
-};
-
 class GCNScheduleDAGMILive final : public ScheduleDAGMILive {
   friend class GCNSchedStage;
   friend class OccInitialScheduleStage;
@@ -209,7 +170,6 @@ class GCNScheduleDAGMILive final : public ScheduleDAGMILive {
   friend class ClusteredLowOccStage;
   friend class PreRARematStage;
   friend class ILPInitialScheduleStage;
-  friend class RegionPressureMap;
 
   const GCNSubtarget &ST;
 
@@ -251,22 +211,9 @@ class GCNScheduleDAGMILive final : public ScheduleDAGMILive {
   // Temporary basic block live-in cache.
   DenseMap<const MachineBasicBlock *, GCNRPTracker::LiveRegSet> MBBLiveIns;
 
-  // The map of the initial first region instruction to region live in registers
   DenseMap<MachineInstr *, GCNRPTracker::LiveRegSet> BBLiveInMap;
 
-  // Calculate the map of the initial first region instruction to region live in
-  // registers
-  DenseMap<MachineInstr *, GCNRPTracker::LiveRegSet> getRegionLiveInMap() const;
-
-  // Calculate the map of the initial last region instruction to region live out
-  // registers
-  DenseMap<MachineInstr *, GCNRPTracker::LiveRegSet>
-  getRegionLiveOutMap() const;
-
-  // The live out registers per region. These are internally stored as a map of
-  // the initial last region instruction to region live out registers, but can
-  // be retreived with the regionIdx by calls to getLiveRegsForRegionIdx.
-  RegionPressureMap RegionLiveOuts;
+  DenseMap<MachineInstr *, GCNRPTracker::LiveRegSet> getBBLiveInMap() const;
 
   // Return current region pressure.
   GCNRegPressure getRealRegPressure(unsigned RegionIdx) const;
@@ -363,9 +310,6 @@ public:
   bool isRegionWithExcessRP() const {
     return DAG.RegionsWithExcessRP[RegionIdx];
   }
-
-  // The region number this stage is currently working on
-  unsigned getRegionIdx() { return RegionIdx; }
 
   // Returns true if the new schedule may result in more spilling.
   bool mayCauseSpilling(unsigned WavesAfter);

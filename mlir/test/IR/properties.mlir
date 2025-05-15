@@ -2,10 +2,10 @@
 // # RUN: mlir-opt %s -mlir-print-op-generic -split-input-file  | mlir-opt -mlir-print-op-generic | FileCheck %s --check-prefix=GENERIC
 
 // CHECK:   test.with_properties
-// CHECK-SAME: a = 32, b = "foo", c = "bar", flag = true, array = [1, 2, 3, 4]{{$}}
+// CHECK-SAME: <{a = 32 : i64, array = array<i64: 1, 2, 3, 4>, b = "foo"}>{{$}}
 // GENERIC:   "test.with_properties"()
-// GENERIC-SAME: <{a = 32 : i64, array = array<i64: 1, 2, 3, 4>, b = "foo", c = "bar", flag = true}> : () -> ()
-test.with_properties a = 32, b = "foo", c = "bar", flag = true, array = [1, 2, 3, 4]
+// GENERIC-SAME: <{a = 32 : i64, array = array<i64: 1, 2, 3, 4>, b = "foo"}> : () -> ()
+test.with_properties <{a = 32 : i64, array = array<i64: 1, 2, 3, 4>, b = "foo"}>
 
 // CHECK:   test.with_nice_properties
 // CHECK-SAME:    "foo bar" is -3{{$}}
@@ -18,10 +18,6 @@ test.with_nice_properties "foo bar" is -3
 // GENERIC: "test.with_wrapped_properties"()
 // GENERIC-SAME:  <{prop = "content for properties"}> : () -> ()
 test.with_wrapped_properties <{prop = "content for properties"}>
-
-// CHECK: test.empty_properties
-// GENERIC: "test.empty_properties"()
-test.empty_properties
 
 // CHECK: test.using_property_in_custom
 // CHECK-SAME: [1, 4, 20]{{$}}
@@ -38,48 +34,18 @@ test.using_property_in_custom [1, 4, 20]
 // GENERIC-SAME: }>
 test.using_property_ref_in_custom 1 + 4 = 5
 
-// CHECK:   test.with_default_valued_properties na{{$}}
+// CHECK:   test.with_default_valued_properties {{$}}
 // GENERIC: "test.with_default_valued_properties"()
-// GENERIC-SAME: <{a = 0 : i32, b = "", c = -1 : i32, unit = false}> : () -> ()
-test.with_default_valued_properties 0 "" -1 unit_absent
-
-// CHECK:   test.with_default_valued_properties 1 "foo" 0 unit{{$}}
-// GENERIC: "test.with_default_valued_properties"()
-// GENERIC-SAME: <{a = 1 : i32, b = "foo", c = 0 : i32, unit}> : () -> ()
-test.with_default_valued_properties 1 "foo" 0 unit
+// GENERIC-SAME:  <{a = 0 : i32}>
+test.with_default_valued_properties <{a = 0 : i32}>
 
 // CHECK:   test.with_optional_properties
-// CHECK-SAME: simple = 0
+// CHECK-SAME:  <{b = 0 : i32}>
 // GENERIC: "test.with_optional_properties"()
-// GENERIC-SAME:  <{hasDefault = [], hasUnit = false, longSyntax = [], maybeUnit = [], nested = [], nonTrivialStorage = [], simple = [0]}> : () -> ()
-test.with_optional_properties simple = 0
+// GENERIC-SAME:  <{b = 0 : i32}>
+test.with_optional_properties <{b = 0 : i32}>
 
-// CHECK:   test.with_optional_properties{{$}}
+// CHECK:   test.with_optional_properties {{$}}
 // GENERIC: "test.with_optional_properties"()
-// GENERIC-SAME: simple = []
+// GENERIC-SAME:  : () -> ()
 test.with_optional_properties
-
-// CHECK:    test.with_optional_properties
-// CHECK-SAME: anAttr = 0 simple = 1 nonTrivialStorage = "foo" hasDefault = some<0> nested = some<1>  longSyntax = some<"bar"> hasUnit maybeUnit = some<unit>
-// GENERIC: "test.with_optional_properties"()
-// GENERIC-SAME: <{anAttr = 0 : i32, hasDefault = [0], hasUnit, longSyntax = ["bar"], maybeUnit = [unit], nested = {{\[}}[1]], nonTrivialStorage = ["foo"], simple = [1]}> : () -> ()
-test.with_optional_properties
-  anAttr = 0
-  simple = 1
-  nonTrivialStorage = "foo"
-  hasDefault = some<0>
-  nested = some<1>
-  longSyntax = some<"bar">
-  hasUnit
-  maybeUnit = some<unit>
-
-// CHECK:    test.with_optional_properties
-// CHECK-SAME: nested = some<none>
-// GENERIC: "test.with_optional_properties"()
-// GENERIC-SAME: nested = {{\[}}[]]
-test.with_optional_properties nested = some<none>
-
-// CHECK:    test.with_array_properties
-// CHECK-SAME: ints = [1, 2] strings = ["a", "b"] nested = {{\[}}[1, 2], [3, 4]] opt = [-1, -2] explicitOptions = [none, 0] explicitUnits = [unit, unit_absent]
-// GENERIC: "test.with_array_properties"()
-test.with_array_properties ints = [1, 2] strings = ["a", "b"] nested = [[1, 2], [3, 4]] opt = [-1, -2] explicitOptions = [none, 0] explicitUnits = [unit, unit_absent] [] thats_has_default

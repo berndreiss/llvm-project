@@ -665,8 +665,8 @@ void IRPromoter::Mutate() {
     } else if (auto *Switch = dyn_cast<SwitchInst>(I))
       TruncTysMap[I].push_back(Switch->getCondition()->getType());
     else {
-      for (const Value *Op : I->operands())
-        TruncTysMap[I].push_back(Op->getType());
+      for (unsigned i = 0; i < I->getNumOperands(); ++i)
+        TruncTysMap[I].push_back(I->getOperand(i)->getType());
     }
   }
   for (auto *V : Visited) {
@@ -834,10 +834,11 @@ bool TypePromotionImpl::TryToPromote(Value *V, unsigned PromotedWidth,
     // the tree has already been explored.
     // TODO: This could limit the transform, ie if we try to promote something
     // from an i8 and fail first, before trying an i16.
-    if (!AllVisited.insert(V).second)
+    if (AllVisited.count(V))
       return false;
 
     CurrentVisited.insert(V);
+    AllVisited.insert(V);
 
     // Calls can be both sources and sinks.
     if (isSink(V))

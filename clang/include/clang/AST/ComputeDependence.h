@@ -107,7 +107,6 @@ class ObjCSubscriptRefExpr;
 class ObjCIsaExpr;
 class ObjCIndirectCopyRestoreExpr;
 class ObjCMessageExpr;
-class OpenACCAsteriskSizeExpr;
 
 // The following functions are called from constructors of `Expr`, so they
 // should not access anything beyond basic
@@ -133,8 +132,7 @@ ExprDependence computeDependence(ArrayInitLoopExpr *E);
 ExprDependence computeDependence(ImplicitValueInitExpr *E);
 ExprDependence computeDependence(InitListExpr *E);
 ExprDependence computeDependence(ExtVectorElementExpr *E);
-ExprDependence computeDependence(BlockExpr *E,
-                                 bool ContainsUnexpandedParameterPack);
+ExprDependence computeDependence(BlockExpr *E);
 ExprDependence computeDependence(AsTypeExpr *E);
 ExprDependence computeDependence(DeclRefExpr *E, const ASTContext &Ctx);
 ExprDependence computeDependence(RecoveryExpr *E);
@@ -205,7 +203,6 @@ ExprDependence computeDependence(ObjCSubscriptRefExpr *E);
 ExprDependence computeDependence(ObjCIsaExpr *E);
 ExprDependence computeDependence(ObjCIndirectCopyRestoreExpr *E);
 ExprDependence computeDependence(ObjCMessageExpr *E);
-ExprDependence computeDependence(OpenACCAsteriskSizeExpr *E);
 
 } // namespace clang
 #endif

@@ -1,14 +1,20 @@
 import os
-
-from clang.cindex import CompilationDatabase, CompilationDatabaseError, Config
+from clang.cindex import Config
 
 if "CLANG_LIBRARY_PATH" in os.environ:
     Config.set_library_path(os.environ["CLANG_LIBRARY_PATH"])
 
+from clang.cindex import CompilationDatabase
+from clang.cindex import CompilationDatabaseError
+from clang.cindex import CompileCommands
+from clang.cindex import CompileCommand
+import os
 import gc
 import unittest
 import sys
-from pathlib import Path
+from .util import skip_if_no_fspath
+from .util import str_to_path
+
 
 kInputsDir = os.path.join(os.path.dirname(__file__), "INPUTS")
 
@@ -25,7 +31,7 @@ class TestCDB(unittest.TestCase):
         with open(os.devnull, "wb") as null:
             os.dup2(null.fileno(), 2)
         with self.assertRaises(CompilationDatabaseError) as cm:
-            CompilationDatabase.fromDirectory(path)
+            cdb = CompilationDatabase.fromDirectory(path)
         os.dup2(stderr, 2)
         os.close(stderr)
 
@@ -34,7 +40,7 @@ class TestCDB(unittest.TestCase):
 
     def test_create(self):
         """Check we can load a compilation database"""
-        CompilationDatabase.fromDirectory(kInputsDir)
+        cdb = CompilationDatabase.fromDirectory(kInputsDir)
 
     def test_lookup_succeed(self):
         """Check we get some results if the file exists in the db"""
@@ -42,10 +48,13 @@ class TestCDB(unittest.TestCase):
         cmds = cdb.getCompileCommands("/home/john.doe/MyProject/project.cpp")
         self.assertNotEqual(len(cmds), 0)
 
+    @skip_if_no_fspath
     def test_lookup_succeed_pathlike(self):
         """Same as test_lookup_succeed, but with PathLikes"""
-        cdb = CompilationDatabase.fromDirectory(Path(kInputsDir))
-        cmds = cdb.getCompileCommands(Path("/home/john.doe/MyProject/project.cpp"))
+        cdb = CompilationDatabase.fromDirectory(str_to_path(kInputsDir))
+        cmds = cdb.getCompileCommands(
+            str_to_path("/home/john.doe/MyProject/project.cpp")
+        )
         self.assertNotEqual(len(cmds), 0)
 
     def test_all_compilecommand(self):
@@ -166,7 +175,7 @@ class TestCDB(unittest.TestCase):
         cmds = cdb.getCompileCommands("/home/john.doe/MyProject/project.cpp")
         del cdb
         gc.collect()
-        cmds[0].directory
+        workingdir = cmds[0].directory
 
     def test_compilationCommands_references(self):
         """Ensure CompilationsCommand keeps a reference to CompilationCommands"""
@@ -176,4 +185,4 @@ class TestCDB(unittest.TestCase):
         cmd0 = cmds[0]
         del cmds
         gc.collect()
-        cmd0.directory
+        workingdir = cmd0.directory

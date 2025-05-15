@@ -12,7 +12,6 @@
 #include <memory>
 #include <string>
 
-#include "lldb/Host/MainLoopBase.h"
 #include "lldb/lldb-private.h"
 
 #include "lldb/Host/SocketAddress.h"
@@ -20,7 +19,6 @@
 #include "lldb/Utility/Status.h"
 
 #ifdef _WIN32
-#include "lldb/Host/Pipe.h"
 #include "lldb/Host/windows/windows.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -34,34 +32,11 @@ namespace lldb_private {
 
 #if defined(_WIN32)
 typedef SOCKET NativeSocket;
-typedef lldb::pipe_t shared_fd_t;
 #else
 typedef int NativeSocket;
-typedef NativeSocket shared_fd_t;
 #endif
-class Socket;
 class TCPSocket;
 class UDPSocket;
-
-class SharedSocket {
-public:
-  static const shared_fd_t kInvalidFD;
-
-  SharedSocket(const Socket *socket, Status &error);
-
-  shared_fd_t GetSendableFD() { return m_fd; }
-
-  Status CompleteSending(lldb::pid_t child_pid);
-
-  static Status GetNativeSocket(shared_fd_t fd, NativeSocket &socket);
-
-private:
-#ifdef _WIN32
-  Pipe m_socket_pipe;
-  NativeSocket m_socket;
-#endif
-  shared_fd_t m_fd;
-};
 
 class Socket : public IOObject {
 public:
@@ -85,10 +60,6 @@ public:
 
   ~Socket() override;
 
-  static const char *FindSchemeByProtocol(const SocketProtocol protocol);
-  static bool FindProtocolByScheme(const char *scheme,
-                                   SocketProtocol &protocol);
-
   static llvm::Error Initialize();
   static void Terminate();
 
@@ -98,17 +69,7 @@ public:
 
   virtual Status Connect(llvm::StringRef name) = 0;
   virtual Status Listen(llvm::StringRef name, int backlog) = 0;
-
-  // Use the provided main loop instance to accept new connections. The callback
-  // will be called (from MainLoop::Run) for each new connection. This function
-  // does not block.
-  virtual llvm::Expected<std::vector<MainLoopBase::ReadHandleUP>>
-  Accept(MainLoopBase &loop,
-         std::function<void(std::unique_ptr<Socket> socket)> sock_cb) = 0;
-
-  // Accept a single connection and "return" it in the pointer argument. This
-  // function blocks until the connection arrives.
-  virtual Status Accept(Socket *&socket);
+  virtual Status Accept(Socket *&socket) = 0;
 
   // Initialize a Tcp Socket object in listening mode.  listen and accept are
   // implemented separately because the caller may wish to manipulate or query
@@ -123,17 +84,8 @@ public:
   static llvm::Expected<std::unique_ptr<UDPSocket>>
   UdpConnect(llvm::StringRef host_and_port, bool child_processes_inherit);
 
-  static int GetOption(NativeSocket sockfd, int level, int option_name,
-                       int &option_value);
-  int GetOption(int level, int option_name, int &option_value) {
-    return GetOption(m_socket, level, option_name, option_value);
-  };
-
-  static int SetOption(NativeSocket sockfd, int level, int option_name,
-                       int option_value);
-  int SetOption(int level, int option_name, int option_value) {
-    return SetOption(m_socket, level, option_name, option_value);
-  };
+  int GetOption(int level, int option_name, int &option_value);
+  int SetOption(int level, int option_name, int option_value);
 
   NativeSocket GetNativeSocket() const { return m_socket; }
   SocketProtocol GetSocketProtocol() const { return m_protocol; }
@@ -158,8 +110,6 @@ protected:
 
   virtual size_t Send(const void *buf, const size_t num_bytes);
 
-  static int CloseSocket(NativeSocket sockfd);
-  static Status GetLastError();
   static void SetLastError(Status &error);
   static NativeSocket CreateSocket(const int domain, const int type,
                                    const int protocol,

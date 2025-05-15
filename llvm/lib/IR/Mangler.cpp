@@ -14,6 +14,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
@@ -299,32 +300,26 @@ std::optional<std::string> llvm::getArm64ECMangledFunctionName(StringRef Name) {
     return std::optional<std::string>(("#" + Name).str());
   }
 
-  // Insert the ARM64EC "$$h" tag after the mangled function name.
+  // If the name contains $$h, then it is already mangled.
   if (Name.contains("$$h"))
     return std::nullopt;
-  size_t InsertIdx = Name.find("@@");
-  size_t ThreeAtSignsIdx = Name.find("@@@");
-  if (InsertIdx != std::string::npos && InsertIdx != ThreeAtSignsIdx) {
-    InsertIdx += 2;
-  } else {
-    InsertIdx = Name.find("@");
-    if (InsertIdx != std::string::npos)
-      InsertIdx++;
-  }
+
+  // Ask the demangler where we should insert "$$h".
+  auto InsertIdx = getArm64ECInsertionPointInMangledName(Name);
+  if (!InsertIdx)
+    return std::nullopt;
 
   return std::optional<std::string>(
-      (Name.substr(0, InsertIdx) + "$$h" + Name.substr(InsertIdx)).str());
+      (Name.substr(0, *InsertIdx) + "$$h" + Name.substr(*InsertIdx)).str());
 }
 
 std::optional<std::string>
 llvm::getArm64ECDemangledFunctionName(StringRef Name) {
-  // For non-C++ names, drop the "#" prefix.
   if (Name[0] == '#')
     return std::optional<std::string>(Name.substr(1));
   if (Name[0] != '?')
     return std::nullopt;
 
-  // Drop the ARM64EC "$$h" tag.
   std::pair<StringRef, StringRef> Pair = Name.split("$$h");
   if (Pair.second.empty())
     return std::nullopt;

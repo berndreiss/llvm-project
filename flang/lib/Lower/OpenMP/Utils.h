@@ -78,7 +78,9 @@ void insertChildMapInfoIntoParent(
     std::map<const semantics::Symbol *,
              llvm::SmallVector<OmpMapMemberIndicesData>> &parentMemberIndices,
     llvm::SmallVectorImpl<mlir::Value> &mapOperands,
-    llvm::SmallVectorImpl<const semantics::Symbol *> &mapSyms);
+    llvm::SmallVectorImpl<const semantics::Symbol *> &mapSyms,
+    llvm::SmallVectorImpl<mlir::Type> *mapSymTypes,
+    llvm::SmallVectorImpl<mlir::Location> *mapSymLocs);
 
 mlir::Type getLoopVarType(lower::AbstractConverter &converter,
                           std::size_t loopVarTypeSize);
@@ -97,9 +99,6 @@ semantics::Symbol *getOmpObjectSymbol(const parser::OmpObject &ompObject);
 void genObjectList(const ObjectList &objects,
                    lower::AbstractConverter &converter,
                    llvm::SmallVectorImpl<mlir::Value> &operands);
-
-void lastprivateModifierNotSupported(const omp::clause::Lastprivate &lastp,
-                                     mlir::Location loc);
 
 } // namespace omp
 } // namespace lower

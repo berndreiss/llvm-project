@@ -2,7 +2,6 @@ import log_reader
 import interactive_host
 import sys
 
-from typing import Sequence
 
 def main(args):
     # this advisor just picks the first legal register to evict, which is
@@ -10,7 +9,7 @@ def main(args):
     class Advisor:
         to_return = False
 
-        def advice(self, tensor_values: Sequence[log_reader.TensorValue]):
+        def advice(self, tensor_values: list[log_reader.TensorValue]):
             for tv in tensor_values:
                 if tv.spec().name != "mask":
                     continue

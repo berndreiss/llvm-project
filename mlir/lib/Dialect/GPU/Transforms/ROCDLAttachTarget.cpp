@@ -69,7 +69,7 @@ DictionaryAttr ROCDLAttachTarget::getFlags(OpBuilder &builder) const {
 void ROCDLAttachTarget::runOnOperation() {
   OpBuilder builder(&getContext());
   ArrayRef<std::string> libs(linkLibs);
-  SmallVector<StringRef> filesToLink(libs);
+  SmallVector<StringRef> filesToLink(libs.begin(), libs.end());
   auto target = builder.getAttr<ROCDLTargetAttr>(
       optLevel, triple, chip, features, abiVersion, getFlags(builder),
       filesToLink.empty() ? nullptr : builder.getStrArrayAttr(filesToLink));

@@ -18,7 +18,7 @@
 // When threads are available, we use std::mutex over std::shared_mutex
 // due to the increased overhead of std::shared_mutex.
 // See shared_mutex_vs_mutex.bench.cpp
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
 #  include <mutex>
 #endif
 
@@ -48,7 +48,7 @@ public:
   __impl() { __load_no_lock(); }
 
   [[nodiscard]] const tzdb& __load() {
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
     unique_lock __lock{__mutex_};
 #endif
     __load_no_lock();
@@ -58,14 +58,14 @@ public:
   using const_iterator = tzdb_list::const_iterator;
 
   const tzdb& __front() const noexcept {
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
     unique_lock __lock{__mutex_};
 #endif
     return __tzdb_.front();
   }
 
   const_iterator __erase_after(const_iterator __p) {
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
     unique_lock __lock{__mutex_};
 #endif
 
@@ -74,7 +74,7 @@ public:
   }
 
   const_iterator __begin() const noexcept {
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
     unique_lock __lock{__mutex_};
 #endif
     return __tzdb_.begin();
@@ -89,7 +89,7 @@ private:
   // pre: The caller ensures the locking, if needed, is done.
   void __load_no_lock() { chrono::__init_tzdb(__tzdb_.emplace_front(), __rules_.emplace_front()); }
 
-#if _LIBCPP_HAS_THREADS
+#ifndef _LIBCPP_HAS_NO_THREADS
   mutable mutex __mutex_;
 #endif
   forward_list<tzdb> __tzdb_;

@@ -28,7 +28,6 @@ static_library("Serialization") {
     "ModuleFile.cpp",
     "ModuleFileExtension.cpp",
     "ModuleManager.cpp",
-    "ObjectFilePCHContainerReader.cpp",
     "PCHContainerOperations.cpp",
   ]
 }

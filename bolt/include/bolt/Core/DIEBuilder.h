@@ -127,9 +127,6 @@ private:
   DWARFContext *DwarfContext{nullptr};
   DWARFUnit *SkeletonCU{nullptr};
   uint64_t UnitSize{0};
-  /// Adds separate UnitSize counter for updating DebugNames
-  /// so there is no dependency between the functions.
-  uint64_t DebugNamesUnitSize{0};
   llvm::DenseSet<uint64_t> AllProcessed;
   DWARF5AcceleratorTable &DebugNamesTable;
   // Unordered map to handle name collision if output DWO directory is
@@ -206,16 +203,13 @@ private:
   /// Update references once the layout is finalized.
   void updateReferences();
 
-  /// Update the Offset and Size of DIE.
+  /// Update the Offset and Size of DIE, populate DebugNames table.
   /// Along with current CU, and DIE being processed and the new DIE offset to
   /// be updated, it takes in Parents vector that can be empty if this DIE has
   /// no parents.
-  uint32_t finalizeDIEs(DWARFUnit &CU, DIE &Die, uint32_t &CurOffset);
-
-  /// Populates DebugNames table.
-  void populateDebugNamesTable(DWARFUnit &CU, const DIE &Die,
-                               std::optional<BOLTDWARF5AccelTableData *> Parent,
-                               uint32_t NumberParentsInChain);
+  uint32_t finalizeDIEs(DWARFUnit &CU, DIE &Die,
+                        std::optional<BOLTDWARF5AccelTableData *> Parent,
+                        uint32_t NumberParentsInChain, uint32_t &CurOffset);
 
   void registerUnit(DWARFUnit &DU, bool NeedSort);
 
@@ -314,7 +308,7 @@ public:
 
     BC.errs()
         << "BOLT-ERROR: unable to find TypeUnit for Type Unit at offset 0x"
-        << Twine::utohexstr(DU.getOffset()) << "\n";
+        << DU.getOffset() << "\n";
     return nullptr;
   }
 
@@ -343,9 +337,6 @@ public:
 
   /// Finish current DIE construction.
   void finish();
-
-  /// Update debug names table.
-  void updateDebugNamesTable();
 
   // Interface to edit DIE
   template <class T> T *allocateDIEValue() {

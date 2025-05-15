@@ -645,21 +645,6 @@ LogicalResult WarpgroupMmaInitAccumulatorOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
-// RcpOp
-//===----------------------------------------------------------------------===//
-
-LogicalResult RcpOp::verify() {
-  RcpRoundingModeAttr rounding = getRoundingAttr();
-  bool ftz = getFtz();
-  // Currently, only `rcp_approx` and `ftz` is supported.
-  if (rounding.getValue() != RcpRoundingMode::APPROX || !ftz) {
-    return emitOpError() << "has a limitation. " << rounding
-                         << " or non-ftz is not supported yet.";
-  }
-  return success();
-}
-
-//===----------------------------------------------------------------------===//
 // TableGen'd dialect, type, and op definitions
 //===----------------------------------------------------------------------===//
 

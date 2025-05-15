@@ -212,10 +212,8 @@ FileManager::getFile(StringRef Filename, bool openFile, bool CacheFailure) {
   return llvm::errorToErrorCode(Result.takeError());
 }
 
-llvm::Expected<FileEntryRef> FileManager::getFileRef(StringRef Filename,
-                                                     bool openFile,
-                                                     bool CacheFailure,
-                                                     bool IsText) {
+llvm::Expected<FileEntryRef>
+FileManager::getFileRef(StringRef Filename, bool openFile, bool CacheFailure) {
   ++NumFileLookups;
 
   // See if there is already an entry in the map.
@@ -261,7 +259,7 @@ llvm::Expected<FileEntryRef> FileManager::getFileRef(StringRef Filename,
   std::unique_ptr<llvm::vfs::File> F;
   llvm::vfs::Status Status;
   auto statError = getStatValue(InterndFileName, Status, true,
-                                openFile ? &F : nullptr, IsText);
+                                openFile ? &F : nullptr);
   if (statError) {
     // There's no real file at the given path.
     if (CacheFailure)
@@ -533,7 +531,7 @@ void FileManager::fillRealPathName(FileEntry *UFE, llvm::StringRef FileName) {
 llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
 FileManager::getBufferForFile(FileEntryRef FE, bool isVolatile,
                               bool RequiresNullTerminator,
-                              std::optional<int64_t> MaybeLimit, bool IsText) {
+                              std::optional<int64_t> MaybeLimit) {
   const FileEntry *Entry = &FE.getFileEntry();
   // If the content is living on the file entry, return a reference to it.
   if (Entry->Content)
@@ -560,21 +558,21 @@ FileManager::getBufferForFile(FileEntryRef FE, bool isVolatile,
 
   // Otherwise, open the file.
   return getBufferForFileImpl(Filename, FileSize, isVolatile,
-                              RequiresNullTerminator, IsText);
+                              RequiresNullTerminator);
 }
 
 llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
 FileManager::getBufferForFileImpl(StringRef Filename, int64_t FileSize,
-                                  bool isVolatile, bool RequiresNullTerminator,
-                                  bool IsText) const {
+                                  bool isVolatile,
+                                  bool RequiresNullTerminator) const {
   if (FileSystemOpts.WorkingDir.empty())
     return FS->getBufferForFile(Filename, FileSize, RequiresNullTerminator,
-                                isVolatile, IsText);
+                                isVolatile);
 
   SmallString<128> FilePath(Filename);
   FixupRelativePath(FilePath);
   return FS->getBufferForFile(FilePath, FileSize, RequiresNullTerminator,
-                              isVolatile, IsText);
+                              isVolatile);
 }
 
 /// getStatValue - Get the 'stat' information for the specified path,
@@ -582,22 +580,20 @@ FileManager::getBufferForFileImpl(StringRef Filename, int64_t FileSize,
 /// if the path points to a virtual file or does not exist, or returns
 /// false if it's an existent real file.  If FileDescriptor is NULL,
 /// do directory look-up instead of file look-up.
-std::error_code FileManager::getStatValue(StringRef Path,
-                                          llvm::vfs::Status &Status,
-                                          bool isFile,
-                                          std::unique_ptr<llvm::vfs::File> *F,
-                                          bool IsText) {
+std::error_code
+FileManager::getStatValue(StringRef Path, llvm::vfs::Status &Status,
+                          bool isFile, std::unique_ptr<llvm::vfs::File> *F) {
   // FIXME: FileSystemOpts shouldn't be passed in here, all paths should be
   // absolute!
   if (FileSystemOpts.WorkingDir.empty())
-    return FileSystemStatCache::get(Path, Status, isFile, F, StatCache.get(),
-                                    *FS, IsText);
+    return FileSystemStatCache::get(Path, Status, isFile, F,
+                                    StatCache.get(), *FS);
 
   SmallString<128> FilePath(Path);
   FixupRelativePath(FilePath);
 
   return FileSystemStatCache::get(FilePath.c_str(), Status, isFile, F,
-                                  StatCache.get(), *FS, IsText);
+                                  StatCache.get(), *FS);
 }
 
 std::error_code
@@ -695,17 +691,6 @@ void FileManager::PrintStats() const {
                << NumDirCacheMisses << " dir cache misses.\n";
   llvm::errs() << NumFileLookups << " file lookups, "
                << NumFileCacheMisses << " file cache misses.\n";
-
-  getVirtualFileSystem().visit([](llvm::vfs::FileSystem &VFS) {
-    if (auto *T = dyn_cast_or_null<llvm::vfs::TracingFileSystem>(&VFS))
-      llvm::errs() << "\n*** Virtual File System Stats:\n"
-                   << T->NumStatusCalls << " status() calls\n"
-                   << T->NumOpenFileForReadCalls << " openFileForRead() calls\n"
-                   << T->NumDirBeginCalls << " dir_begin() calls\n"
-                   << T->NumGetRealPathCalls << " getRealPath() calls\n"
-                   << T->NumExistsCalls << " exists() calls\n"
-                   << T->NumIsLocalCalls << " isLocal() calls\n";
-  });
 
   //llvm::errs() << PagesMapped << BytesOfPagesMapped << FSLookups;
 }

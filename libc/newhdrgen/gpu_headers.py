@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 # ===- GPU HeaderFile Class for --export-decls version --------*- python -*--==#
 #
 # Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.

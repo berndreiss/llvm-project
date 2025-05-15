@@ -225,7 +225,8 @@ public:
          off += stride)
       offsets.push_back(off);
     rewriter.replaceOpWithNewOp<ShuffleOp>(op, dstType, op.getVector(),
-                                           op.getVector(), offsets);
+                                           op.getVector(),
+                                           rewriter.getI64ArrayAttr(offsets));
     return success();
   }
 };

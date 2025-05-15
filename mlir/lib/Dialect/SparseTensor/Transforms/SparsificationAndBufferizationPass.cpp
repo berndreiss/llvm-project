@@ -78,8 +78,7 @@ public:
       const SparsificationOptions &sparsificationOptions,
       bool createSparseDeallocs, bool enableRuntimeLibrary,
       bool enableBufferInitialization, unsigned vl, bool vla, bool index32,
-      bool gpu, SparseEmitStrategy emitStrategy,
-      SparseParallelizationStrategy parallelizationStrategy)
+      bool gpu, SparseEmitStrategy emitStrategy)
       : bufferizationOptions(bufferizationOptions),
         sparsificationOptions(sparsificationOptions),
         createSparseDeallocs(createSparseDeallocs),
@@ -91,7 +90,6 @@ public:
     enableSIMDIndex32 = index32;
     enableGPULibgen = gpu;
     sparseEmitStrategy = emitStrategy;
-    parallelization = parallelizationStrategy;
   }
 
   /// Bufferize all dense ops. This assumes that no further analysis is needed
@@ -125,9 +123,6 @@ public:
   void runOnOperation() override {
     // Overrides the default emit strategy using user-provided value.
     this->sparsificationOptions.sparseEmitStrategy = sparseEmitStrategy;
-
-    // Overrides the default parallelization strategy using user-provided value.
-    this->sparsificationOptions.parallelizationStrategy = parallelization;
 
     // Run enabling transformations.
     {
@@ -253,12 +248,10 @@ std::unique_ptr<mlir::Pass> mlir::createSparsificationAndBufferizationPass(
     bool createSparseDeallocs, bool enableRuntimeLibrary,
     bool enableBufferInitialization, unsigned vectorLength,
     bool enableVLAVectorization, bool enableSIMDIndex32, bool enableGPULibgen,
-    SparseEmitStrategy emitStrategy,
-    SparseParallelizationStrategy parallelizationStrategy) {
+    SparseEmitStrategy emitStrategy) {
   return std::make_unique<
       mlir::sparse_tensor::SparsificationAndBufferizationPass>(
       bufferizationOptions, sparsificationOptions, createSparseDeallocs,
       enableRuntimeLibrary, enableBufferInitialization, vectorLength,
-      enableVLAVectorization, enableSIMDIndex32, enableGPULibgen, emitStrategy,
-      parallelizationStrategy);
+      enableVLAVectorization, enableSIMDIndex32, enableGPULibgen, emitStrategy);
 }

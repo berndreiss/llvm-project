@@ -9,8 +9,6 @@
 #include "libc_errno.h"
 #include "src/__support/macros/config.h"
 
-// libc uses a fallback default value, either system or thread local.
-#define LIBC_ERRNO_MODE_DEFAULT 0
 // libc never stores a value; `errno` macro uses get link-time failure.
 #define LIBC_ERRNO_MODE_UNDEFINED 1
 // libc maintains per-thread state (requires C++ `thread_local` support).
@@ -25,8 +23,7 @@
 // fullbuild mode, effectively the same as `LIBC_ERRNO_MODE_EXTERNAL`.
 #define LIBC_ERRNO_MODE_SYSTEM 5
 
-#if !defined(LIBC_ERRNO_MODE) || LIBC_ERRNO_MODE == LIBC_ERRNO_MODE_DEFAULT
-#undef LIBC_ERRNO_MODE
+#ifndef LIBC_ERRNO_MODE
 #if defined(LIBC_FULL_BUILD) || !defined(LIBC_COPT_PUBLIC_PACKAGING)
 #define LIBC_ERRNO_MODE LIBC_ERRNO_MODE_THREAD_LOCAL
 #else
@@ -34,14 +31,12 @@
 #endif
 #endif // LIBC_ERRNO_MODE
 
-#if LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_DEFAULT &&                              \
-    LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_UNDEFINED &&                            \
+#if LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_UNDEFINED &&                            \
     LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_THREAD_LOCAL &&                         \
     LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_SHARED &&                               \
     LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_EXTERNAL &&                             \
     LIBC_ERRNO_MODE != LIBC_ERRNO_MODE_SYSTEM
 #error LIBC_ERRNO_MODE must be one of the following values: \
-LIBC_ERRNO_MODE_DEFAULT, \
 LIBC_ERRNO_MODE_UNDEFINED, \
 LIBC_ERRNO_MODE_THREAD_LOCAL, \
 LIBC_ERRNO_MODE_SHARED, \

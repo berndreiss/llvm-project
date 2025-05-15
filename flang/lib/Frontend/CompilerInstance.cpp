@@ -313,6 +313,7 @@ bool CompilerInstance::setUpTargetMachine() {
         << error;
     return false;
   }
+
   // Create `TargetMachine`
   const auto &CGOpts = getInvocation().getCodeGenOpts();
   std::optional<llvm::CodeGenOptLevel> OptLevelOrNone =
@@ -321,13 +322,9 @@ bool CompilerInstance::setUpTargetMachine() {
   llvm::CodeGenOptLevel OptLevel = *OptLevelOrNone;
   std::string featuresStr = getTargetFeatures();
   std::optional<llvm::CodeModel::Model> cm = getCodeModel(CGOpts.CodeModel);
-
-  llvm::TargetOptions tOpts = llvm::TargetOptions();
-  tOpts.EnableAIXExtendedAltivecABI = targetOpts.EnableAIXExtendedAltivecABI;
-
   targetMachine.reset(theTarget->createTargetMachine(
       theTriple, /*CPU=*/targetOpts.cpu,
-      /*Features=*/featuresStr, /*Options=*/tOpts,
+      /*Features=*/featuresStr, llvm::TargetOptions(),
       /*Reloc::Model=*/CGOpts.getRelocationModel(),
       /*CodeModel::Model=*/cm, OptLevel));
   assert(targetMachine && "Failed to create TargetMachine");

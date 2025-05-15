@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyHICPPModule STATIC
+add_clang_library(clangTidyHICPPModule
   ExceptionBaseclassCheck.cpp
   HICPPTidyModule.cpp
   IgnoredRemoveResultCheck.cpp

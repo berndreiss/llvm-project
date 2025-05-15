@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 export namespace std {
-#if _LIBCPP_HAS_LOCALIZATION
+#ifndef _LIBCPP_HAS_NO_LOCALIZATION
   using std::fpos;
   // based on [tab:fpos.operations]
   using std::operator!=; // Note not affected by P1614, seems like a bug.
@@ -69,8 +69,8 @@ export namespace std {
 
   // [iosfwd.syn]
   using std::ios;
-#  if _LIBCPP_HAS_WIDE_CHARACTERS
+#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
   using std::wios;
 #  endif
-#endif // _LIBCPP_HAS_LOCALIZATION
+#endif // _LIBCPP_HAS_NO_LOCALIZATION
 } // namespace std

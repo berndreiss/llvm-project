@@ -38,8 +38,6 @@ add_clang_tool(clang
   GENERATE_DRIVER
   )
 
-setup_host_tool(clang CLANG clang_exe clang_target)
-
 clang_target_link_libraries(clang
   PRIVATE
   clangBasic
@@ -109,7 +107,7 @@ endif()
 
 if(CLANG_ORDER_FILE AND
     (LLVM_LINKER_IS_APPLE OR LLVM_LINKER_IS_GOLD OR LLVM_LINKER_IS_LLD))
-  include(CheckLinkerFlag)
+  include(LLVMCheckLinkerFlag)
 
   if (LLVM_LINKER_IS_APPLE OR (LLVM_LINKER_IS_LLD AND APPLE))
     set(LINKER_ORDER_FILE_OPTION "-Wl,-order_file,${CLANG_ORDER_FILE}")
@@ -120,7 +118,7 @@ if(CLANG_ORDER_FILE AND
   endif()
 
   # This is a test to ensure the actual order file works with the linker.
-  check_linker_flag(CXX ${LINKER_ORDER_FILE_OPTION} LINKER_ORDER_FILE_WORKS)
+  llvm_check_linker_flag(CXX ${LINKER_ORDER_FILE_OPTION} LINKER_ORDER_FILE_WORKS)
 
   # Passing an empty order file disables some linker layout optimizations.
   # To work around this and enable workflows for re-linking when the order file

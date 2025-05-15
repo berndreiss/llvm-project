@@ -114,7 +114,6 @@ enum Kind {
   kw_disjoint,
   kw_inbounds,
   kw_nneg,
-  kw_samesign,
   kw_inrange,
   kw_addrspace,
   kw_section,
@@ -269,8 +268,6 @@ enum Kind {
   kw_fmin,
   kw_uinc_wrap,
   kw_udec_wrap,
-  kw_usub_cond,
-  kw_usub_sat,
 
   // Instruction Opcodes (Opcode in UIntVal).
   kw_fneg,

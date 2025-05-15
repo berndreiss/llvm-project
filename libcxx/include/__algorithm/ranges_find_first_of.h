@@ -32,7 +32,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __find_first_of {
+namespace __find_first_of {
+struct __fn {
   template <class _Iter1, class _Sent1, class _Iter2, class _Sent2, class _Pred, class _Proj1, class _Proj2>
   _LIBCPP_HIDE_FROM_ABI constexpr static _Iter1 __find_first_of_impl(
       _Iter1 __first1,
@@ -89,9 +90,10 @@ struct __find_first_of {
         __proj2);
   }
 };
+} // namespace __find_first_of
 
 inline namespace __cpo {
-inline constexpr auto find_first_of = __find_first_of{};
+inline constexpr auto find_first_of = __find_first_of::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

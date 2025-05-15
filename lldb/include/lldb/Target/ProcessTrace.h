@@ -48,8 +48,10 @@ public:
   void RefreshStateAfterStop() override;
 
   Status WillResume() override {
-    return Status::FromErrorStringWithFormatv(
+    Status error;
+    error.SetErrorStringWithFormatv(
         "error: {0} does not support resuming processes", GetPluginName());
+    return error;
   }
 
   bool WarnBeforeDetach() const override { return false; }

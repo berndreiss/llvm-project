@@ -40,8 +40,7 @@ public:
 
   FormatStringConverter(ASTContext *Context, const CallExpr *Call,
                         unsigned FormatArgOffset, Configuration Config,
-                        const LangOptions &LO, SourceManager &SM,
-                        Preprocessor &PP);
+                        const LangOptions &LO);
 
   bool canApply() const { return ConversionNotPossibleReason.empty(); }
   const std::string &conversionNotPossibleReason() const {
@@ -111,10 +110,6 @@ private:
 
   void appendFormatText(StringRef Text);
   void finalizeFormatText();
-  static std::optional<StringRef>
-  formatStringContainsUnreplaceableMacro(const CallExpr *CallExpr,
-                                         const StringLiteral *FormatExpr,
-                                         SourceManager &SM, Preprocessor &PP);
   bool conversionNotPossible(std::string Reason) {
     ConversionNotPossibleReason = std::move(Reason);
     return false;

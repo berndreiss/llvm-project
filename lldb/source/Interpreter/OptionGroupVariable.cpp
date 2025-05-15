@@ -57,20 +57,17 @@ static const auto g_variable_options_noframe =
 
 static Status ValidateNamedSummary(const char *str, void *) {
   if (!str || !str[0])
-    return Status::FromErrorStringWithFormat(
-        "must specify a valid named summary");
+    return Status("must specify a valid named summary");
   TypeSummaryImplSP summary_sp;
   if (!DataVisualization::NamedSummaryFormats::GetSummaryFormat(
           ConstString(str), summary_sp))
-    return Status::FromErrorStringWithFormat(
-        "must specify a valid named summary");
+    return Status("must specify a valid named summary");
   return Status();
 }
 
 static Status ValidateSummaryString(const char *str, void *) {
   if (!str || !str[0])
-    return Status::FromErrorStringWithFormat(
-        "must specify a non-empty summary string");
+    return Status("must specify a non-empty summary string");
   return Status();
 }
 

@@ -461,7 +461,8 @@ size_t UnwindAssemblyInstEmulation::WriteMemory(
 
     if (reg_num != LLDB_INVALID_REGNUM &&
         generic_regnum != LLDB_REGNUM_GENERIC_SP) {
-      if (m_pushed_regs.try_emplace(reg_num, addr).second) {
+      if (m_pushed_regs.find(reg_num) == m_pushed_regs.end()) {
+        m_pushed_regs[reg_num] = addr;
         const int32_t offset = addr - m_initial_sp;
         m_curr_row->SetRegisterLocationToAtCFAPlusOffset(reg_num, offset,
                                                          /*can_replace=*/true);
@@ -607,8 +608,8 @@ bool UnwindAssemblyInstEmulation::WriteRegister(
         generic_regnum != LLDB_REGNUM_GENERIC_SP) {
       switch (context.GetInfoType()) {
       case EmulateInstruction::eInfoTypeAddress:
-        if (auto it = m_pushed_regs.find(reg_num);
-            it != m_pushed_regs.end() && context.info.address == it->second) {
+        if (m_pushed_regs.find(reg_num) != m_pushed_regs.end() &&
+            context.info.address == m_pushed_regs[reg_num]) {
           m_curr_row->SetRegisterLocationToSame(reg_num,
                                                 false /*must_replace*/);
           m_curr_row_modified = true;

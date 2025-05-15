@@ -412,7 +412,6 @@ std::optional<Expr<SomeType>> NonPointerInitializationExpr(const Symbol &symbol,
           symbol.owner().context().ShouldWarn(
               common::LanguageFeature::LogicalIntegerAssignment)) {
         context.messages().Say(
-            common::LanguageFeature::LogicalIntegerAssignment,
             "nonstandard usage: initialization of %s with %s"_port_en_US,
             symTS->type().AsFortran(), x.GetType().value().AsFortran());
       }
@@ -494,7 +493,7 @@ std::optional<Expr<SomeType>> NonPointerInitializationExpr(const Symbol &symbol,
       } else {
         context.messages().Say(
             "Initialization expression for '%s' (%s) cannot be computed as a constant value"_err_en_US,
-            symbol.name(), x.AsFortran());
+            symbol.name(), folded.AsFortran());
       }
     } else if (xType) {
       context.messages().Say(
@@ -526,11 +525,6 @@ public:
 
   Result operator()(const semantics::Symbol &symbol) const {
     const auto &ultimate{symbol.GetUltimate()};
-    const auto *object{ultimate.detailsIf<semantics::ObjectEntityDetails>()};
-    bool isInitialized{semantics::IsSaved(ultimate) &&
-        !IsAllocatable(ultimate) && object &&
-        (ultimate.test(Symbol::Flag::InDataStmt) ||
-            object->init().has_value())};
     if (const auto *assoc{
             ultimate.detailsIf<semantics::AssocEntityDetails>()}) {
       return (*this)(assoc->expr());
@@ -560,17 +554,6 @@ public:
       }
     } else if (&symbol.owner() != &scope_ || &ultimate.owner() != &scope_) {
       return std::nullopt; // host association is in play
-    } else if (isInitialized &&
-        context_.languageFeatures().IsEnabled(
-            common::LanguageFeature::SavedLocalInSpecExpr)) {
-      if (!scope_.IsModuleFile() &&
-          context_.languageFeatures().ShouldWarn(
-              common::LanguageFeature::SavedLocalInSpecExpr)) {
-        context_.messages().Say(common::LanguageFeature::SavedLocalInSpecExpr,
-            "specification expression refers to local object '%s' (initialized and saved)"_port_en_US,
-            ultimate.name().ToString());
-      }
-      return std::nullopt;
     } else if (const auto *object{
                    ultimate.detailsIf<semantics::ObjectEntityDetails>()}) {
       if (object->commonBlock()) {
@@ -798,9 +781,8 @@ bool CheckSpecificationExprHelper::IsPermissibleInquiry(
 template <typename A>
 void CheckSpecificationExpr(const A &x, const semantics::Scope &scope,
     FoldingContext &context, bool forElementalFunctionResult) {
-  CheckSpecificationExprHelper helper{
-      scope, context, forElementalFunctionResult};
-  if (auto why{helper(x)}) {
+  if (auto why{CheckSpecificationExprHelper{
+          scope, context, forElementalFunctionResult}(x)}) {
     context.messages().Say("Invalid specification expression%s: %s"_err_en_US,
         forElementalFunctionResult ? " for elemental function result" : "",
         *why);
@@ -1103,53 +1085,44 @@ class StmtFunctionChecker
 public:
   using Result = std::optional<parser::Message>;
   using Base = AnyTraverse<StmtFunctionChecker, Result>;
-
-  static constexpr auto feature{
-      common::LanguageFeature::StatementFunctionExtensions};
-
   StmtFunctionChecker(const Symbol &sf, FoldingContext &context)
       : Base{*this}, sf_{sf}, context_{context} {
-    if (!context_.languageFeatures().IsEnabled(feature)) {
+    if (!context_.languageFeatures().IsEnabled(
+            common::LanguageFeature::StatementFunctionExtensions)) {
       severity_ = parser::Severity::Error;
-    } else if (context_.languageFeatures().ShouldWarn(feature)) {
+    } else if (context_.languageFeatures().ShouldWarn(
+                   common::LanguageFeature::StatementFunctionExtensions)) {
       severity_ = parser::Severity::Portability;
     }
   }
   using Base::operator();
 
-  Result Return(parser::Message &&msg) const {
-    if (severity_) {
-      msg.set_severity(*severity_);
-      if (*severity_ != parser::Severity::Error) {
-        msg.set_languageFeature(feature);
-      }
-    }
-    return std::move(msg);
-  }
-
   template <typename T> Result operator()(const ArrayConstructor<T> &) const {
     if (severity_) {
-      return Return(parser::Message{sf_.name(),
-          "Statement function '%s' should not contain an array constructor"_port_en_US,
-          sf_.name()});
+      auto msg{
+          "Statement function '%s' should not contain an array constructor"_port_en_US};
+      msg.set_severity(*severity_);
+      return parser::Message{sf_.name(), std::move(msg), sf_.name()};
     } else {
       return std::nullopt;
     }
   }
   Result operator()(const StructureConstructor &) const {
     if (severity_) {
-      return Return(parser::Message{sf_.name(),
-          "Statement function '%s' should not contain a structure constructor"_port_en_US,
-          sf_.name()});
+      auto msg{
+          "Statement function '%s' should not contain a structure constructor"_port_en_US};
+      msg.set_severity(*severity_);
+      return parser::Message{sf_.name(), std::move(msg), sf_.name()};
     } else {
       return std::nullopt;
     }
   }
   Result operator()(const TypeParamInquiry &) const {
     if (severity_) {
-      return Return(parser::Message{sf_.name(),
-          "Statement function '%s' should not contain a type parameter inquiry"_port_en_US,
-          sf_.name()});
+      auto msg{
+          "Statement function '%s' should not contain a type parameter inquiry"_port_en_US};
+      msg.set_severity(*severity_);
+      return parser::Message{sf_.name(), std::move(msg), sf_.name()};
     } else {
       return std::nullopt;
     }
@@ -1171,18 +1144,21 @@ public:
               proc, context_, /*emitError=*/true)}) {
         if (!chars->CanBeCalledViaImplicitInterface()) {
           if (severity_) {
-            return Return(parser::Message{sf_.name(),
-                "Statement function '%s' should not reference function '%s' that requires an explicit interface"_port_en_US,
-                sf_.name(), symbol->name()});
+            auto msg{
+                "Statement function '%s' should not reference function '%s' that requires an explicit interface"_port_en_US};
+            msg.set_severity(*severity_);
+            return parser::Message{
+                sf_.name(), std::move(msg), sf_.name(), symbol->name()};
           }
         }
       }
     }
     if (proc.Rank() > 0) {
       if (severity_) {
-        return Return(parser::Message{sf_.name(),
-            "Statement function '%s' should not reference a function that returns an array"_port_en_US,
-            sf_.name()});
+        auto msg{
+            "Statement function '%s' should not reference a function that returns an array"_port_en_US};
+        msg.set_severity(*severity_);
+        return parser::Message{sf_.name(), std::move(msg), sf_.name()};
       }
     }
     return std::nullopt;
@@ -1194,9 +1170,10 @@ public:
       }
       if (expr->Rank() > 0 && !UnwrapWholeSymbolOrComponentDataRef(*expr)) {
         if (severity_) {
-          return Return(parser::Message{sf_.name(),
-              "Statement function '%s' should not pass an array argument that is not a whole array"_port_en_US,
-              sf_.name()});
+          auto msg{
+              "Statement function '%s' should not pass an array argument that is not a whole array"_port_en_US};
+          msg.set_severity(*severity_);
+          return parser::Message{sf_.name(), std::move(msg), sf_.name()};
         }
       }
     }

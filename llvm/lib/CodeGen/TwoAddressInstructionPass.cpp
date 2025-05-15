@@ -948,7 +948,7 @@ bool TwoAddressInstructionImpl::rescheduleMIBelowKill(
     return false;
 
   bool SeenStore = true;
-  if (!MI->isSafeToMove(SeenStore))
+  if (!MI->isSafeToMove(AA, SeenStore))
     return false;
 
   if (TII->getInstrLatency(InstrItins, *MI) > 1)
@@ -1131,7 +1131,7 @@ bool TwoAddressInstructionImpl::rescheduleKillAboveMI(
     return false;
 
   bool SeenStore = true;
-  if (!KillMI->isSafeToMove(SeenStore))
+  if (!KillMI->isSafeToMove(AA, SeenStore))
     return false;
 
   SmallVector<Register, 2> Uses;
@@ -1160,7 +1160,7 @@ bool TwoAddressInstructionImpl::rescheduleKillAboveMI(
     }
   }
 
-  // Check if the reschedule will not break dependencies.
+  // Check if the reschedule will not break depedencies.
   unsigned NumVisited = 0;
   for (MachineInstr &OtherMI :
        make_range(mi, MachineBasicBlock::iterator(KillMI))) {

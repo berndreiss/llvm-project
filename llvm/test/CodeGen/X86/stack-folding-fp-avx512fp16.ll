@@ -234,7 +234,6 @@ define i32 @stack_fold_fpclassph(<32 x half> %a0) {
 ; CHECK-NEXT:    nop
 ; CHECK-NEXT:    #NO_APP
 ; CHECK-NEXT:    vfpclassphz $4, {{[-0-9]+}}(%r{{[sb]}}p), %k0 # 64-byte Folded Reload
-; CHECK-NEXT:    # k0 = isNegativeZero(mem)
 ; CHECK-NEXT:    kmovd %k0, %eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    retq
@@ -254,7 +253,6 @@ define i32 @stack_fold_fpclassph_mask(<32 x half> %a0, ptr %p) {
 ; CHECK-NEXT:    #NO_APP
 ; CHECK-NEXT:    kmovd (%rdi), %k1
 ; CHECK-NEXT:    vfpclassphz $4, {{[-0-9]+}}(%r{{[sb]}}p), %k0 {%k1} # 64-byte Folded Reload
-; CHECK-NEXT:    # k0 {%k1} = isNegativeZero(mem)
 ; CHECK-NEXT:    kmovd %k0, %eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    retq
@@ -274,7 +272,6 @@ define i8 @stack_fold_fpclasssh(<8 x half> %a0) {
 ; CHECK-NEXT:    nop
 ; CHECK-NEXT:    #NO_APP
 ; CHECK-NEXT:    vfpclasssh $4, {{[-0-9]+}}(%r{{[sb]}}p), %k0 # 16-byte Folded Reload
-; CHECK-NEXT:    # k0 = isNegativeZero(mem)
 ; CHECK-NEXT:    kmovd %k0, %eax
 ; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    retq
@@ -293,7 +290,6 @@ define i8 @stack_fold_fpclasssh_mask(<8 x half> %a0, ptr %p) {
 ; CHECK-NEXT:    #NO_APP
 ; CHECK-NEXT:    kmovb (%rdi), %k1
 ; CHECK-NEXT:    vfpclasssh $4, {{[-0-9]+}}(%r{{[sb]}}p), %k0 {%k1} # 16-byte Folded Reload
-; CHECK-NEXT:    # k0 {%k1} = isNegativeZero(mem)
 ; CHECK-NEXT:    kmovd %k0, %eax
 ; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    retq

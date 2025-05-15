@@ -104,20 +104,20 @@ _LIBCPP_END_NAMESPACE_STD
 
 */
 
-#if _LIBCPP_HAS_THREADS
+#if !defined(_LIBCPP_HAS_NO_THREADS)
 
-#  if _LIBCPP_HAS_THREAD_API_EXTERNAL
+#  if defined(_LIBCPP_HAS_THREAD_API_EXTERNAL)
 #    include <__thread/support/external.h>
-#  elif _LIBCPP_HAS_THREAD_API_PTHREAD
+#  elif defined(_LIBCPP_HAS_THREAD_API_PTHREAD)
 #    include <__thread/support/pthread.h>
-#  elif _LIBCPP_HAS_THREAD_API_C11
+#  elif defined(_LIBCPP_HAS_THREAD_API_C11)
 #    include <__thread/support/c11.h>
-#  elif _LIBCPP_HAS_THREAD_API_WIN32
+#  elif defined(_LIBCPP_HAS_THREAD_API_WIN32)
 #    include <__thread/support/windows.h>
 #  else
 #    error "No threading API was selected"
 #  endif
 
-#endif // _LIBCPP_HAS_THREADS
+#endif // !_LIBCPP_HAS_NO_THREADS
 
 #endif // _LIBCPP___THREAD_SUPPORT_H

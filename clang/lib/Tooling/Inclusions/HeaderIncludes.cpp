@@ -320,9 +320,12 @@ HeaderIncludes::HeaderIncludes(StringRef FileName, StringRef Code,
   // - If CategoryEndOffset[Priority] isn't set, use the next higher value
   // that is set, up to CategoryEndOffset[Highest].
   auto Highest = Priorities.begin();
-  auto [It, Inserted] = CategoryEndOffsets.try_emplace(*Highest);
-  if (Inserted)
-    It->second = FirstIncludeOffset >= 0 ? FirstIncludeOffset : MinInsertOffset;
+  if (CategoryEndOffsets.find(*Highest) == CategoryEndOffsets.end()) {
+    if (FirstIncludeOffset >= 0)
+      CategoryEndOffsets[*Highest] = FirstIncludeOffset;
+    else
+      CategoryEndOffsets[*Highest] = MinInsertOffset;
+  }
   // By this point, CategoryEndOffset[Highest] is always set appropriately:
   //  - to an appropriate location before/after existing #includes, or
   //  - to right after the header guard, or
@@ -335,9 +338,10 @@ HeaderIncludes::HeaderIncludes(StringRef FileName, StringRef Code,
 // \p Offset: the start of the line following this include directive.
 void HeaderIncludes::addExistingInclude(Include IncludeToAdd,
                                         unsigned NextLineOffset) {
-  auto &Incs = ExistingIncludes[trimInclude(IncludeToAdd.Name)];
-  Incs.push_back(std::move(IncludeToAdd));
-  auto &CurInclude = Incs.back();
+  auto Iter =
+      ExistingIncludes.try_emplace(trimInclude(IncludeToAdd.Name)).first;
+  Iter->second.push_back(std::move(IncludeToAdd));
+  auto &CurInclude = Iter->second.back();
   // The header name with quotes or angle brackets.
   // Only record the offset of current #include if we can insert after it.
   if (CurInclude.R.getOffset() <= MaxInsertOffset) {

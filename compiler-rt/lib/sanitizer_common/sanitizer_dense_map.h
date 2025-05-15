@@ -69,14 +69,24 @@ class DenseMapBase {
     setNumTombstones(0);
   }
 
-  /// Return true if the specified key is in the map, false otherwise.
-  bool contains(const KeyT &Key) const { return doFind(Key) != nullptr; }
-
   /// Return 1 if the specified key is in the map, 0 otherwise.
-  size_type count(const KeyT &Key) const { return contains(Key) ? 1 : 0; }
+  size_type count(const KeyT &Key) const {
+    const BucketT *TheBucket;
+    return LookupBucketFor(Key, TheBucket) ? 1 : 0;
+  }
 
-  value_type *find(const KeyT &Key) { return doFind(Key); }
-  const value_type *find(const KeyT &Key) const { return doFind(Key); }
+  value_type *find(const KeyT &Key) {
+    BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return TheBucket;
+    return nullptr;
+  }
+  const value_type *find(const KeyT &Key) const {
+    const BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return TheBucket;
+    return nullptr;
+  }
 
   /// Alternate version of find() which allows a different, and possibly
   /// less expensive, key type.
@@ -85,18 +95,25 @@ class DenseMapBase {
   /// type used.
   template <class LookupKeyT>
   value_type *find_as(const LookupKeyT &Key) {
-    return doFind(Key);
+    BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return TheBucket;
+    return nullptr;
   }
   template <class LookupKeyT>
   const value_type *find_as(const LookupKeyT &Key) const {
-    return doFind(Key);
+    const BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return TheBucket;
+    return nullptr;
   }
 
   /// lookup - Return the entry for the specified key, or a default
   /// constructed value if no such entry exists.
   ValueT lookup(const KeyT &Key) const {
-    if (const BucketT *Bucket = doFind(Key))
-      return Bucket->getSecond();
+    const BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return TheBucket->getSecond();
     return ValueT();
   }
 
@@ -167,8 +184,8 @@ class DenseMapBase {
   }
 
   bool erase(const KeyT &Val) {
-    BucketT *TheBucket = doFind(Val);
-    if (!TheBucket)
+    BucketT *TheBucket;
+    if (!LookupBucketFor(Val, TheBucket))
       return false;  // not in map.
 
     TheBucket->getSecond().~ValueT();
@@ -430,35 +447,6 @@ class DenseMapBase {
       decrementNumTombstones();
 
     return TheBucket;
-  }
-
-  template <typename LookupKeyT>
-  BucketT *doFind(const LookupKeyT &Val) {
-    BucketT *BucketsPtr = getBuckets();
-    const unsigned NumBuckets = getNumBuckets();
-    if (NumBuckets == 0)
-      return nullptr;
-
-    const KeyT EmptyKey = getEmptyKey();
-    unsigned BucketNo = getHashValue(Val) & (NumBuckets - 1);
-    unsigned ProbeAmt = 1;
-    while (true) {
-      BucketT *Bucket = BucketsPtr + BucketNo;
-      if (LIKELY(KeyInfoT::isEqual(Val, Bucket->getFirst())))
-        return Bucket;
-      if (LIKELY(KeyInfoT::isEqual(Bucket->getFirst(), EmptyKey)))
-        return nullptr;
-
-      // Otherwise, it's a hash collision or a tombstone, continue quadratic
-      // probing.
-      BucketNo += ProbeAmt++;
-      BucketNo &= NumBuckets - 1;
-    }
-  }
-
-  template <typename LookupKeyT>
-  const BucketT *doFind(const LookupKeyT &Val) const {
-    return const_cast<DenseMapBase *>(this)->doFind(Val);
   }
 
   /// LookupBucketFor - Lookup the appropriate bucket for Val, returning it in

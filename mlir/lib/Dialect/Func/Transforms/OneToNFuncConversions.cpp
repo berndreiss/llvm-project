@@ -72,7 +72,7 @@ public:
 
 namespace mlir {
 
-void populateFuncTypeConversionPatterns(const TypeConverter &typeConverter,
+void populateFuncTypeConversionPatterns(TypeConverter &typeConverter,
                                         RewritePatternSet &patterns) {
   patterns.add<
       // clang-format off

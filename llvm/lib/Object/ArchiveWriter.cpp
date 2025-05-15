@@ -754,8 +754,9 @@ static Expected<std::vector<unsigned>> getSymbols(SymbolicFile *Obj,
       raw_string_ostream NameStream(Name);
       if (Error E = S.printName(NameStream))
         return std::move(E);
-      if (!Map->try_emplace(Name, Index).second)
+      if (Map->find(Name) != Map->end())
         continue; // ignore duplicated symbol
+      (*Map)[Name] = Index;
       if (Map == &SymMap->Map) {
         Ret.push_back(SymNames.tell());
         SymNames << Name << '\0';

@@ -23,7 +23,6 @@
 #include "llvm/Support/VersionTuple.h"
 #include "llvm/Support/YAMLTraits.h"
 #include <optional>
-#include <type_traits>
 #include <vector>
 
 using namespace clang;
@@ -69,9 +68,8 @@ template <> struct ScalarEnumerationTraits<MethodKind> {
 
 namespace {
 struct Param {
-  int Position;
+  unsigned Position;
   std::optional<bool> NoEscape = false;
-  std::optional<bool> Lifetimebound = false;
   std::optional<NullabilityKind> Nullability;
   std::optional<RetainCountConventionKind> RetainCountConvention;
   StringRef Type;
@@ -123,7 +121,6 @@ template <> struct MappingTraits<Param> {
     IO.mapOptional("Nullability", P.Nullability, std::nullopt);
     IO.mapOptional("RetainCountConvention", P.RetainCountConvention);
     IO.mapOptional("NoEscape", P.NoEscape);
-    IO.mapOptional("Lifetimebound", P.Lifetimebound);
     IO.mapOptional("Type", P.Type, StringRef(""));
   }
 };
@@ -409,41 +406,6 @@ template <> struct ScalarEnumerationTraits<EnumConvenienceAliasKind> {
 } // namespace llvm
 
 namespace {
-struct Field {
-  StringRef Name;
-  std::optional<NullabilityKind> Nullability;
-  AvailabilityItem Availability;
-  std::optional<bool> SwiftPrivate;
-  StringRef SwiftName;
-  StringRef Type;
-};
-
-typedef std::vector<Field> FieldsSeq;
-} // namespace
-
-LLVM_YAML_IS_SEQUENCE_VECTOR(Field)
-
-namespace llvm {
-namespace yaml {
-template <> struct MappingTraits<Field> {
-  static void mapping(IO &IO, Field &F) {
-    IO.mapRequired("Name", F.Name);
-    IO.mapOptional("Nullability", F.Nullability, std::nullopt);
-    IO.mapOptional("Availability", F.Availability.Mode,
-                   APIAvailability::Available);
-    IO.mapOptional("AvailabilityMsg", F.Availability.Msg, StringRef(""));
-    IO.mapOptional("SwiftPrivate", F.SwiftPrivate);
-    IO.mapOptional("SwiftName", F.SwiftName, StringRef(""));
-    IO.mapOptional("Type", F.Type, StringRef(""));
-  }
-};
-} // namespace yaml
-} // namespace llvm
-
-namespace {
-struct Tag;
-typedef std::vector<Tag> TagsSeq;
-
 struct Tag {
   StringRef Name;
   AvailabilityItem Availability;
@@ -454,18 +416,14 @@ struct Tag {
   std::optional<std::string> SwiftImportAs;
   std::optional<std::string> SwiftRetainOp;
   std::optional<std::string> SwiftReleaseOp;
-  std::optional<std::string> SwiftConformance;
   std::optional<EnumExtensibilityKind> EnumExtensibility;
   std::optional<bool> FlagEnum;
   std::optional<EnumConvenienceAliasKind> EnumConvenienceKind;
   std::optional<bool> SwiftCopyable;
   FunctionsSeq Methods;
-  FieldsSeq Fields;
-
-  /// Tags that are declared within the current tag. Only the tags that have
-  /// corresponding API Notes will be listed.
-  TagsSeq Tags;
 };
+
+typedef std::vector<Tag> TagsSeq;
 } // namespace
 
 LLVM_YAML_IS_SEQUENCE_VECTOR(Tag)
@@ -493,14 +451,11 @@ template <> struct MappingTraits<Tag> {
     IO.mapOptional("SwiftImportAs", T.SwiftImportAs);
     IO.mapOptional("SwiftReleaseOp", T.SwiftReleaseOp);
     IO.mapOptional("SwiftRetainOp", T.SwiftRetainOp);
-    IO.mapOptional("SwiftConformsTo", T.SwiftConformance);
     IO.mapOptional("EnumExtensibility", T.EnumExtensibility);
     IO.mapOptional("FlagEnum", T.FlagEnum);
     IO.mapOptional("EnumKind", T.EnumConvenienceKind);
     IO.mapOptional("SwiftCopyable", T.SwiftCopyable);
     IO.mapOptional("Methods", T.Methods);
-    IO.mapOptional("Fields", T.Fields);
-    IO.mapOptional("Tags", T.Tags);
   }
 };
 } // namespace yaml
@@ -731,24 +686,17 @@ public:
     }
   }
 
-  void convertParams(const ParamsSeq &Params, FunctionInfo &OutInfo,
-                     std::optional<ParamInfo> &thisOrSelf) {
+  void convertParams(const ParamsSeq &Params, FunctionInfo &OutInfo) {
     for (const auto &P : Params) {
       ParamInfo PI;
       if (P.Nullability)
         PI.setNullabilityAudited(*P.Nullability);
       PI.setNoEscape(P.NoEscape);
-      PI.setLifetimebound(P.Lifetimebound);
       PI.setType(std::string(P.Type));
       PI.setRetainCountConvention(P.RetainCountConvention);
-      if (static_cast<int>(OutInfo.Params.size()) <= P.Position)
+      if (OutInfo.Params.size() <= P.Position)
         OutInfo.Params.resize(P.Position + 1);
-      if (P.Position == -1)
-        thisOrSelf = PI;
-      else if (P.Position >= 0)
-        OutInfo.Params[P.Position] |= PI;
-      else
-        emitError("invalid parameter position " + llvm::itostr(P.Position));
+      OutInfo.Params[P.Position] |= PI;
     }
   }
 
@@ -767,8 +715,8 @@ public:
       OutInfo.addTypeInfo(idx++, N);
     audited = Nullability.size() > 0 || ReturnNullability;
     if (audited)
-      OutInfo.addTypeInfo(0,
-                          ReturnNullability.value_or(NullabilityKind::NonNull));
+      OutInfo.addTypeInfo(0, ReturnNullability ? *ReturnNullability
+                                               : NullabilityKind::NonNull);
     if (!audited)
       return;
     OutInfo.NullabilityAudited = audited;
@@ -825,7 +773,7 @@ public:
     MI.ResultType = std::string(M.ResultType);
 
     // Translate parameter information.
-    convertParams(M.Params, MI, MI.Self);
+    convertParams(M.Params, MI);
 
     // Translate nullability info.
     convertNullability(M.Nullability, M.NullabilityOfRet, MI, M.Selector);
@@ -835,16 +783,6 @@ public:
     // Write it.
     Writer.addObjCMethod(ClassID, Selector, M.Kind == MethodKind::Instance, MI,
                          SwiftVersion);
-  }
-
-  template <typename T>
-  void convertVariable(const T &Entity, VariableInfo &VI) {
-    convertAvailability(Entity.Availability, VI, Entity.Name);
-    VI.setSwiftPrivate(Entity.SwiftPrivate);
-    VI.SwiftName = std::string(Entity.SwiftName);
-    if (Entity.Nullability)
-      VI.setNullabilityAudited(*Entity.Nullability);
-    VI.setType(std::string(Entity.Type));
   }
 
   void convertContext(std::optional<ContextID> ParentContextID, const Class &C,
@@ -902,9 +840,14 @@ public:
 
       // Translate from Property into ObjCPropertyInfo.
       ObjCPropertyInfo PI;
-      convertVariable(Property, PI);
+      convertAvailability(Property.Availability, PI, Property.Name);
+      PI.setSwiftPrivate(Property.SwiftPrivate);
+      PI.SwiftName = std::string(Property.SwiftName);
+      if (Property.Nullability)
+        PI.setNullabilityAudited(*Property.Nullability);
       if (Property.SwiftImportAsAccessors)
         PI.setSwiftImportAsAccessors(*Property.SwiftImportAsAccessors);
+      PI.setType(std::string(Property.Type));
 
       // Add both instance and class properties with this name.
       if (Property.Kind) {
@@ -933,18 +876,11 @@ public:
                          TheNamespace.Items, SwiftVersion);
   }
 
-  template <typename FuncOrMethodInfo>
-  void convertFunction(const Function &Function, FuncOrMethodInfo &FI) {
+  void convertFunction(const Function &Function, FunctionInfo &FI) {
     convertAvailability(Function.Availability, FI, Function.Name);
     FI.setSwiftPrivate(Function.SwiftPrivate);
     FI.SwiftName = std::string(Function.SwiftName);
-    std::optional<ParamInfo> This;
-    convertParams(Function.Params, FI, This);
-    if constexpr (std::is_same_v<FuncOrMethodInfo, CXXMethodInfo>)
-      FI.This = This;
-    else if (This)
-      emitError("implicit instance parameter is only permitted on C++ and "
-                "Objective-C methods");
+    convertParams(Function.Params, FI);
     convertNullability(Function.Nullability, Function.NullabilityOfRet, FI,
                        Function.Name);
     FI.ResultType = std::string(Function.ResultType);
@@ -978,8 +914,6 @@ public:
       TI.SwiftRetainOp = T.SwiftRetainOp;
     if (T.SwiftReleaseOp)
       TI.SwiftReleaseOp = T.SwiftReleaseOp;
-    if (T.SwiftConformance)
-      TI.SwiftConformance = T.SwiftConformance;
 
     if (T.SwiftCopyable)
       TI.setSwiftCopyable(T.SwiftCopyable);
@@ -1024,23 +958,12 @@ public:
     ContextInfo CI;
     auto TagCtxID = Writer.addContext(ParentContextID, T.Name, ContextKind::Tag,
                                       CI, SwiftVersion);
-    Context TagCtx(TagCtxID, ContextKind::Tag);
-
-    for (const auto &Field : T.Fields) {
-      FieldInfo FI;
-      convertVariable(Field, FI);
-      Writer.addField(TagCtxID, Field.Name, FI, SwiftVersion);
-    }
 
     for (const auto &CXXMethod : T.Methods) {
       CXXMethodInfo MI;
       convertFunction(CXXMethod, MI);
       Writer.addCXXMethod(TagCtxID, CXXMethod.Name, MI, SwiftVersion);
     }
-
-    // Convert nested tags.
-    for (const auto &Tag : T.Tags)
-      convertTagContext(TagCtx, Tag, SwiftVersion);
   }
 
   void convertTopLevelItems(std::optional<Context> Ctx,
@@ -1099,7 +1022,12 @@ public:
       }
 
       GlobalVariableInfo GVI;
-      convertVariable(Global, GVI);
+      convertAvailability(Global.Availability, GVI, Global.Name);
+      GVI.setSwiftPrivate(Global.SwiftPrivate);
+      GVI.SwiftName = std::string(Global.SwiftName);
+      if (Global.Nullability)
+        GVI.setNullabilityAudited(*Global.Nullability);
+      GVI.setType(std::string(Global.Type));
       Writer.addGlobalVariable(Ctx, Global.Name, GVI, SwiftVersion);
     }
 

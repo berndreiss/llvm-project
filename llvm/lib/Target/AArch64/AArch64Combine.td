@@ -13,14 +13,14 @@ include "llvm/Target/GlobalISel/Combine.td"
 
 def fconstant_to_constant : GICombineRule<
   (defs root:$root),
-  (match (G_FCONSTANT $dst, $src):$root,
+  (match (wip_match_opcode G_FCONSTANT):$root,
          [{ return matchFConstantToConstant(*${root}, MRI); }]),
   (apply [{ applyFConstantToConstant(*${root}); }])>;
 
 def icmp_redundant_trunc_matchdata : GIDefMatchData<"Register">;
 def icmp_redundant_trunc : GICombineRule<
   (defs root:$root, icmp_redundant_trunc_matchdata:$matchinfo),
-  (match (G_ICMP $dst, $tst, $src1, $src2):$root,
+  (match (wip_match_opcode G_ICMP):$root,
          [{ return matchICmpRedundantTrunc(*${root}, MRI, Helper.getKnownBits(), ${matchinfo}); }]),
   (apply [{ applyICmpRedundantTrunc(*${root}, MRI, B, Observer, ${matchinfo}); }])>;
 
@@ -178,14 +178,14 @@ def adjust_icmp_imm_matchdata :
   GIDefMatchData<"std::pair<uint64_t, CmpInst::Predicate>">;
 def adjust_icmp_imm : GICombineRule <
   (defs root:$root, adjust_icmp_imm_matchdata:$matchinfo),
-  (match (G_ICMP $dst, $tst, $src1, $src2):$root,
+  (match (wip_match_opcode G_ICMP):$root,
           [{ return matchAdjustICmpImmAndPred(*${root}, MRI, ${matchinfo}); }]),
   (apply [{ applyAdjustICmpImmAndPred(*${root}, ${matchinfo}, B, Observer); }])
 >;
 
 def swap_icmp_operands : GICombineRule <
   (defs root:$root),
-  (match (G_ICMP $dst, $tst, $src1, $src2):$root,
+  (match (wip_match_opcode G_ICMP):$root,
           [{ return trySwapICmpOperands(*${root}, MRI); }]),
   (apply [{ applySwapICmpOperands(*${root}, Observer); }])
 >;
@@ -222,26 +222,18 @@ def build_vector_to_dup : GICombineRule<
   (apply [{ applyBuildVectorToDup(*${root}, MRI, B); }])
 >;
 
-def build_vector_to_vector_insert : GICombineRule<
-  (defs root:$root),
-  (match (G_BUILD_VECTOR $dst, GIVariadic<>:$unused):$root,
-          [{ return matchLowerBuildToInsertVecElt(*${root}, MRI); }]),
-  (apply [{ applyLowerBuildToInsertVecElt(*${root}, MRI, B); }])
->;
-
-def build_vector_lowering : GICombineGroup<[build_vector_to_dup,
-                                            build_vector_to_vector_insert]>;
+def build_vector_lowering : GICombineGroup<[build_vector_to_dup]>;
 
 def lower_vector_fcmp : GICombineRule<
   (defs root:$root),
-  (match (G_FCMP $dst, $tst, $src1, $src2):$root,
+  (match (wip_match_opcode G_FCMP):$root,
     [{ return matchLowerVectorFCMP(*${root}, MRI, B); }]),
   (apply [{ applyLowerVectorFCMP(*${root}, MRI, B); }])>;
 
 def form_truncstore_matchdata : GIDefMatchData<"Register">;
 def form_truncstore : GICombineRule<
   (defs root:$root, form_truncstore_matchdata:$matchinfo),
-  (match (G_STORE $src, $addr):$root,
+  (match (wip_match_opcode G_STORE):$root,
           [{ return matchFormTruncstore(*${root}, MRI, ${matchinfo}); }]),
   (apply [{ applyFormTruncstore(*${root}, MRI, B, Observer, ${matchinfo}); }])
 >;
@@ -262,7 +254,7 @@ def mutate_anyext_to_zext : GICombineRule<
 
 def split_store_zero_128 : GICombineRule<
   (defs root:$d),
-  (match (G_STORE $src, $addr):$d,
+  (match (wip_match_opcode G_STORE):$d,
           [{ return matchSplitStoreZero128(*${d}, MRI); }]),
   (apply [{ applySplitStoreZero128(*${d}, MRI, B, Observer); }])
 >;
@@ -285,7 +277,7 @@ def unmerge_ext_to_unmerge : GICombineRule<
 def regtriple_matchdata : GIDefMatchData<"std::tuple<Register, Register, Register>">;
 def or_to_bsp: GICombineRule <
   (defs root:$root, regtriple_matchdata:$matchinfo),
-  (match (G_OR $dst, $src1, $src2):$root,
+  (match (wip_match_opcode G_OR):$root,
          [{ return matchOrToBSP(*${root}, MRI, ${matchinfo}); }]),
   (apply [{ applyOrToBSP(*${root}, MRI, B, ${matchinfo}); }])
 >;
@@ -314,21 +306,21 @@ def AArch64PostLegalizerLowering
 // Post-legalization combines which are primarily optimizations.
 def AArch64PostLegalizerCombiner
     : GICombiner<"AArch64PostLegalizerCombinerImpl",
-                       [copy_prop, cast_of_cast_combines, buildvector_of_truncate,
-                        integer_of_truncate, mutate_anyext_to_zext,
-                        combines_for_extload, combine_indexed_load_store, sext_trunc_sextload,
+                       [copy_prop, combines_for_extload,
+                        combine_indexed_load_store,
+                        sext_trunc_sextload, mutate_anyext_to_zext,
                         hoist_logic_op_with_same_opcode_hands,
                         redundant_and, xor_of_and_with_same_reg,
                         extractvecelt_pairwise_add, redundant_or,
                         mul_const, redundant_sext_inreg,
                         form_bitfield_extract, rotate_out_of_range,
-                        icmp_to_true_false_known_bits,
+                        icmp_to_true_false_known_bits, merge_unmerge,
                         select_combines, fold_merge_to_zext,
                         constant_fold_binops, identity_combines,
                         ptr_add_immed_chain, overlapping_and,
                         split_store_zero_128, undef_combines,
                         select_to_minmax, or_to_bsp, combine_concat_vector,
-                        commute_constant_to_rhs, merge_combines,
+                        commute_constant_to_rhs,
                         push_freeze_to_prevent_poison_from_propagating,
-                        combine_mul_cmlt, combine_use_vector_truncate]> {
+                        combine_mul_cmlt]> {
 }

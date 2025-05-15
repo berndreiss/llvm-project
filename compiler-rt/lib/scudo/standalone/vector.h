@@ -86,7 +86,8 @@ protected:
   }
   void destroy() {
     if (Data != &LocalData[0])
-      ExternalBuffer.unmap();
+      ExternalBuffer.unmap(ExternalBuffer.getBase(),
+                           ExternalBuffer.getCapacity());
   }
 
 private:

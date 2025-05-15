@@ -111,6 +111,7 @@ void transform::TransformDialect::reportDuplicateTypeRegistration(
   llvm::raw_string_ostream msg(buffer);
   msg << "extensible dialect type '" << mnemonic
       << "' is already registered with a different implementation";
+  msg.flush();
   llvm::report_fatal_error(StringRef(buffer));
 }
 
@@ -120,6 +121,7 @@ void transform::TransformDialect::reportDuplicateOpRegistration(
   llvm::raw_string_ostream msg(buffer);
   msg << "extensible dialect operation '" << opName
       << "' is already registered with a mismatching TypeID";
+  msg.flush();
   llvm::report_fatal_error(StringRef(buffer));
 }
 

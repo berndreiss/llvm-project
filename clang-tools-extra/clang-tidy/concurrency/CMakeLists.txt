@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyConcurrencyModule STATIC
+add_clang_library(clangTidyConcurrencyModule
   ConcurrencyTidyModule.cpp
   MtUnsafeCheck.cpp
   ThreadCanceltypeAsynchronousCheck.cpp

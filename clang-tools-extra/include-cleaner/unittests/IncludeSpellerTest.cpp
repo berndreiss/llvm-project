@@ -47,7 +47,8 @@ public:
       return "<bits/stdc++.h>";
     if (Input.H.kind() != Header::Physical)
       return "";
-    llvm::StringRef AbsolutePath = Input.H.resolvedPath();
+    llvm::StringRef AbsolutePath =
+        Input.H.physical().getFileEntry().tryGetRealPathName();
     std::string RootWithSeparator{testRoot()};
     RootWithSeparator += llvm::sys::path::get_separator();
     if (!AbsolutePath.consume_front(llvm::StringRef{RootWithSeparator}))

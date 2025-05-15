@@ -12,8 +12,6 @@
 
 #include <__concepts/constructible.h>
 #include <__config>
-#include <__cstddef/ptrdiff_t.h>
-#include <__cstddef/size_t.h>
 #include <__ranges/movable_box.h>
 #include <__ranges/range_adaptor.h>
 #include <__ranges/view_interface.h>
@@ -22,6 +20,7 @@
 #include <__utility/forward.h>
 #include <__utility/in_place.h>
 #include <__utility/move.h>
+#include <cstddef>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header

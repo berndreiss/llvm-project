@@ -21,9 +21,6 @@
 
 using namespace mlir;
 using namespace mlir::tblgen;
-using llvm::formatv;
-using llvm::Record;
-using llvm::RecordKeeper;
 
 /// File header and includes.
 constexpr const char *fileHeader = R"Py(
@@ -45,42 +42,44 @@ static std::string makePythonEnumCaseName(StringRef name) {
 
 /// Emits the Python class for the given enum.
 static void emitEnumClass(EnumAttr enumAttr, raw_ostream &os) {
-  os << formatv("class {0}({1}):\n", enumAttr.getEnumClassName(),
-                enumAttr.isBitEnum() ? "IntFlag" : "IntEnum");
+  os << llvm::formatv("class {0}({1}):\n", enumAttr.getEnumClassName(),
+                      enumAttr.isBitEnum() ? "IntFlag" : "IntEnum");
   if (!enumAttr.getSummary().empty())
-    os << formatv("    \"\"\"{0}\"\"\"\n", enumAttr.getSummary());
+    os << llvm::formatv("    \"\"\"{0}\"\"\"\n", enumAttr.getSummary());
   os << "\n";
 
   for (const EnumAttrCase &enumCase : enumAttr.getAllCases()) {
-    os << formatv("    {0} = {1}\n",
-                  makePythonEnumCaseName(enumCase.getSymbol()),
-                  enumCase.getValue() >= 0 ? std::to_string(enumCase.getValue())
-                                           : "auto()");
+    os << llvm::formatv(
+        "    {0} = {1}\n", makePythonEnumCaseName(enumCase.getSymbol()),
+        enumCase.getValue() >= 0 ? std::to_string(enumCase.getValue())
+                                 : "auto()");
   }
 
   os << "\n";
 
   if (enumAttr.isBitEnum()) {
-    os << formatv("    def __iter__(self):\n"
-                  "        return iter([case for case in type(self) if "
-                  "(self & case) is case])\n");
-    os << formatv("    def __len__(self):\n"
-                  "        return bin(self).count(\"1\")\n");
+    os << llvm::formatv("    def __iter__(self):\n"
+                        "        return iter([case for case in type(self) if "
+                        "(self & case) is case])\n");
+    os << llvm::formatv("    def __len__(self):\n"
+                        "        return bin(self).count(\"1\")\n");
     os << "\n";
   }
 
-  os << formatv("    def __str__(self):\n");
+  os << llvm::formatv("    def __str__(self):\n");
   if (enumAttr.isBitEnum())
-    os << formatv("        if len(self) > 1:\n"
-                  "            return \"{0}\".join(map(str, self))\n",
-                  enumAttr.getDef().getValueAsString("separator"));
+    os << llvm::formatv("        if len(self) > 1:\n"
+                        "            return \"{0}\".join(map(str, self))\n",
+                        enumAttr.getDef().getValueAsString("separator"));
   for (const EnumAttrCase &enumCase : enumAttr.getAllCases()) {
-    os << formatv("        if self is {0}.{1}:\n", enumAttr.getEnumClassName(),
-                  makePythonEnumCaseName(enumCase.getSymbol()));
-    os << formatv("            return \"{0}\"\n", enumCase.getStr());
+    os << llvm::formatv("        if self is {0}.{1}:\n",
+                        enumAttr.getEnumClassName(),
+                        makePythonEnumCaseName(enumCase.getSymbol()));
+    os << llvm::formatv("            return \"{0}\"\n", enumCase.getStr());
   }
-  os << formatv("        raise ValueError(\"Unknown {0} enum entry.\")\n\n\n",
-                enumAttr.getEnumClassName());
+  os << llvm::formatv(
+      "        raise ValueError(\"Unknown {0} enum entry.\")\n\n\n",
+      enumAttr.getEnumClassName());
   os << "\n";
 }
 
@@ -106,13 +105,15 @@ static bool emitAttributeBuilder(const EnumAttr &enumAttr, raw_ostream &os) {
     return true;
   }
 
-  os << formatv("@register_attribute_builder(\"{0}\")\n",
-                enumAttr.getAttrDefName());
-  os << formatv("def _{0}(x, context):\n", enumAttr.getAttrDefName().lower());
-  os << formatv("    return "
-                "_ods_ir.IntegerAttr.get(_ods_ir.IntegerType.get_signless({0}, "
-                "context=context), int(x))\n\n",
-                bitwidth);
+  os << llvm::formatv("@register_attribute_builder(\"{0}\")\n",
+                      enumAttr.getAttrDefName());
+  os << llvm::formatv("def _{0}(x, context):\n",
+                      enumAttr.getAttrDefName().lower());
+  os << llvm::formatv(
+      "    return "
+      "_ods_ir.IntegerAttr.get(_ods_ir.IntegerType.get_signless({0}, "
+      "context=context), int(x))\n\n",
+      bitwidth);
   return false;
 }
 
@@ -122,26 +123,26 @@ static bool emitAttributeBuilder(const EnumAttr &enumAttr, raw_ostream &os) {
 static bool emitDialectEnumAttributeBuilder(StringRef attrDefName,
                                             StringRef formatString,
                                             raw_ostream &os) {
-  os << formatv("@register_attribute_builder(\"{0}\")\n", attrDefName);
-  os << formatv("def _{0}(x, context):\n", attrDefName.lower());
-  os << formatv("    return "
-                "_ods_ir.Attribute.parse(f'{0}', context=context)\n\n",
-                formatString);
+  os << llvm::formatv("@register_attribute_builder(\"{0}\")\n", attrDefName);
+  os << llvm::formatv("def _{0}(x, context):\n", attrDefName.lower());
+  os << llvm::formatv("    return "
+                      "_ods_ir.Attribute.parse(f'{0}', context=context)\n\n",
+                      formatString);
   return false;
 }
 
 /// Emits Python bindings for all enums in the record keeper. Returns
 /// `false` on success, `true` on failure.
-static bool emitPythonEnums(const RecordKeeper &records, raw_ostream &os) {
+static bool emitPythonEnums(const llvm::RecordKeeper &recordKeeper,
+                            raw_ostream &os) {
   os << fileHeader;
-  for (const Record *it :
-       records.getAllDerivedDefinitionsIfDefined("EnumAttrInfo")) {
+  for (auto &it :
+       recordKeeper.getAllDerivedDefinitionsIfDefined("EnumAttrInfo")) {
     EnumAttr enumAttr(*it);
     emitEnumClass(enumAttr, os);
     emitAttributeBuilder(enumAttr, os);
   }
-  for (const Record *it :
-       records.getAllDerivedDefinitionsIfDefined("EnumAttr")) {
+  for (auto &it : recordKeeper.getAllDerivedDefinitionsIfDefined("EnumAttr")) {
     AttrOrTypeDef attr(&*it);
     if (!attr.getMnemonic()) {
       llvm::errs() << "enum case " << attr
@@ -154,11 +155,11 @@ static bool emitPythonEnums(const RecordKeeper &records, raw_ostream &os) {
     if (assemblyFormat == "`<` $value `>`") {
       emitDialectEnumAttributeBuilder(
           attr.getName(),
-          formatv("#{0}.{1}<{{str(x)}>", dialect, mnemonic).str(), os);
+          llvm::formatv("#{0}.{1}<{{str(x)}>", dialect, mnemonic).str(), os);
     } else if (assemblyFormat == "$value") {
       emitDialectEnumAttributeBuilder(
           attr.getName(),
-          formatv("#{0}<{1} {{str(x)}>", dialect, mnemonic).str(), os);
+          llvm::formatv("#{0}<{1} {{str(x)}>", dialect, mnemonic).str(), os);
     } else {
       llvm::errs()
           << "unsupported assembly format for python enum bindings generation";

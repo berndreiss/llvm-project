@@ -88,12 +88,8 @@ private:
   }
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    SyntaxTreeTests, BuildSyntaxTreeTest,
-    testing::ValuesIn(allTestClangConfigs()),
-    [](const testing::TestParamInfo<TestClangConfig> &Info) {
-      return Info.param.toShortString();
-    });
+INSTANTIATE_TEST_SUITE_P(SyntaxTreeTests, BuildSyntaxTreeTest,
+                        testing::ValuesIn(allTestClangConfigs()) );
 
 TEST_P(BuildSyntaxTreeTest, Simple) {
   EXPECT_TRUE(treeDumpEqual(

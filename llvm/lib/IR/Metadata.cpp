@@ -47,6 +47,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -81,7 +82,7 @@ static Metadata *canonicalizeMetadataForValue(LLVMContext &Context,
                                               Metadata *MD) {
   if (!MD)
     // !{}
-    return MDNode::get(Context, {});
+    return MDNode::get(Context, std::nullopt);
 
   // Return early if this isn't a single-operand MDNode.
   auto *N = dyn_cast<MDNode>(MD);
@@ -90,7 +91,7 @@ static Metadata *canonicalizeMetadataForValue(LLVMContext &Context,
 
   if (!N->getOperand(0))
     // !{}
-    return MDNode::get(Context, {});
+    return MDNode::get(Context, std::nullopt);
 
   if (auto *C = dyn_cast<ConstantAsMetadata>(N->getOperand(0)))
     // Look through the MDNode.
@@ -274,7 +275,7 @@ ReplaceableMetadataImpl::getAllDbgVariableRecordUsers() {
     OwnerTy Owner = Pair.second.first;
     if (Owner.isNull())
       continue;
-    if (!isa<DebugValueUser *>(Owner))
+    if (!Owner.is<DebugValueUser *>())
       continue;
     DVRUsersWithID.push_back(&UseMap[Pair.first]);
   }
@@ -288,7 +289,7 @@ ReplaceableMetadataImpl::getAllDbgVariableRecordUsers() {
   });
   SmallVector<DbgVariableRecord *> DVRUsers;
   for (auto UserWithID : DVRUsersWithID)
-    DVRUsers.push_back(cast<DebugValueUser *>(UserWithID->first)->getUser());
+    DVRUsers.push_back(UserWithID->first.get<DebugValueUser *>()->getUser());
   return DVRUsers;
 }
 
@@ -345,12 +346,6 @@ void ReplaceableMetadataImpl::SalvageDebugInfo(const Constant &C) {
     MetadataTracking::OwnerTy Owner = Pair.second.first;
     if (!Owner)
       continue;
-    // Check for MetadataAsValue.
-    if (isa<MetadataAsValue *>(Owner)) {
-      cast<MetadataAsValue *>(Owner)->handleChangedMetadata(
-          ValueAsMetadata::get(UndefValue::get(C.getType())));
-      continue;
-    }
     if (!isa<Metadata *>(Owner))
       continue;
     auto *OwnerMD = dyn_cast_if_present<MDNode>(cast<Metadata *>(Owner));
@@ -396,8 +391,8 @@ void ReplaceableMetadataImpl::replaceAllUsesWith(Metadata *MD) {
       continue;
     }
 
-    if (auto *DVU = dyn_cast<DebugValueUser *>(Owner)) {
-      DVU->handleChangedValue(Pair.first, MD);
+    if (Owner.is<DebugValueUser *>()) {
+      Owner.get<DebugValueUser *>()->handleChangedValue(Pair.first, MD);
       continue;
     }
 
@@ -436,7 +431,7 @@ void ReplaceableMetadataImpl::resolveAllUses(bool ResolveUsers) {
     auto Owner = Pair.second.first;
     if (!Owner)
       continue;
-    if (!isa<Metadata *>(Owner))
+    if (!Owner.is<Metadata *>())
       continue;
 
     // Resolve MDNodes that point at this.
@@ -1255,8 +1250,8 @@ static bool tryMergeRange(SmallVectorImpl<ConstantInt *> &EndPoints,
                           ConstantInt *Low, ConstantInt *High) {
   ConstantRange NewRange(Low->getValue(), High->getValue());
   unsigned Size = EndPoints.size();
-  const APInt &LB = EndPoints[Size - 2]->getValue();
-  const APInt &LE = EndPoints[Size - 1]->getValue();
+  APInt LB = EndPoints[Size - 2]->getValue();
+  APInt LE = EndPoints[Size - 1]->getValue();
   ConstantRange LastRange(LB, LE);
   if (canBeMerged(NewRange, LastRange)) {
     ConstantRange Union = LastRange.unionWith(NewRange);
@@ -1732,7 +1727,7 @@ void Instruction::setAAMetadata(const AAMDNodes &N) {
 
 void Instruction::setNoSanitizeMetadata() {
   setMetadata(llvm::LLVMContext::MD_nosanitize,
-              llvm::MDNode::get(getContext(), {}));
+              llvm::MDNode::get(getContext(), std::nullopt));
 }
 
 void Instruction::getAllMetadataImpl(

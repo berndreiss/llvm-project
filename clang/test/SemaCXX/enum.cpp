@@ -143,11 +143,3 @@ struct PR28903 {
     })
   };
 };
-
-namespace GH112208 {
-class C {
-  enum E { e = 0 };
-  void f(int, enum E;); // expected-error {{ISO C++ forbids forward references to 'enum' types}} \
-                        // expected-error {{unexpected ';' before ')'}}
-};
-}

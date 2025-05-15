@@ -13,22 +13,14 @@
 #include "mlir/Dialect/AMX/AMXDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/TypeUtilities.h"
-
-#include "llvm/ADT/TypeSwitch.h"
 
 using namespace mlir;
 
 #include "mlir/Dialect/AMX/AMXDialect.cpp.inc"
 
 void amx::AMXDialect::initialize() {
-  addTypes<
-#define GET_TYPEDEF_LIST
-#include "mlir/Dialect/AMX/AMXTypes.cpp.inc"
-      >();
-
   addOperations<
 #define GET_OP_LIST
 #include "mlir/Dialect/AMX/AMX.cpp.inc"
@@ -36,7 +28,7 @@ void amx::AMXDialect::initialize() {
 }
 
 /// Verify that AMX supports the implied tile shape.
-static LogicalResult verifyTileSize(Operation *op, amx::TileType tp) {
+static LogicalResult verifyTileSize(Operation *op, VectorType tp) {
   const unsigned kMaxRows = 16;
   const unsigned kBitsPerRow = 64 * 8;
   unsigned col = tp.getDimSize(1) * tp.getElementType().getIntOrFloatBitWidth();
@@ -48,8 +40,8 @@ static LogicalResult verifyTileSize(Operation *op, amx::TileType tp) {
 }
 
 /// Verify that AMX supports the multiplication.
-static LogicalResult verifyMultShape(Operation *op, amx::TileType atp,
-                                     amx::TileType btp, amx::TileType ctp,
+static LogicalResult verifyMultShape(Operation *op, VectorType atp,
+                                     VectorType btp, VectorType ctp,
                                      unsigned scale) {
   unsigned am = atp.getDimSize(0), ak = atp.getDimSize(1) >> scale;
   unsigned bk = btp.getDimSize(0), bn = btp.getDimSize(1) >> scale;
@@ -61,27 +53,27 @@ static LogicalResult verifyMultShape(Operation *op, amx::TileType atp,
 }
 
 LogicalResult amx::TileZeroOp::verify() {
-  return verifyTileSize(*this, getTileType());
+  return verifyTileSize(*this, getVectorType());
 }
 
 LogicalResult amx::TileLoadOp::verify() {
   unsigned rank = getMemRefType().getRank();
   if (getIndices().size() != rank)
     return emitOpError("requires ") << rank << " indices";
-  return verifyTileSize(*this, getTileType());
+  return verifyTileSize(*this, getVectorType());
 }
 
 LogicalResult amx::TileStoreOp::verify() {
   unsigned rank = getMemRefType().getRank();
   if (getIndices().size() != rank)
     return emitOpError("requires ") << rank << " indices";
-  return verifyTileSize(*this, getTileType());
+  return verifyTileSize(*this, getVectorType());
 }
 
 LogicalResult amx::TileMulFOp::verify() {
-  amx::TileType aType = getLhsTileType();
-  amx::TileType bType = getRhsTileType();
-  amx::TileType cType = getTileType();
+  VectorType aType = getLhsVectorType();
+  VectorType bType = getRhsVectorType();
+  VectorType cType = getVectorType();
   if (failed(verifyTileSize(*this, aType)) ||
       failed(verifyTileSize(*this, bType)) ||
       failed(verifyTileSize(*this, cType)) ||
@@ -90,15 +82,15 @@ LogicalResult amx::TileMulFOp::verify() {
   Type ta = aType.getElementType();
   Type tb = bType.getElementType();
   Type tc = cType.getElementType();
-  if ((!ta.isBF16() && !ta.isF16()) || (ta != tb) || !tc.isF32())
+  if (!ta.isBF16() || !tb.isBF16() || !tc.isF32())
     return emitOpError("unsupported type combination");
   return success();
 }
 
 LogicalResult amx::TileMulIOp::verify() {
-  amx::TileType aType = getLhsTileType();
-  amx::TileType bType = getRhsTileType();
-  amx::TileType cType = getTileType();
+  VectorType aType = getLhsVectorType();
+  VectorType bType = getRhsVectorType();
+  VectorType cType = getVectorType();
   if (failed(verifyTileSize(*this, aType)) ||
       failed(verifyTileSize(*this, bType)) ||
       failed(verifyTileSize(*this, cType)) ||
@@ -112,34 +104,5 @@ LogicalResult amx::TileMulIOp::verify() {
   return success();
 }
 
-Type amx::TileType::parse(AsmParser &parser) {
-  if (parser.parseLess())
-    return nullptr;
-
-  SmallVector<int64_t, 2> shape;
-  if (parser.parseDimensionList(shape, false, true))
-    return nullptr;
-
-  Type elementType;
-  if (parser.parseType(elementType))
-    return nullptr;
-
-  if (parser.parseGreater())
-    return nullptr;
-
-  return TileType::get(shape, elementType);
-}
-
-void amx::TileType::print(AsmPrinter &os) const {
-  os << "<";
-  os.printDimensionList(getShape());
-  os << 'x';
-  os.printType(getElementType());
-  os << '>';
-}
-
 #define GET_OP_CLASSES
 #include "mlir/Dialect/AMX/AMX.cpp.inc"
-
-#define GET_TYPEDEF_CLASSES
-#include "mlir/Dialect/AMX/AMXTypes.cpp.inc"

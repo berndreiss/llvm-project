@@ -60,7 +60,7 @@ protected:
   llvm::SmallVector<Hinted<Header>> findHeaders(llvm::StringRef FileName) {
     return include_cleaner::findHeaders(
         AST->sourceManager().translateFileLineCol(
-            *AST->fileManager().getOptionalFileRef(FileName),
+            AST->fileManager().getFile(FileName).get(),
             /*Line=*/1, /*Col=*/1),
         AST->sourceManager(), &PI);
   }

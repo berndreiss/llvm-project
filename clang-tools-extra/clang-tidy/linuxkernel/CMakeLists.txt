@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyLinuxKernelModule STATIC
+add_clang_library(clangTidyLinuxKernelModule
   LinuxKernelTidyModule.cpp
   MustCheckErrsCheck.cpp
 

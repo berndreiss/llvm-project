@@ -1,4 +1,3 @@
-// RUN: rm -f %t.profraw
 // RUN: %clang_profgen -o %t -O3 %s
 // RUN: %run %t %t.profraw
 // RUN: llvm-profdata merge -o %t.profdata %t.profraw

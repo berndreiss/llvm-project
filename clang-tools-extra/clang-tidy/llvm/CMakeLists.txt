@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyLLVMModule STATIC
+add_clang_library(clangTidyLLVMModule
   HeaderGuardCheck.cpp
   IncludeOrderCheck.cpp
   LLVMTidyModule.cpp

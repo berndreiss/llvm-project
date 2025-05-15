@@ -305,8 +305,10 @@ Status RegisterContext::ReadRegisterValueFromMemory(
     const RegisterInfo *reg_info, lldb::addr_t src_addr, uint32_t src_len,
     RegisterValue &reg_value) {
   Status error;
-  if (!reg_info)
-    return Status::FromErrorString("invalid register info argument.");
+  if (reg_info == nullptr) {
+    error.SetErrorString("invalid register info argument.");
+    return error;
+  }
 
   // Moving from addr into a register
   //
@@ -327,7 +329,7 @@ Status RegisterContext::ReadRegisterValueFromMemory(
   const uint32_t dst_len = reg_info->byte_size;
 
   if (src_len > dst_len) {
-    return Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "%u bytes is too big to store in register %s (%u bytes)", src_len,
         reg_info->name, dst_len);
     return error;
@@ -345,8 +347,8 @@ Status RegisterContext::ReadRegisterValueFromMemory(
     if (bytes_read != src_len) {
       if (error.Success()) {
         // This might happen if we read _some_ bytes but not all
-        return Status::FromErrorStringWithFormat("read %u of %u bytes",
-                                                 bytes_read, src_len);
+        error.SetErrorStringWithFormat("read %u of %u bytes", bytes_read,
+                                       src_len);
       }
       return error;
     }
@@ -359,7 +361,7 @@ Status RegisterContext::ReadRegisterValueFromMemory(
     reg_value.SetFromMemoryData(*reg_info, src.data(), src_len,
                                 process_sp->GetByteOrder(), error);
   } else
-    return Status::FromErrorString("invalid process");
+    error.SetErrorString("invalid process");
 
   return error;
 }
@@ -371,12 +373,12 @@ Status RegisterContext::WriteRegisterValueToMemory(
   ProcessSP process_sp(m_thread.GetProcess());
 
   if (!process_sp) {
-    return Status::FromErrorString("invalid process");
+    error.SetErrorString("invalid process");
     return error;
   }
 
   if (reg_info == nullptr) {
-    return Status::FromErrorString("Invalid register info argument.");
+    error.SetErrorString("Invalid register info argument.");
     return error;
   }
 
@@ -389,15 +391,15 @@ Status RegisterContext::WriteRegisterValueToMemory(
 
   if (error.Success()) {
     if (bytes_copied == 0) {
-      return Status::FromErrorString("byte copy failed.");
+      error.SetErrorString("byte copy failed.");
     } else {
       const uint32_t bytes_written =
           process_sp->WriteMemory(dst_addr, dst.data(), bytes_copied, error);
       if (bytes_written != bytes_copied) {
         if (error.Success()) {
           // This might happen if we read _some_ bytes but not all
-          return Status::FromErrorStringWithFormat("only wrote %u of %u bytes",
-                                                   bytes_written, bytes_copied);
+          error.SetErrorStringWithFormat("only wrote %u of %u bytes",
+                                         bytes_written, bytes_copied);
         }
       }
     }

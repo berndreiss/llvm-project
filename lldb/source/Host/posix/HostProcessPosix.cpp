@@ -30,8 +30,9 @@ HostProcessPosix::~HostProcessPosix() = default;
 
 Status HostProcessPosix::Signal(int signo) const {
   if (m_process == kInvalidPosixProcess) {
-    return Status::FromErrorString(
-        "HostProcessPosix refers to an invalid process");
+    Status error;
+    error.SetErrorString("HostProcessPosix refers to an invalid process");
+    return error;
   }
 
   return HostProcessPosix::Signal(m_process, signo);
@@ -41,7 +42,7 @@ Status HostProcessPosix::Signal(lldb::process_t process, int signo) {
   Status error;
 
   if (-1 == ::kill(process, signo))
-    return Status::FromErrno();
+    error.SetErrorToErrno();
 
   return error;
 }

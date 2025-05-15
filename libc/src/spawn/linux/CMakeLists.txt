@@ -5,8 +5,7 @@ add_entrypoint_object(
   HDRS
     ../posix_spawn.h
   DEPENDS
-    libc.hdr.types.mode_t
-    libc.hdr.fcntl_macros
+    libc.include.fcntl
     libc.include.spawn
     libc.include.sys_syscall
     libc.include.signal

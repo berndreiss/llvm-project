@@ -18,12 +18,12 @@
 namespace llvm {
 class Triple;
 
-class MipsELFMCAsmInfo : public MCAsmInfoELF {
+class MipsMCAsmInfo : public MCAsmInfoELF {
   void anchor() override;
 
 public:
-  explicit MipsELFMCAsmInfo(const Triple &TheTriple,
-                            const MCTargetOptions &Options);
+  explicit MipsMCAsmInfo(const Triple &TheTriple,
+                         const MCTargetOptions &Options);
 };
 
 } // namespace llvm

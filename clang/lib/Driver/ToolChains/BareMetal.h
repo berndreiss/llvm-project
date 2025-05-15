@@ -78,8 +78,6 @@ private:
   using OrderedMultilibs =
       llvm::iterator_range<llvm::SmallVector<Multilib>::const_reverse_iterator>;
   OrderedMultilibs getOrderedMultilibs() const;
-
-  std::string SysRoot;
 };
 
 } // namespace toolchains

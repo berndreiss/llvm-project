@@ -9,10 +9,9 @@
 
 // <mdspan>
 
-#include <array>
-#include <cassert>
-#include <cstddef>
 #include <mdspan>
+#include <cassert>
+#include <array>
 #include <span>
 
 #include "../ConvertibleToIntegral.h"

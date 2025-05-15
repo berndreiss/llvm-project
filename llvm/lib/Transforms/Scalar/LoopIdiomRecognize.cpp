@@ -40,6 +40,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/CmpInstAnalysis.h"
+#include "llvm/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/MemoryLocation.h"
@@ -2121,7 +2122,9 @@ static CallInst *createPopcntIntrinsic(IRBuilder<> &IRBuilder, Value *Val,
   Value *Ops[] = {Val};
   Type *Tys[] = {Val->getType()};
 
-  CallInst *CI = IRBuilder.CreateIntrinsic(Intrinsic::ctpop, Tys, Ops);
+  Module *M = IRBuilder.GetInsertBlock()->getParent()->getParent();
+  Function *Func = Intrinsic::getDeclaration(M, Intrinsic::ctpop, Tys);
+  CallInst *CI = IRBuilder.CreateCall(Func, Ops);
   CI->setDebugLoc(DL);
 
   return CI;
@@ -2133,7 +2136,9 @@ static CallInst *createFFSIntrinsic(IRBuilder<> &IRBuilder, Value *Val,
   Value *Ops[] = {Val, IRBuilder.getInt1(ZeroCheck)};
   Type *Tys[] = {Val->getType()};
 
-  CallInst *CI = IRBuilder.CreateIntrinsic(IID, Tys, Ops);
+  Module *M = IRBuilder.GetInsertBlock()->getParent()->getParent();
+  Function *Func = Intrinsic::getDeclaration(M, IID, Tys);
+  CallInst *CI = IRBuilder.CreateCall(Func, Ops);
   CI->setDebugLoc(DL);
 
   return CI;
@@ -2460,16 +2465,11 @@ static bool detectShiftUntilBitTestIdiom(Loop *CurLoop, Value *&BaseX,
            (BitPos = ConstantExpr::getExactLogBase2(cast<Constant>(BitMask)));
   };
   auto MatchDecomposableConstantBitMask = [&]() {
-    auto Res = llvm::decomposeBitTestICmp(CmpLHS, CmpRHS, Pred);
-    if (Res && Res->Mask.isPowerOf2()) {
-      assert(ICmpInst::isEquality(Res->Pred));
-      Pred = Res->Pred;
-      CurrX = Res->X;
-      BitMask = ConstantInt::get(CurrX->getType(), Res->Mask);
-      BitPos = ConstantInt::get(CurrX->getType(), Res->Mask.logBase2());
-      return true;
-    }
-    return false;
+    APInt Mask;
+    return llvm::decomposeBitTestICmp(CmpLHS, CmpRHS, Pred, CurrX, Mask) &&
+           ICmpInst::isEquality(Pred) && Mask.isPowerOf2() &&
+           (BitMask = ConstantInt::get(CurrX->getType(), Mask)) &&
+           (BitPos = ConstantInt::get(CurrX->getType(), Mask.logBase2()));
   };
 
   if (!MatchVariableBitMask() && !MatchConstantBitMask() &&
@@ -2490,7 +2490,7 @@ static bool detectShiftUntilBitTestIdiom(Loop *CurLoop, Value *&BaseX,
       dyn_cast<Instruction>(CurrXPN->getIncomingValueForBlock(LoopHeaderBB));
 
   assert(CurLoop->isLoopInvariant(BaseX) &&
-         "Expected BaseX to be available in the preheader!");
+         "Expected BaseX to be avaliable in the preheader!");
 
   if (!NextX || !match(NextX, m_Shl(m_Specific(CurrX), m_One()))) {
     // FIXME: support right-shift?

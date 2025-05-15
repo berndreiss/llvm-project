@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   FrontendOpenMP
   )
 
-add_clang_library(clangTidyCERTModule STATIC
+add_clang_library(clangTidyCERTModule
   CERTTidyModule.cpp
   CommandProcessorCheck.cpp
   DefaultOperatorNewAlignmentCheck.cpp

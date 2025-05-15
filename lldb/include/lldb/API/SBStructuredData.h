@@ -9,7 +9,6 @@
 #ifndef LLDB_API_SBSTRUCTUREDDATA_H
 #define LLDB_API_SBSTRUCTUREDDATA_H
 
-#include "lldb/API/SBCommandReturnObject.h"
 #include "lldb/API/SBDefines.h"
 #include "lldb/API/SBModule.h"
 #include "lldb/API/SBScriptObject.h"
@@ -111,7 +110,6 @@ public:
 
 protected:
   friend class SBAttachInfo;
-  friend class SBCommandReturnObject;
   friend class SBLaunchInfo;
   friend class SBDebugger;
   friend class SBTarget;

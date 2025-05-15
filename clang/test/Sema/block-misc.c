@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 -fsyntax-only -Wno-strict-prototypes -verify %s -fblocks
-// RUN: %clang_cc1 -fsyntax-only -Wno-strict-prototypes -verify %s -fblocks -fexperimental-new-constant-interpreter
 void donotwarn(void);
 
 int (^IFP) ();

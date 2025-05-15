@@ -17,7 +17,6 @@
 #include "src/__support/FPUtil/BasicOperations.h"
 #include "src/__support/FPUtil/FEnvImpl.h"
 #include "src/__support/FPUtil/FPBits.h"
-#include "src/__support/FPUtil/cast.h"
 #include "src/__support/FPUtil/dyadic_float.h"
 #include "src/__support/FPUtil/rounding_mode.h"
 #include "src/__support/macros/attributes.h"
@@ -107,14 +106,14 @@ add_or_sub(InType x, InType y) {
       volatile InType tmp = y;
       if constexpr (IsSub)
         tmp = -tmp;
-      return cast<OutType>(tmp);
+      return static_cast<OutType>(tmp);
     }
 
     if (y_bits.is_zero()) {
       volatile InType tmp = y;
       if constexpr (IsSub)
         tmp = -tmp;
-      return cast<OutType>(tmp);
+      return static_cast<OutType>(tmp);
     }
   }
 

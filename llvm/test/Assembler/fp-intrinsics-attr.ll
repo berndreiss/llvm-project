@@ -105,11 +105,6 @@ define void @func(double %a, double %b, double %c, i32 %i) strictfp {
                                                metadata !"round.dynamic",
                                                metadata !"fpexcept.strict")
 
-  %atan2 = call double @llvm.experimental.constrained.atan2.f64(
-                                               double %a, double %b,
-                                               metadata !"round.dynamic",
-                                               metadata !"fpexcept.strict")
-
   %cosh = call double @llvm.experimental.constrained.cosh.f64(
                                                double %a,
                                                metadata !"round.dynamic",
@@ -295,9 +290,6 @@ declare double @llvm.experimental.constrained.acos.f64(double, metadata, metadat
 
 declare double @llvm.experimental.constrained.atan.f64(double, metadata, metadata)
 ; CHECK: @llvm.experimental.constrained.atan.f64({{.*}}) #[[ATTR1]]
-
-declare double @llvm.experimental.constrained.atan2.f64(double, double, metadata, metadata)
-; CHECK: @llvm.experimental.constrained.atan2.f64({{.*}}) #[[ATTR1]]
 
 declare double @llvm.experimental.constrained.sinh.f64(double, metadata, metadata)
 ; CHECK: @llvm.experimental.constrained.sinh.f64({{.*}}) #[[ATTR1]]

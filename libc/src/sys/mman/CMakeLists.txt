@@ -87,13 +87,6 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
-  remap_file_pages
-  ALIAS
-  DEPENDS
-  .${LIBC_TARGET_OS}.remap_file_pages
-)
-
-add_entrypoint_object(
   shm_open
   ALIAS
   DEPENDS
@@ -105,11 +98,4 @@ add_entrypoint_object(
   ALIAS
   DEPENDS
     .${LIBC_TARGET_OS}.shm_unlink
-)
-
-add_entrypoint_object(
-  mremap
-  ALIAS
-  DEPENDS
-    .${LIBC_TARGET_OS}.mremap
 )

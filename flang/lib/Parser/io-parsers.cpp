@@ -27,8 +27,7 @@ TYPE_PARSER(construct<IoUnit>(variable / lookAhead(space / ",);\n"_ch)) ||
     construct<IoUnit>(fileUnitNumber) || construct<IoUnit>(star))
 
 // R1202 file-unit-number -> scalar-int-expr
-TYPE_PARSER(construct<FileUnitNumber>(
-    scalarIntExpr / (lookAhead(space >> ",)"_ch) || atEndOfStmt)))
+TYPE_PARSER(construct<FileUnitNumber>(scalarIntExpr / !"="_tok))
 
 // R1204 open-stmt -> OPEN ( connect-spec-list )
 TYPE_CONTEXT_PARSER("OPEN statement"_en_US,

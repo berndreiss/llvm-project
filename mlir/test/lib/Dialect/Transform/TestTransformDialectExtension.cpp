@@ -804,28 +804,6 @@ void mlir::test::TestProduceInvalidIR::getEffects(
   transform::modifiesPayload(effects);
 }
 
-DiagnosedSilenceableFailure mlir::test::TestInitializerExtensionOp::apply(
-    transform::TransformRewriter &rewriter,
-    transform::TransformResults &results, transform::TransformState &state) {
-  std::string opName =
-      this->getOperationName().str() + "_" + getTypeAttr().str();
-  TransformStateInitializerExtension *initExt =
-      state.getExtension<TransformStateInitializerExtension>();
-  if (!initExt) {
-    emitRemark() << "\nSpecified extension not found, adding a new one!\n";
-    SmallVector<std::string> opCollection = {opName};
-    state.addExtension<TransformStateInitializerExtension>(1, opCollection);
-  } else {
-    initExt->setNumOp(initExt->getNumOp() + 1);
-    initExt->pushRegisteredOps(opName);
-    InFlightDiagnostic diag = emitRemark()
-                              << "Number of currently registered op: "
-                              << initExt->getNumOp() << "\n"
-                              << initExt->printMessage() << "\n";
-  }
-  return DiagnosedSilenceableFailure::success();
-}
-
 namespace {
 /// Test conversion pattern that replaces ops with the "replace_with_new_op"
 /// attribute with "test.new_op".
@@ -871,9 +849,9 @@ public:
     });
     auto unrealizedCastConverter = [&](OpBuilder &builder, Type resultType,
                                        ValueRange inputs,
-                                       Location loc) -> Value {
+                                       Location loc) -> std::optional<Value> {
       if (inputs.size() != 1)
-        return Value();
+        return std::nullopt;
       return builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs)
           .getResult(0);
     };
@@ -896,8 +874,6 @@ class TestTransformDialectExtension
     : public transform::TransformDialectExtension<
           TestTransformDialectExtension> {
 public:
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TestTransformDialectExtension)
-
   using Base::Base;
 
   void init() {

@@ -777,7 +777,7 @@ bool ForLoopIndexUseVisitor::TraverseLambdaCapture(LambdaExpr *LE,
                                                    const LambdaCapture *C,
                                                    Expr *Init) {
   if (C->capturesVariable()) {
-    ValueDecl *VDecl = C->getCapturedVar();
+    const ValueDecl *VDecl = C->getCapturedVar();
     if (areSameVariable(IndexVar, VDecl)) {
       // FIXME: if the index is captured, it will count as an usage and the
       // alias (if any) won't work, because it is only used in case of having
@@ -787,8 +787,6 @@ bool ForLoopIndexUseVisitor::TraverseLambdaCapture(LambdaExpr *LE,
                                                        : Usage::UK_CaptureByRef,
                      C->getLocation()));
     }
-    if (VDecl->isInitCapture())
-      TraverseStmtImpl(cast<VarDecl>(VDecl)->getInit());
   }
   return VisitorBase::TraverseLambdaCapture(LE, C, Init);
 }
@@ -818,17 +816,6 @@ bool ForLoopIndexUseVisitor::VisitDeclStmt(DeclStmt *S) {
   return true;
 }
 
-bool ForLoopIndexUseVisitor::TraverseStmtImpl(Stmt *S) {
-  // All this pointer swapping is a mechanism for tracking immediate parentage
-  // of Stmts.
-  const Stmt *OldNextParent = NextStmtParent;
-  CurrStmtParent = NextStmtParent;
-  NextStmtParent = S;
-  bool Result = VisitorBase::TraverseStmt(S);
-  NextStmtParent = OldNextParent;
-  return Result;
-}
-
 bool ForLoopIndexUseVisitor::TraverseStmt(Stmt *S) {
   // If this is an initialization expression for a lambda capture, prune the
   // traversal so that we don't end up diagnosing the contained DeclRefExpr as
@@ -841,7 +828,15 @@ bool ForLoopIndexUseVisitor::TraverseStmt(Stmt *S) {
       return true;
     }
   }
-  return TraverseStmtImpl(S);
+
+  // All this pointer swapping is a mechanism for tracking immediate parentage
+  // of Stmts.
+  const Stmt *OldNextParent = NextStmtParent;
+  CurrStmtParent = NextStmtParent;
+  NextStmtParent = S;
+  bool Result = VisitorBase::TraverseStmt(S);
+  NextStmtParent = OldNextParent;
+  return Result;
 }
 
 std::string VariableNamer::createIndexName() {

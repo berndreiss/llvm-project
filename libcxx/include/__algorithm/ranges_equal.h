@@ -34,7 +34,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __equal {
+namespace __equal {
+struct __fn {
   template <input_iterator _Iter1,
             sentinel_for<_Iter1> _Sent1,
             input_iterator _Iter2,
@@ -92,9 +93,10 @@ struct __equal {
     return false;
   }
 };
+} // namespace __equal
 
 inline namespace __cpo {
-inline constexpr auto equal = __equal{};
+inline constexpr auto equal = __equal::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

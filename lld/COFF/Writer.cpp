@@ -217,15 +217,12 @@ private:
   void createExportTable();
   void mergeSections();
   void sortECChunks();
-  void appendECImportTables();
   void removeUnusedSections();
   void assignAddresses();
-  bool isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin,
-                 MachineTypes machine);
+  bool isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin);
   std::pair<Defined *, bool> getThunk(DenseMap<uint64_t, Defined *> &lastThunks,
                                       Defined *target, uint64_t p,
-                                      uint16_t type, int margin,
-                                      MachineTypes machine);
+                                      uint16_t type, int margin);
   bool createThunks(OutputSection *os, int margin);
   bool verifyRanges(const std::vector<Chunk *> chunks);
   void createECCodeMap();
@@ -301,16 +298,12 @@ private:
   CVDebugRecordChunk *buildId = nullptr;
   ArrayRef<uint8_t> sectionTable;
 
-  // List of Arm64EC export thunks.
-  std::vector<std::pair<Chunk *, Defined *>> exportThunks;
-
   uint64_t fileSize;
   uint32_t pointerToSymbolTable = 0;
   uint64_t sizeOfImage;
   uint64_t sizeOfHeaders;
 
   OutputSection *textSec;
-  OutputSection *hexpthkSec;
   OutputSection *rdataSec;
   OutputSection *buildidSec;
   OutputSection *dataSec;
@@ -318,7 +311,6 @@ private:
   OutputSection *idataSec;
   OutputSection *edataSec;
   OutputSection *didatSec;
-  OutputSection *a64xrmSec;
   OutputSection *rsrcSec;
   OutputSection *relocSec;
   OutputSection *ctorsSec;
@@ -399,9 +391,8 @@ void OutputSection::addContributingPartialSection(PartialSection *sec) {
 
 // Check whether the target address S is in range from a relocation
 // of type relType at address P.
-bool Writer::isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin,
-                       MachineTypes machine) {
-  if (machine == ARMNT) {
+bool Writer::isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin) {
+  if (ctx.config.machine == ARMNT) {
     int64_t diff = AbsoluteDifference(s, p + 4) + margin;
     switch (relType) {
     case IMAGE_REL_ARM_BRANCH20T:
@@ -412,7 +403,7 @@ bool Writer::isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin,
     default:
       return true;
     }
-  } else if (isAnyArm64(machine)) {
+  } else if (ctx.config.machine == ARM64) {
     int64_t diff = AbsoluteDifference(s, p) + margin;
     switch (relType) {
     case IMAGE_REL_ARM64_BRANCH26:
@@ -425,7 +416,7 @@ bool Writer::isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin,
       return true;
     }
   } else {
-    return true;
+    llvm_unreachable("Unexpected architecture");
   }
 }
 
@@ -433,17 +424,17 @@ bool Writer::isInRange(uint16_t relType, uint64_t s, uint64_t p, int margin,
 // or create a new one.
 std::pair<Defined *, bool>
 Writer::getThunk(DenseMap<uint64_t, Defined *> &lastThunks, Defined *target,
-                 uint64_t p, uint16_t type, int margin, MachineTypes machine) {
+                 uint64_t p, uint16_t type, int margin) {
   Defined *&lastThunk = lastThunks[target->getRVA()];
-  if (lastThunk && isInRange(type, lastThunk->getRVA(), p, margin, machine))
+  if (lastThunk && isInRange(type, lastThunk->getRVA(), p, margin))
     return {lastThunk, false};
   Chunk *c;
-  switch (getMachineArchType(machine)) {
-  case Triple::thumb:
+  switch (ctx.config.machine) {
+  case ARMNT:
     c = make<RangeExtensionThunkARM>(ctx, target);
     break;
-  case Triple::aarch64:
-    c = make<RangeExtensionThunkARM64>(machine, target);
+  case ARM64:
+    c = make<RangeExtensionThunkARM64>(ctx, target);
     break;
   default:
     llvm_unreachable("Unexpected architecture");
@@ -472,16 +463,9 @@ bool Writer::createThunks(OutputSection *os, int margin) {
   // Recheck Chunks.size() each iteration, since we can insert more
   // elements into it.
   for (size_t i = 0; i != os->chunks.size(); ++i) {
-    SectionChunk *sc = dyn_cast<SectionChunk>(os->chunks[i]);
-    if (!sc) {
-      auto chunk = cast<NonSectionChunk>(os->chunks[i]);
-      if (uint32_t size = chunk->extendRanges()) {
-        thunksSize += size;
-        addressesChanged = true;
-      }
+    SectionChunk *sc = dyn_cast_or_null<SectionChunk>(os->chunks[i]);
+    if (!sc)
       continue;
-    }
-    MachineTypes machine = sc->getMachine();
     size_t thunkInsertionSpot = i + 1;
 
     // Try to get a good enough estimate of where new thunks will be placed.
@@ -508,12 +492,11 @@ bool Writer::createThunks(OutputSection *os, int margin) {
 
       uint64_t s = sym->getRVA();
 
-      if (isInRange(rel.Type, s, p, margin, machine))
+      if (isInRange(rel.Type, s, p, margin))
         continue;
 
       // If the target isn't in range, hook it up to an existing or new thunk.
-      auto [thunk, wasNew] =
-          getThunk(lastThunks, sym, p, rel.Type, margin, machine);
+      auto [thunk, wasNew] = getThunk(lastThunks, sym, p, rel.Type, margin);
       if (wasNew) {
         Chunk *thunkChunk = thunk->getChunk();
         thunkChunk->setRVA(
@@ -612,13 +595,9 @@ void Writer::createECCodeMap() {
 // Verify that all relocations are in range, with no extra margin requirements.
 bool Writer::verifyRanges(const std::vector<Chunk *> chunks) {
   for (Chunk *c : chunks) {
-    SectionChunk *sc = dyn_cast<SectionChunk>(c);
-    if (!sc) {
-      if (!cast<NonSectionChunk>(c)->verifyRanges())
-        return false;
+    SectionChunk *sc = dyn_cast_or_null<SectionChunk>(c);
+    if (!sc)
       continue;
-    }
-    MachineTypes machine = sc->getMachine();
 
     ArrayRef<coff_relocation> relocs = sc->getRelocs();
     for (const coff_relocation &rel : relocs) {
@@ -631,7 +610,7 @@ bool Writer::verifyRanges(const std::vector<Chunk *> chunks) {
       uint64_t p = sc->getRVA() + rel.VirtualAddress;
       uint64_t s = sym->getRVA();
 
-      if (!isInRange(rel.Type, s, p, 0, machine))
+      if (!isInRange(rel.Type, s, p, 0))
         return false;
     }
   }
@@ -641,7 +620,7 @@ bool Writer::verifyRanges(const std::vector<Chunk *> chunks) {
 // Assign addresses and add thunks if necessary.
 void Writer::finalizeAddresses() {
   assignAddresses();
-  if (ctx.config.machine != ARMNT && !isAnyArm64(ctx.config.machine))
+  if (ctx.config.machine != ARMNT && ctx.config.machine != ARM64)
     return;
 
   size_t origNumChunks = 0;
@@ -763,7 +742,6 @@ void Writer::run() {
     createExportTable();
     mergeSections();
     sortECChunks();
-    appendECImportTables();
     removeUnusedSections();
     finalizeAddresses();
     removeEmptySections();
@@ -881,8 +859,8 @@ bool Writer::fixGnuImportChunks() {
     if (!pSec->chunks.empty())
       hasIdata = true;
     llvm::stable_sort(pSec->chunks, [&](Chunk *s, Chunk *t) {
-      SectionChunk *sc1 = dyn_cast<SectionChunk>(s);
-      SectionChunk *sc2 = dyn_cast<SectionChunk>(t);
+      SectionChunk *sc1 = dyn_cast_or_null<SectionChunk>(s);
+      SectionChunk *sc2 = dyn_cast_or_null<SectionChunk>(t);
       if (!sc1 || !sc2) {
         // if SC1, order them ascending. If SC2 or both null,
         // S is not less than T.
@@ -923,48 +901,6 @@ void Writer::addSyntheticIdata() {
   if (!idata.hints.empty())
     add(".idata$6", idata.hints);
   add(".idata$7", idata.dllNames);
-  if (!idata.auxIat.empty())
-    add(".idata$9", idata.auxIat);
-  if (!idata.auxIatCopy.empty())
-    add(".idata$a", idata.auxIatCopy);
-}
-
-void Writer::appendECImportTables() {
-  if (!isArm64EC(ctx.config.machine))
-    return;
-
-  const uint32_t rdata = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ;
-
-  // IAT is always placed at the begining of .rdata section and its size
-  // is aligned to 4KB. Insert it here, after all merges all done.
-  if (PartialSection *importAddresses = findPartialSection(".idata$5", rdata)) {
-    if (!rdataSec->chunks.empty())
-      rdataSec->chunks.front()->setAlignment(
-          std::max(0x1000u, rdataSec->chunks.front()->getAlignment()));
-    iatSize = alignTo(iatSize, 0x1000);
-
-    rdataSec->chunks.insert(rdataSec->chunks.begin(),
-                            importAddresses->chunks.begin(),
-                            importAddresses->chunks.end());
-    rdataSec->contribSections.insert(rdataSec->contribSections.begin(),
-                                     importAddresses);
-  }
-
-  // The auxiliary IAT is always placed at the end of the .rdata section
-  // and is aligned to 4KB.
-  if (PartialSection *auxIat = findPartialSection(".idata$9", rdata)) {
-    auxIat->chunks.front()->setAlignment(0x1000);
-    rdataSec->chunks.insert(rdataSec->chunks.end(), auxIat->chunks.begin(),
-                            auxIat->chunks.end());
-    rdataSec->addContributingPartialSection(auxIat);
-  }
-
-  if (!delayIdata.getAuxIat().empty()) {
-    delayIdata.getAuxIat().front()->setAlignment(0x1000);
-    rdataSec->chunks.insert(rdataSec->chunks.end(),
-                            delayIdata.getAuxIat().begin(),
-                            delayIdata.getAuxIat().end());
-  }
 }
 
 // Locate the first Chunk and size of the import directory list and the
@@ -1048,8 +984,6 @@ void Writer::createSections() {
 
   // Try to match the section order used by link.exe.
   textSec = createSection(".text", code | r | x);
-  if (isArm64EC(ctx.config.machine))
-    hexpthkSec = createSection(".hexpthk", code | r | x);
   createSection(".bss", bss | r | w);
   rdataSec = createSection(".rdata", data | r);
   buildidSec = createSection(".buildid", data | r);
@@ -1058,8 +992,6 @@ void Writer::createSections() {
   idataSec = createSection(".idata", data | r);
   edataSec = createSection(".edata", data | r);
   didatSec = createSection(".didat", data | r);
-  if (isArm64EC(ctx.config.machine))
-    a64xrmSec = createSection(".a64xrm", data | r);
   rsrcSec = createSection(".rsrc", data | r);
   relocSec = createSection(".reloc", data | discardable | r);
   ctorsSec = createSection(".ctors", data | r | w);
@@ -1121,12 +1053,6 @@ void Writer::createSections() {
 
       sortCRTSectionChunks(pSec->chunks);
     }
-
-    // ARM64EC has specific placement and alignment requirements for the IAT.
-    // Delay adding its chunks until appendECImportTables.
-    if (isArm64EC(ctx.config.machine) &&
-        (pSec->name == ".idata$5" || pSec->name == ".idata$9"))
-      continue;
 
     OutputSection *sec = createSection(name, outChars);
     for (Chunk *c : pSec->chunks)
@@ -1217,7 +1143,8 @@ void Writer::createMiscChunks() {
     createSEHTable();
 
   // Create /guard:cf tables if requested.
-  createGuardCFTables();
+  if (config->guardCF != GuardCFLevel::Off)
+    createGuardCFTables();
 
   if (isArm64EC(config->machine))
     createECChunks();
@@ -1269,24 +1196,14 @@ void Writer::appendImportThunks() {
     if (!file->live)
       continue;
 
-    if (file->thunkSym) {
-      if (!isa<DefinedImportThunk>(file->thunkSym))
-        fatal(toString(ctx, *file->thunkSym) + " was replaced");
-      auto *chunk = cast<DefinedImportThunk>(file->thunkSym)->getChunk();
-      if (chunk->live)
-        textSec->addChunk(chunk);
-    }
+    if (!file->thunkSym)
+      continue;
 
-    if (file->auxThunkSym) {
-      if (!isa<DefinedImportThunk>(file->auxThunkSym))
-        fatal(toString(ctx, *file->auxThunkSym) + " was replaced");
-      auto *chunk = cast<DefinedImportThunk>(file->auxThunkSym)->getChunk();
-      if (chunk->live)
-        textSec->addChunk(chunk);
-    }
-
-    if (file->impchkThunk)
-      textSec->addChunk(file->impchkThunk);
+    if (!isa<DefinedImportThunk>(file->thunkSym))
+      fatal(toString(ctx, *file->thunkSym) + " was replaced");
+    DefinedImportThunk *thunk = cast<DefinedImportThunk>(file->thunkSym);
+    if (file->thunkLive)
+      textSec->addChunk(thunk->getChunk());
   }
 
   if (!delayIdata.empty()) {
@@ -1300,8 +1217,6 @@ void Writer::appendImportThunks() {
       textSec->addChunk(c);
     for (Chunk *c : delayIdata.getCodePData())
       pdataSec->addChunk(c);
-    for (Chunk *c : delayIdata.getAuxIatCopy())
-      rdataSec->addChunk(c);
     for (Chunk *c : delayIdata.getCodeUnwindInfo())
       rdataSec->addChunk(c);
   }
@@ -1978,20 +1893,6 @@ void Writer::markSymbolsWithRelocations(ObjFile *file,
 void Writer::createGuardCFTables() {
   Configuration *config = &ctx.config;
 
-  if (config->guardCF == GuardCFLevel::Off) {
-    // MSVC marks the entire image as instrumented if any input object was built
-    // with /guard:cf.
-    for (ObjFile *file : ctx.objFileInstances) {
-      if (file->hasGuardCF()) {
-        Symbol *flagSym = ctx.symtab.findUnderscore("__guard_flags");
-        cast<DefinedAbsolute>(flagSym)->setVA(
-            uint32_t(GuardFlags::CF_INSTRUMENTED));
-        break;
-      }
-    }
-    return;
-  }
-
   SymbolRVASet addressTakenSyms;
   SymbolRVASet giatsRVASet;
   std::vector<Symbol *> giatsSymbols;
@@ -2145,52 +2046,11 @@ void Writer::maybeAddRVATable(SymbolRVASet tableSymbols, StringRef tableSym,
 
 // Create CHPE metadata chunks.
 void Writer::createECChunks() {
-  for (Symbol *s : ctx.symtab.expSymbols) {
-    auto sym = dyn_cast<Defined>(s);
-    if (!sym || !sym->getChunk())
-      continue;
-    if (auto thunk = dyn_cast<ECExportThunkChunk>(sym->getChunk())) {
-      hexpthkSec->addChunk(thunk);
-      exportThunks.push_back({thunk, thunk->target});
-    } else if (auto def = dyn_cast<DefinedRegular>(sym)) {
-      // Allow section chunk to be treated as an export thunk if it looks like
-      // one.
-      SectionChunk *chunk = def->getChunk();
-      if (!chunk->live || chunk->getMachine() != AMD64)
-        continue;
-      assert(sym->getName().starts_with("EXP+"));
-      StringRef targetName = sym->getName().substr(strlen("EXP+"));
-      // If EXP+#foo is an export thunk of a hybrid patchable function,
-      // we should use the #foo$hp_target symbol as the redirection target.
-      // First, try to look up the $hp_target symbol. If it can't be found,
-      // assume it's a regular function and look for #foo instead.
-      Symbol *targetSym = ctx.symtab.find((targetName + "$hp_target").str());
-      if (!targetSym)
-        targetSym = ctx.symtab.find(targetName);
-      Defined *t = dyn_cast_or_null<Defined>(targetSym);
-      if (t && isArm64EC(t->getChunk()->getMachine()))
-        exportThunks.push_back({chunk, t});
-    }
-  }
-
   auto codeMapChunk = make<ECCodeMapChunk>(codeMap);
   rdataSec->addChunk(codeMapChunk);
   Symbol *codeMapSym = ctx.symtab.findUnderscore("__hybrid_code_map");
   replaceSymbol<DefinedSynthetic>(codeMapSym, codeMapSym->getName(),
                                   codeMapChunk);
-
-  CHPECodeRangesChunk *ranges = make<CHPECodeRangesChunk>(exportThunks);
-  rdataSec->addChunk(ranges);
-  Symbol *rangesSym =
-      ctx.symtab.findUnderscore("__x64_code_ranges_to_entry_points");
-  replaceSymbol<DefinedSynthetic>(rangesSym, rangesSym->getName(), ranges);
-
-  CHPERedirectionChunk *entryPoints = make<CHPERedirectionChunk>(exportThunks);
-  a64xrmSec->addChunk(entryPoints);
-  Symbol *entryPointsSym =
-      ctx.symtab.findUnderscore("__arm64x_redirection_metadata");
-  replaceSymbol<DefinedSynthetic>(entryPointsSym, entryPointsSym->getName(),
-                                  entryPoints);
 }
 
 // MinGW specific. Gather all relocations that are imported from a DLL even
@@ -2283,11 +2143,6 @@ void Writer::setECSymbols() {
   if (!isArm64EC(ctx.config.machine))
     return;
 
-  llvm::stable_sort(exportThunks, [](const std::pair<Chunk *, Defined *> &a,
-                                     const std::pair<Chunk *, Defined *> &b) {
-    return a.first->getRVA() < b.first->getRVA();
-  });
-
   Symbol *rfeTableSym = ctx.symtab.findUnderscore("__arm64x_extra_rfe_table");
   replaceSymbol<DefinedSynthetic>(rfeTableSym, "__arm64x_extra_rfe_table",
                                   pdata.first);
@@ -2299,38 +2154,6 @@ void Writer::setECSymbols() {
         ->setVA(pdata.last->getRVA() + pdata.last->getSize() -
                 pdata.first->getRVA());
   }
-
-  Symbol *rangesCountSym =
-      ctx.symtab.findUnderscore("__x64_code_ranges_to_entry_points_count");
-  cast<DefinedAbsolute>(rangesCountSym)->setVA(exportThunks.size());
-
-  Symbol *entryPointCountSym =
-      ctx.symtab.findUnderscore("__arm64x_redirection_metadata_count");
-  cast<DefinedAbsolute>(entryPointCountSym)->setVA(exportThunks.size());
-
-  Symbol *iatSym = ctx.symtab.findUnderscore("__hybrid_auxiliary_iat");
-  replaceSymbol<DefinedSynthetic>(iatSym, "__hybrid_auxiliary_iat",
-                                  idata.auxIat.empty() ? nullptr
-                                                       : idata.auxIat.front());
-
-  Symbol *iatCopySym = ctx.symtab.findUnderscore("__hybrid_auxiliary_iat_copy");
-  replaceSymbol<DefinedSynthetic>(
-      iatCopySym, "__hybrid_auxiliary_iat_copy",
-      idata.auxIatCopy.empty() ? nullptr : idata.auxIatCopy.front());
-
-  Symbol *delayIatSym =
-      ctx.symtab.findUnderscore("__hybrid_auxiliary_delayload_iat");
-  replaceSymbol<DefinedSynthetic>(
-      delayIatSym, "__hybrid_auxiliary_delayload_iat",
-      delayIdata.getAuxIat().empty() ? nullptr
-                                     : delayIdata.getAuxIat().front());
-
-  Symbol *delayIatCopySym =
-      ctx.symtab.findUnderscore("__hybrid_auxiliary_delayload_iat_copy");
-  replaceSymbol<DefinedSynthetic>(
-      delayIatCopySym, "__hybrid_auxiliary_delayload_iat_copy",
-      delayIdata.getAuxIatCopy().empty() ? nullptr
-                                         : delayIdata.getAuxIatCopy().front());
 }
 
 // Write section contents to a mmap'ed file.

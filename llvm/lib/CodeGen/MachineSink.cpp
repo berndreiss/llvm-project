@@ -374,7 +374,7 @@ bool MachineSinking::PerformSinkAndFold(MachineInstr &MI,
 
   // Check if it's safe to move the instruction.
   bool SawStore = true;
-  if (!MI.isSafeToMove(SawStore))
+  if (!MI.isSafeToMove(AA, SawStore))
     return false;
 
   // Convergent operations may not be made control-dependent on additional
@@ -687,7 +687,7 @@ void MachineSinking::FindCycleSinkCandidates(
       continue;
     }
     bool DontMoveAcrossStore = true;
-    if (!MI.isSafeToMove(DontMoveAcrossStore)) {
+    if (!MI.isSafeToMove(AA, DontMoveAcrossStore)) {
       LLVM_DEBUG(dbgs() << "CycleSink: Instruction not safe to move.\n");
       continue;
     }
@@ -766,7 +766,8 @@ bool MachineSinking::runOnMachineFunction(MachineFunction &MF) {
   }
 
   if (SinkInstsIntoCycle) {
-    SmallVector<MachineCycle *, 8> Cycles(CI->toplevel_cycles());
+    SmallVector<MachineCycle *, 8> Cycles(CI->toplevel_begin(),
+                                          CI->toplevel_end());
     for (auto *Cycle : Cycles) {
       MachineBasicBlock *Preheader = Cycle->getCyclePreheader();
       if (!Preheader) {
@@ -833,7 +834,7 @@ bool MachineSinking::ProcessBlock(MachineBasicBlock &MBB) {
     if (!ProcessedBegin)
       --I;
 
-    if (MI.isDebugOrPseudoInstr() || MI.isFakeUse()) {
+    if (MI.isDebugOrPseudoInstr()) {
       if (MI.isDebugValue())
         ProcessDbgInst(MI);
       continue;
@@ -1653,7 +1654,7 @@ bool MachineSinking::SinkInstruction(MachineInstr &MI, bool &SawStore,
     return false;
 
   // Check if it's safe to move the instruction.
-  if (!MI.isSafeToMove(SawStore))
+  if (!MI.isSafeToMove(AA, SawStore))
     return false;
 
   // Convergent operations may not be made control-dependent on additional
@@ -1704,7 +1705,7 @@ bool MachineSinking::SinkInstruction(MachineInstr &MI, bool &SawStore,
     bool TryBreak = false;
     bool Store =
         MI.mayLoad() ? hasStoreBetween(ParentBlock, SuccToSinkTo, MI) : true;
-    if (!MI.isSafeToMove(Store)) {
+    if (!MI.isSafeToMove(AA, Store)) {
       LLVM_DEBUG(dbgs() << " *** NOTE: Won't sink load along critical edge.\n");
       TryBreak = true;
     }
@@ -2152,9 +2153,8 @@ bool PostRAMachineSinking::tryToSinkCopy(MachineBasicBlock &CurBB,
     MachineBasicBlock::iterator InsertPos =
         SuccBB->SkipPHIsAndLabels(SuccBB->begin());
     if (blockPrologueInterferes(SuccBB, InsertPos, MI, TRI, TII, nullptr)) {
-      LiveRegUnits::accumulateUsedDefed(MI, ModifiedRegUnits, UsedRegUnits,
-                                        TRI);
-      LLVM_DEBUG(dbgs() << " *** Not sinking: prologue interference\n");
+      LLVM_DEBUG(
+          dbgs() << " *** Not sinking: prologue interference\n");
       continue;
     }
 

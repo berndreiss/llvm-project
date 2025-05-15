@@ -33,28 +33,29 @@ struct bad_reference_wrapper {
     operator T&() const;
 };
 
-template <typename T>
-struct std::common_type<T, ::S<T> > {
-  typedef S<T> type;
-};
+namespace std
+{
+    template <typename T>
+    struct common_type<T, ::S<T> >
+    {
+        typedef S<T> type;
+    };
 
-template <class T>
-struct std::common_type< ::S<T>, T> {
-  typedef S<T> type;
-};
+    template <class T>
+    struct common_type< ::S<T>, T> {
+      typedef S<T> type;
+    };
 
 //  P0548
-template <class T>
-struct std::common_type< ::S<T>, ::S<T> > {
-  typedef S<T> type;
-};
+    template <class T>
+    struct common_type< ::S<T>, ::S<T> > {
+      typedef S<T> type;
+    };
 
-template <>
-struct std::common_type< ::S<long>, long> {};
-template <>
-struct std::common_type<long, ::S<long> > {};
-template <>
-struct std::common_type< ::X<double>, ::X<double> > {};
+    template <> struct common_type< ::S<long>, long> {};
+    template <> struct common_type<long, ::S<long> > {};
+    template <> struct common_type< ::X<double>, ::X<double> > {};
+}
 
 template <class> struct VoidT { typedef void type; };
 

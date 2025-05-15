@@ -9,8 +9,6 @@
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/JITLink/x86_64.h"
 #include "llvm/ExecutionEngine/Orc/Layer.h"
-#include "llvm/ExecutionEngine/Orc/LoadLinkableFile.h"
-#include "llvm/ExecutionEngine/Orc/MachO.h"
 #include "llvm/ExecutionEngine/Orc/ObjectFileInterface.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -273,57 +271,59 @@ Error DynamicLibrarySearchGenerator::tryToGenerate(
   return JD.define(absoluteSymbols(std::move(NewSymbols)));
 }
 
-StaticLibraryDefinitionGenerator::VisitMembersFunction
-StaticLibraryDefinitionGenerator::loadAllObjectFileMembers(ObjectLayer &L,
-                                                           JITDylib &JD) {
-  return [&](MemoryBufferRef Buf) -> Error {
-    switch (identify_magic(Buf.getBuffer())) {
-    case file_magic::elf_relocatable:
-    case file_magic::macho_object:
-    case file_magic::coff_object:
-      return L.add(JD, MemoryBuffer::getMemBuffer(Buf));
-    default:
-      return Error::success();
-    }
-  };
-}
-
 Expected<std::unique_ptr<StaticLibraryDefinitionGenerator>>
 StaticLibraryDefinitionGenerator::Load(
-    ObjectLayer &L, const char *FileName, VisitMembersFunction VisitMembers,
+    ObjectLayer &L, const char *FileName,
     GetObjectFileInterface GetObjFileInterface) {
 
-  const auto &TT = L.getExecutionSession().getTargetTriple();
-  auto Linkable = loadLinkableFile(FileName, TT, LoadArchives::Required);
-  if (!Linkable)
-    return Linkable.takeError();
+  auto B = object::createBinary(FileName);
+  if (!B)
+    return createFileError(FileName, B.takeError());
 
-  return Create(L, std::move(Linkable->first), std::move(VisitMembers),
-                std::move(GetObjFileInterface));
+  // If this is a regular archive then create an instance from it.
+  if (isa<object::Archive>(B->getBinary())) {
+    auto [Archive, ArchiveBuffer] = B->takeBinary();
+    return Create(L, std::move(ArchiveBuffer),
+                  std::unique_ptr<object::Archive>(
+                      static_cast<object::Archive *>(Archive.release())),
+                  std::move(GetObjFileInterface));
+  }
+
+  // If this is a universal binary then search for a slice matching the given
+  // Triple.
+  if (auto *UB = dyn_cast<object::MachOUniversalBinary>(B->getBinary())) {
+
+    const auto &TT = L.getExecutionSession().getTargetTriple();
+
+    auto SliceRange = getSliceRangeForArch(*UB, TT);
+    if (!SliceRange)
+      return SliceRange.takeError();
+
+    auto SliceBuffer = MemoryBuffer::getFileSlice(FileName, SliceRange->second,
+                                                  SliceRange->first);
+    if (!SliceBuffer)
+      return make_error<StringError>(
+          Twine("Could not create buffer for ") + TT.str() + " slice of " +
+              FileName + ": [ " + formatv("{0:x}", SliceRange->first) + " .. " +
+              formatv("{0:x}", SliceRange->first + SliceRange->second) + ": " +
+              SliceBuffer.getError().message(),
+          SliceBuffer.getError());
+
+    return Create(L, std::move(*SliceBuffer), std::move(GetObjFileInterface));
+  }
+
+  return make_error<StringError>(Twine("Unrecognized file type for ") +
+                                     FileName,
+                                 inconvertibleErrorCode());
 }
 
 Expected<std::unique_ptr<StaticLibraryDefinitionGenerator>>
 StaticLibraryDefinitionGenerator::Create(
     ObjectLayer &L, std::unique_ptr<MemoryBuffer> ArchiveBuffer,
-    std::unique_ptr<object::Archive> Archive, VisitMembersFunction VisitMembers,
+    std::unique_ptr<object::Archive> Archive,
     GetObjectFileInterface GetObjFileInterface) {
 
   Error Err = Error::success();
-
-  if (VisitMembers) {
-    for (auto Child : Archive->children(Err)) {
-      if (auto ChildBuf = Child.getMemoryBufferRef()) {
-        if (auto Err2 = VisitMembers(*ChildBuf))
-          return std::move(Err2);
-      } else {
-        // We silently allow non-object archive members. This matches the
-        // behavior of ld.
-        consumeError(ChildBuf.takeError());
-      }
-    }
-    if (Err)
-      return std::move(Err);
-  }
 
   std::unique_ptr<StaticLibraryDefinitionGenerator> ADG(
       new StaticLibraryDefinitionGenerator(
@@ -339,7 +339,6 @@ StaticLibraryDefinitionGenerator::Create(
 Expected<std::unique_ptr<StaticLibraryDefinitionGenerator>>
 StaticLibraryDefinitionGenerator::Create(
     ObjectLayer &L, std::unique_ptr<MemoryBuffer> ArchiveBuffer,
-    VisitMembersFunction VisitMembers,
     GetObjectFileInterface GetObjFileInterface) {
 
   auto B = object::createBinary(ArchiveBuffer->getMemBufferRef());
@@ -351,7 +350,7 @@ StaticLibraryDefinitionGenerator::Create(
     return Create(L, std::move(ArchiveBuffer),
                   std::unique_ptr<object::Archive>(
                       static_cast<object::Archive *>(B->release())),
-                  std::move(VisitMembers), std::move(GetObjFileInterface));
+                  std::move(GetObjFileInterface));
 
   // If this is a universal binary then search for a slice matching the given
   // Triple.
@@ -359,7 +358,7 @@ StaticLibraryDefinitionGenerator::Create(
 
     const auto &TT = L.getExecutionSession().getTargetTriple();
 
-    auto SliceRange = getMachOSliceRangeForTriple(*UB, TT);
+    auto SliceRange = getSliceRangeForArch(*UB, TT);
     if (!SliceRange)
       return SliceRange.takeError();
 
@@ -373,7 +372,7 @@ StaticLibraryDefinitionGenerator::Create(
       return Archive.takeError();
 
     return Create(L, std::move(ArchiveBuffer), std::move(*Archive),
-                  std::move(VisitMembers), std::move(GetObjFileInterface));
+                  std::move(GetObjFileInterface));
   }
 
   return make_error<StringError>(Twine("Unrecognized file type for ") +
@@ -459,6 +458,27 @@ Error StaticLibraryDefinitionGenerator::buildObjectFilesMap() {
   }
 
   return Error::success();
+}
+
+Expected<std::pair<size_t, size_t>>
+StaticLibraryDefinitionGenerator::getSliceRangeForArch(
+    object::MachOUniversalBinary &UB, const Triple &TT) {
+
+  for (const auto &Obj : UB.objects()) {
+    auto ObjTT = Obj.getTriple();
+    if (ObjTT.getArch() == TT.getArch() &&
+        ObjTT.getSubArch() == TT.getSubArch() &&
+        (TT.getVendor() == Triple::UnknownVendor ||
+         ObjTT.getVendor() == TT.getVendor())) {
+      // We found a match. Return the range for the slice.
+      return std::make_pair(Obj.getOffset(), Obj.getSize());
+    }
+  }
+
+  return make_error<StringError>(Twine("Universal binary ") + UB.getFileName() +
+                                     " does not contain a slice for " +
+                                     TT.str(),
+                                 inconvertibleErrorCode());
 }
 
 StaticLibraryDefinitionGenerator::StaticLibraryDefinitionGenerator(

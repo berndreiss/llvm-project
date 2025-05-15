@@ -21,7 +21,8 @@
  */
 
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+
+#include "../../../generic/lib/clcmacro.h"
 
 #ifdef __HAS_LDEXPF__
 #define BUILTINF __builtin_amdgcn_ldexpf

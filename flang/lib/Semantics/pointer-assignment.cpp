@@ -77,8 +77,6 @@ private:
       const evaluate::SpecificIntrinsic *specific = nullptr);
   bool LhsOkForUnlimitedPoly() const;
   template <typename... A> parser::Message *Say(A &&...);
-  template <typename FeatureOrUsageWarning, typename... A>
-  parser::Message *Warn(FeatureOrUsageWarning, A &&...);
 
   SemanticsContext &context_;
   evaluate::FoldingContext &foldingContext_{context_.foldingContext()};
@@ -217,17 +215,20 @@ bool PointerAssignmentChecker::Check(const SomeExpr &rhs) {
         Say("CONTIGUOUS pointer may not be associated with a discontiguous target"_err_en_US);
         return false;
       }
-    } else {
-      Warn(common::UsageWarning::PointerToPossibleNoncontiguous,
-          "Target of CONTIGUOUS pointer association is not known to be contiguous"_warn_en_US);
+    } else if (context_.ShouldWarn(
+                   common::UsageWarning::PointerToPossibleNoncontiguous)) {
+      Say("Target of CONTIGUOUS pointer association is not known to be contiguous"_warn_en_US);
     }
   }
   // Warn about undefinable data targets
-  if (auto because{
-          WhyNotDefinable(foldingContext_.messages().at(), scope_, {}, rhs)}) {
-    if (auto *msg{Warn(common::UsageWarning::PointerToUndefinable,
-            "Pointer target is not a definable variable"_warn_en_US)}) {
-      msg->Attach(std::move(because->set_severity(parser::Severity::Because)));
+  if (context_.ShouldWarn(common::UsageWarning::PointerToUndefinable)) {
+    if (auto because{WhyNotDefinable(
+            foldingContext_.messages().at(), scope_, {}, rhs)}) {
+      if (auto *msg{
+              Say("Pointer target is not a definable variable"_warn_en_US)}) {
+        msg->Attach(
+            std::move(because->set_severity(parser::Severity::Because)));
+      }
       return false;
     }
   }
@@ -269,11 +270,10 @@ bool PointerAssignmentChecker::Check(const evaluate::FunctionRef<T> &f) {
           " that is a not a pointer"_err_en_US;
   } else if (isContiguous_ &&
       !funcResult->attrs.test(FunctionResult::Attr::Contiguous)) {
-    auto restorer{common::ScopedSet(lhs_, symbol)};
-    if (Warn(common::UsageWarning::PointerToPossibleNoncontiguous,
-            "CONTIGUOUS %s is associated with the result of reference to function '%s' that is not known to be contiguous"_warn_en_US,
-            description_, funcName)) {
-      return false;
+    if (context_.ShouldWarn(
+            common::UsageWarning::PointerToPossibleNoncontiguous)) {
+      msg =
+          "CONTIGUOUS %s is associated with the result of reference to function '%s' that is not known to be contiguous"_warn_en_US;
     }
   } else if (lhsType_) {
     const auto *frTypeAndShape{funcResult->GetTypeAndShape()};
@@ -353,15 +353,13 @@ bool PointerAssignmentChecker::Check(const evaluate::Designator<T> &d) {
       std::string buf;
       llvm::raw_string_ostream ss{buf};
       d.AsFortran(ss);
-      Say(*m, description_, buf);
+      Say(*m, description_, ss.str());
     } else {
       Say(std::get<MessageFormattedText>(*msg));
     }
     return false;
-  } else {
-    context_.NoteDefinedSymbol(*base);
-    return true;
   }
+  return true;
 }
 
 // Common handling for procedure pointer right-hand sides
@@ -377,9 +375,9 @@ bool PointerAssignmentChecker::Check(parser::CharBlock rhsName, bool isCall,
     Say(std::move(*msg), description_, rhsName, whyNot);
     return false;
   }
-  if (warning) {
-    Warn(common::UsageWarning::ProcDummyArgShapes,
-        "%s and %s may not be completely compatible procedures: %s"_warn_en_US,
+  if (context_.ShouldWarn(common::UsageWarning::ProcDummyArgShapes) &&
+      warning) {
+    Say("%s and %s may not be completely compatible procedures: %s"_warn_en_US,
         description_, rhsName, std::move(*warning));
   }
   return true;
@@ -396,12 +394,11 @@ bool PointerAssignmentChecker::Check(const evaluate::ProcedureDesignator &d) {
             symbol->name());
         return false;
       }
-    } else if (symbol->has<ProcBindingDetails>()) {
-      evaluate::AttachDeclaration(
-          Warn(common::LanguageFeature::BindingAsProcedure,
-              "Procedure binding '%s' used as target of a pointer assignment"_port_en_US,
-              symbol->name()),
-          *symbol);
+    } else if (symbol->has<ProcBindingDetails>() &&
+        context_.ShouldWarn(common::LanguageFeature::BindingAsProcedure)) {
+      evaluate::SayWithDeclaration(foldingContext_.messages(), *symbol,
+          "Procedure binding '%s' used as target of a pointer assignment"_port_en_US,
+          symbol->name());
     }
   }
   if (auto chars{
@@ -437,22 +434,6 @@ bool PointerAssignmentChecker::LhsOkForUnlimitedPoly() const {
 template <typename... A>
 parser::Message *PointerAssignmentChecker::Say(A &&...x) {
   auto *msg{foldingContext_.messages().Say(std::forward<A>(x)...)};
-  if (msg) {
-    if (lhs_) {
-      return evaluate::AttachDeclaration(msg, *lhs_);
-    }
-    if (!source_.empty()) {
-      msg->Attach(source_, "Declaration of %s"_en_US, description_);
-    }
-  }
-  return msg;
-}
-
-template <typename FeatureOrUsageWarning, typename... A>
-parser::Message *PointerAssignmentChecker::Warn(
-    FeatureOrUsageWarning warning, A &&...x) {
-  auto *msg{context_.Warn(
-      warning, foldingContext_.messages().at(), std::forward<A>(x)...)};
   if (msg) {
     if (lhs_) {
       return evaluate::AttachDeclaration(msg, *lhs_);

@@ -12,6 +12,7 @@
 
 #include "llvm/IR/ProfDataUtils.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Twine.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -19,6 +20,8 @@
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/ProfDataUtils.h"
+#include "llvm/Support/BranchProbability.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
 
@@ -213,7 +216,8 @@ bool extractProfTotalWeight(const MDNode *ProfileData, uint64_t &TotalVal) {
   if (ProfDataName->getString() == "branch_weights") {
     unsigned Offset = getBranchWeightOffset(ProfileData);
     for (unsigned Idx = Offset; Idx < ProfileData->getNumOperands(); ++Idx) {
-      auto *V = mdconst::extract<ConstantInt>(ProfileData->getOperand(Idx));
+      auto *V = mdconst::dyn_extract<ConstantInt>(ProfileData->getOperand(Idx));
+      assert(V && "Malformed branch_weight in MD_prof node");
       TotalVal += V->getValue().getZExtValue();
     }
     return true;

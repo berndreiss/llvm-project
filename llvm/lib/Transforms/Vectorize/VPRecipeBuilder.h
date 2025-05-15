@@ -13,7 +13,6 @@
 #include "VPlan.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PointerUnion.h"
-#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/IRBuilder.h"
 
 namespace llvm {
@@ -21,7 +20,6 @@ namespace llvm {
 class LoopVectorizationLegality;
 class LoopVectorizationCostModel;
 class TargetLibraryInfo;
-struct HistogramInfo;
 
 /// Helper class to create VPRecipies from IR instructions.
 class VPRecipeBuilder {
@@ -93,9 +91,9 @@ class VPRecipeBuilder {
   VPBlendRecipe *tryToBlend(PHINode *Phi, ArrayRef<VPValue *> Operands);
 
   /// Handle call instructions. If \p CI can be widened for \p Range.Start,
-  /// return a new VPWidenCallRecipe or VPWidenIntrinsicRecipe. Range.End may be
-  /// decreased to ensure same decision from \p Range.Start to \p Range.End.
-  VPSingleDefRecipe *tryToWidenCall(CallInst *CI, ArrayRef<VPValue *> Operands,
+  /// return a new VPWidenCallRecipe. Range.End may be decreased to ensure same
+  /// decision from \p Range.Start to \p Range.End.
+  VPWidenCallRecipe *tryToWidenCall(CallInst *CI, ArrayRef<VPValue *> Operands,
                                     VFRange &Range);
 
   /// Check if \p I has an opcode that can be widened and return a VPWidenRecipe
@@ -103,13 +101,6 @@ class VPRecipeBuilder {
   /// that widening should be performed.
   VPWidenRecipe *tryToWiden(Instruction *I, ArrayRef<VPValue *> Operands,
                             VPBasicBlock *VPBB);
-
-  /// Makes Histogram count operations safe for vectorization, by emitting a
-  /// llvm.experimental.vector.histogram.add intrinsic in place of the
-  /// Load + Add|Sub + Store operations that perform the histogram in the
-  /// original scalar loop.
-  VPHistogramRecipe *tryToWidenHistogram(const HistogramInfo *HI,
-                                         ArrayRef<VPValue *> Operands);
 
 public:
   VPRecipeBuilder(VPlan &Plan, Loop *OrigLoop, const TargetLibraryInfo *TLI,
@@ -143,9 +134,6 @@ public:
   /// Returns the *entry* mask for the block \p BB.
   VPValue *getBlockInMask(BasicBlock *BB) const;
 
-  /// Create an edge mask for every destination of cases and/or default.
-  void createSwitchEdgeMasks(SwitchInst *SI);
-
   /// A helper function that computes the predicate of the edge between SRC
   /// and DST.
   VPValue *createEdgeMask(BasicBlock *Src, BasicBlock *Dst);
@@ -177,7 +165,7 @@ public:
   iterator_range<mapped_iterator<Use *, std::function<VPValue *(Value *)>>>
   mapToVPValues(User::op_range Operands);
 
-  VPValue *getVPValueOrAddLiveIn(Value *V) {
+  VPValue *getVPValueOrAddLiveIn(Value *V, VPlan &Plan) {
     if (auto *I = dyn_cast<Instruction>(V)) {
       if (auto *R = Ingredient2Recipe.lookup(I))
         return R->getVPSingleValue();

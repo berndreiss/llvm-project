@@ -34,7 +34,7 @@ public:
   serializeToObject(Attribute attribute, Operation *module,
                     const gpu::TargetOptions &options) const;
 
-  Attribute createObject(Attribute attribute, Operation *module,
+  Attribute createObject(Attribute attribute,
                          const SmallVector<char, 0> &object,
                          const gpu::TargetOptions &options) const;
 };
@@ -89,7 +89,7 @@ std::optional<SmallVector<char, 0>> SPIRVTargetAttrImpl::serializeToObject(
 
 // Prepare Attribute for gpu.binary with serialized kernel object
 Attribute
-SPIRVTargetAttrImpl::createObject(Attribute attribute, Operation *module,
+SPIRVTargetAttrImpl::createObject(Attribute attribute,
                                   const SmallVector<char, 0> &object,
                                   const gpu::TargetOptions &options) const {
   gpu::CompilationTarget format = options.getCompilationTarget();
@@ -98,5 +98,5 @@ SPIRVTargetAttrImpl::createObject(Attribute attribute, Operation *module,
   return builder.getAttr<gpu::ObjectAttr>(
       attribute, format,
       builder.getStringAttr(StringRef(object.data(), object.size())),
-      objectProps, /*kernels=*/nullptr);
+      objectProps);
 }

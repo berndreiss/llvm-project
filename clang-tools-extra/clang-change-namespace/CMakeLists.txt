@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangChangeNamespace STATIC
+add_clang_library(clangChangeNamespace
   ChangeNamespace.cpp
 
   DEPENDS

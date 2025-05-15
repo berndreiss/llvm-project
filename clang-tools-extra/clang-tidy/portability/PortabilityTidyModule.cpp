@@ -12,7 +12,6 @@
 #include "RestrictSystemIncludesCheck.h"
 #include "SIMDIntrinsicsCheck.h"
 #include "StdAllocatorConstCheck.h"
-#include "TemplateVirtualMemberFunctionCheck.h"
 
 namespace clang::tidy {
 namespace portability {
@@ -26,8 +25,6 @@ public:
         "portability-simd-intrinsics");
     CheckFactories.registerCheck<StdAllocatorConstCheck>(
         "portability-std-allocator-const");
-    CheckFactories.registerCheck<TemplateVirtualMemberFunctionCheck>(
-        "portability-template-virtual-member-function");
   }
 };
 

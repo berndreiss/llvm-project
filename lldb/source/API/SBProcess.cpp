@@ -152,11 +152,10 @@ bool SBProcess::RemoteLaunch(char const **argv, char const **envp,
         launch_info.GetEnvironment() = Environment(envp);
       error.SetError(process_sp->Launch(launch_info));
     } else {
-      error = Status::FromErrorString(
-          "must be in eStateConnected to call RemoteLaunch");
+      error.SetErrorString("must be in eStateConnected to call RemoteLaunch");
     }
   } else {
-    error = Status::FromErrorString("unable to attach pid");
+    error.SetErrorString("unable to attach pid");
   }
 
   return error.Success();
@@ -175,11 +174,11 @@ bool SBProcess::RemoteAttachToProcessWithID(lldb::pid_t pid,
       attach_info.SetProcessID(pid);
       error.SetError(process_sp->Attach(attach_info));
     } else {
-      error = Status::FromErrorString(
+      error.SetErrorString(
           "must be in eStateConnected to call RemoteAttachToProcessWithID");
     }
   } else {
-    error = Status::FromErrorString("unable to attach pid");
+    error.SetErrorString("unable to attach pid");
   }
 
   return error.Success();
@@ -578,7 +577,7 @@ SBError SBProcess::Continue() {
     else
       sb_error.ref() = process_sp->ResumeSynchronous(nullptr);
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -593,7 +592,7 @@ SBError SBProcess::Destroy() {
         process_sp->GetTarget().GetAPIMutex());
     sb_error.SetError(process_sp->Destroy(false));
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -608,7 +607,7 @@ SBError SBProcess::Stop() {
         process_sp->GetTarget().GetAPIMutex());
     sb_error.SetError(process_sp->Halt());
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -623,7 +622,7 @@ SBError SBProcess::Kill() {
         process_sp->GetTarget().GetAPIMutex());
     sb_error.SetError(process_sp->Destroy(true));
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -646,7 +645,7 @@ SBError SBProcess::Detach(bool keep_stopped) {
         process_sp->GetTarget().GetAPIMutex());
     sb_error.SetError(process_sp->Detach(keep_stopped));
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -661,7 +660,7 @@ SBError SBProcess::Signal(int signo) {
         process_sp->GetTarget().GetAPIMutex());
     sb_error.SetError(process_sp->Signal(signo));
   } else
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
 
   return sb_error;
 }
@@ -820,12 +819,12 @@ lldb::SBAddressRangeList SBProcess::FindRangesInMemory(
 
   ProcessSP process_sp(GetSP());
   if (!process_sp) {
-    error = Status::FromErrorString("SBProcess is invalid");
+    error.SetErrorString("SBProcess is invalid");
     return matches;
   }
   Process::StopLocker stop_locker;
   if (!stop_locker.TryLock(&process_sp->GetRunLock())) {
-    error = Status::FromErrorString("process is running");
+    error.SetErrorString("process is running");
     return matches;
   }
   std::lock_guard<std::recursive_mutex> guard(
@@ -844,13 +843,13 @@ lldb::addr_t SBProcess::FindInMemory(const void *buf, uint64_t size,
   ProcessSP process_sp(GetSP());
 
   if (!process_sp) {
-    error = Status::FromErrorString("SBProcess is invalid");
+    error.SetErrorString("SBProcess is invalid");
     return LLDB_INVALID_ADDRESS;
   }
 
   Process::StopLocker stop_locker;
   if (!stop_locker.TryLock(&process_sp->GetRunLock())) {
-    error = Status::FromErrorString("process is running");
+    error.SetErrorString("process is running");
     return LLDB_INVALID_ADDRESS;
   }
 
@@ -865,7 +864,7 @@ size_t SBProcess::ReadMemory(addr_t addr, void *dst, size_t dst_len,
   LLDB_INSTRUMENT_VA(this, addr, dst, dst_len, sb_error);
 
   if (!dst) {
-    sb_error = Status::FromErrorStringWithFormat(
+    sb_error.SetErrorStringWithFormat(
         "no buffer provided to read %zu bytes into", dst_len);
     return 0;
   }
@@ -881,10 +880,10 @@ size_t SBProcess::ReadMemory(addr_t addr, void *dst, size_t dst_len,
           process_sp->GetTarget().GetAPIMutex());
       bytes_read = process_sp->ReadMemory(addr, dst, dst_len, sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
 
   return bytes_read;
@@ -904,10 +903,10 @@ size_t SBProcess::ReadCStringFromMemory(addr_t addr, void *buf, size_t size,
       bytes_read = process_sp->ReadCStringFromMemory(addr, (char *)buf, size,
                                                      sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return bytes_read;
 }
@@ -926,10 +925,10 @@ uint64_t SBProcess::ReadUnsignedFromMemory(addr_t addr, uint32_t byte_size,
       value = process_sp->ReadUnsignedIntegerFromMemory(addr, byte_size, 0,
                                                         sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return value;
 }
@@ -947,10 +946,10 @@ lldb::addr_t SBProcess::ReadPointerFromMemory(addr_t addr,
           process_sp->GetTarget().GetAPIMutex());
       ptr = process_sp->ReadPointerFromMemory(addr, sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return ptr;
 }
@@ -971,7 +970,7 @@ size_t SBProcess::WriteMemory(addr_t addr, const void *src, size_t src_len,
       bytes_written =
           process_sp->WriteMemory(addr, src, src_len, sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   }
 
@@ -1046,11 +1045,10 @@ SBProcess::GetNumSupportedHardwareWatchpoints(lldb::SBError &sb_error) const {
     if (actual_num) {
       num = *actual_num;
     } else {
-      sb_error =
-          Status::FromErrorString("Unable to determine number of watchpoints");
+      sb_error.SetErrorString("Unable to determine number of watchpoints");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return num;
 }
@@ -1077,10 +1075,10 @@ uint32_t SBProcess::LoadImage(const lldb::SBFileSpec &sb_local_image_spec,
       return platform_sp->LoadImage(process_sp.get(), *sb_local_image_spec,
                                     *sb_remote_image_spec, sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("process is invalid");
+    sb_error.SetErrorString("process is invalid");
   }
   return LLDB_INVALID_IMAGE_TOKEN;
 }
@@ -1111,10 +1109,10 @@ uint32_t SBProcess::LoadImageUsingPaths(const lldb::SBFileSpec &image_spec,
         loaded_path = loaded_spec;
       return token;
     } else {
-      error = Status::FromErrorString("process is running");
+      error.SetErrorString("process is running");
     }
   } else {
-    error = Status::FromErrorString("process is invalid");
+    error.SetErrorString("process is invalid");
   }
 
   return LLDB_INVALID_IMAGE_TOKEN;
@@ -1134,10 +1132,10 @@ lldb::SBError SBProcess::UnloadImage(uint32_t image_token) {
       sb_error.SetError(
           platform_sp->UnloadImage(process_sp.get(), image_token));
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else
-    sb_error = Status::FromErrorString("invalid process");
+    sb_error.SetErrorString("invalid process");
   return sb_error;
 }
 
@@ -1153,10 +1151,10 @@ lldb::SBError SBProcess::SendEventData(const char *event_data) {
           process_sp->GetTarget().GetAPIMutex());
       sb_error.SetError(process_sp->SendEventData(event_data));
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else
-    sb_error = Status::FromErrorString("invalid process");
+    sb_error.SetErrorString("invalid process");
   return sb_error;
 }
 
@@ -1245,7 +1243,7 @@ lldb::SBError SBProcess::SaveCore(SBSaveCoreOptions &options) {
   lldb::SBError error;
   ProcessSP process_sp(GetSP());
   if (!process_sp) {
-    error = Status::FromErrorString("SBProcess is invalid");
+    error.SetErrorString("SBProcess is invalid");
     return error;
   }
 
@@ -1253,7 +1251,7 @@ lldb::SBError SBProcess::SaveCore(SBSaveCoreOptions &options) {
       process_sp->GetTarget().GetAPIMutex());
 
   if (process_sp->GetState() != eStateStopped) {
-    error = Status::FromErrorString("the process is not stopped");
+    error.SetErrorString("the process is not stopped");
     return error;
   }
 
@@ -1278,10 +1276,10 @@ SBProcess::GetMemoryRegionInfo(lldb::addr_t load_addr,
       sb_error.ref() =
           process_sp->GetMemoryRegionInfo(load_addr, sb_region_info.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return sb_error;
 }
@@ -1431,10 +1429,10 @@ lldb::addr_t SBProcess::AllocateMemory(size_t size, uint32_t permissions,
           process_sp->GetTarget().GetAPIMutex());
       addr = process_sp->AllocateMemory(size, permissions, sb_error.ref());
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return addr;
 }
@@ -1450,12 +1448,12 @@ lldb::SBError SBProcess::DeallocateMemory(lldb::addr_t ptr) {
       std::lock_guard<std::recursive_mutex> guard(
           process_sp->GetTarget().GetAPIMutex());
       Status error = process_sp->DeallocateMemory(ptr);
-      sb_error.SetError(std::move(error));
+      sb_error.SetError(error);
     } else {
-      sb_error = Status::FromErrorString("process is running");
+      sb_error.SetErrorString("process is running");
     }
   } else {
-    sb_error = Status::FromErrorString("SBProcess is invalid");
+    sb_error.SetErrorString("SBProcess is invalid");
   }
   return sb_error;
 }

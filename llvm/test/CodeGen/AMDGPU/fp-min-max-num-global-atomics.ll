@@ -9,6 +9,8 @@ define amdgpu_cs void @global_atomic_fmin_num_f32_noret(ptr addrspace(1) %ptr, f
 ; GFX12-LABEL: global_atomic_fmin_num_f32_noret:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    global_atomic_min_num_f32 v[0:1], v2, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %ret = call float @llvm.amdgcn.global.atomic.fmin.num.f32.p1.f32(ptr addrspace(1) %ptr, float %data)
   ret void
@@ -18,6 +20,8 @@ define amdgpu_cs void @global_atomic_fmax_num_f32_noret(ptr addrspace(1) %ptr, f
 ; GFX12-LABEL: global_atomic_fmax_num_f32_noret:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    global_atomic_max_num_f32 v[0:1], v2, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %ret = call float @llvm.amdgcn.global.atomic.fmax.num.f32.p1.f32(ptr addrspace(1) %ptr, float %data)
   ret void
@@ -29,6 +33,8 @@ define amdgpu_cs void @global_atomic_fmax_num_f32_rtn(ptr addrspace(1) %ptr, flo
 ; GFX12-NEXT:    global_atomic_max_num_f32 v0, v[0:1], v2, off th:TH_ATOMIC_RETURN
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b32 v[3:4], v0, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %ret = call float @llvm.amdgcn.global.atomic.fmax.num.f32.p1.f32(ptr addrspace(1) %ptr, float %data)
   store float %ret, ptr addrspace(1) %out
@@ -41,6 +47,8 @@ define amdgpu_cs void @global_atomic_fmin_num_f32_rtn(ptr addrspace(1) %ptr, flo
 ; GFX12-NEXT:    global_atomic_min_num_f32 v0, v[0:1], v2, off th:TH_ATOMIC_RETURN
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b32 v[3:4], v0, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %ret = call float @llvm.amdgcn.global.atomic.fmin.num.f32.p1.f32(ptr addrspace(1) %ptr, float %data)
   store float %ret, ptr addrspace(1) %out

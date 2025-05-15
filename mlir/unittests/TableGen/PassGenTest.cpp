@@ -72,7 +72,8 @@ TEST(PassGenTest, PassOptions) {
   TestPassWithOptionsOptions options;
   options.testOption = 57;
 
-  options.testListOption = {1, 2};
+  llvm::SmallVector<int64_t, 2> testListOption = {1, 2};
+  options.testListOption = testListOption;
 
   const auto unwrap = [](const std::unique_ptr<mlir::Pass> &pass) {
     return static_cast<const TestPassWithOptions *>(pass.get());

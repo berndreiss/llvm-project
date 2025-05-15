@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <memory>
-
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/Object/COFF.h"
 
@@ -186,13 +184,11 @@ void RTDyldObjectLinkingLayer::emit(
   std::shared_ptr<MaterializationResponsibility> SharedR(std::move(R));
   auto Deps = std::make_unique<SymbolDependenceMap>();
 
-  auto Resolver =
-      std::make_unique<JITDylibSearchOrderResolver>(*SharedR, *Deps);
-  auto *ResolverPtr = Resolver.get();
+  JITDylibSearchOrderResolver Resolver(*SharedR, *Deps);
 
   jitLinkForORC(
       object::OwningBinary<object::ObjectFile>(std::move(*Obj), std::move(O)),
-      MemMgrRef, *ResolverPtr, ProcessAllSections,
+      MemMgrRef, Resolver, ProcessAllSections,
       [this, SharedR, &MemMgrRef, InternalSymbols](
           const object::ObjectFile &Obj,
           RuntimeDyld::LoadedObjectInfo &LoadedObjInfo,
@@ -200,8 +196,7 @@ void RTDyldObjectLinkingLayer::emit(
         return onObjLoad(*SharedR, Obj, MemMgrRef, LoadedObjInfo,
                          ResolvedSymbols, *InternalSymbols);
       },
-      [this, SharedR, MemMgr = std::move(MemMgr), Deps = std::move(Deps),
-       Resolver = std::move(Resolver)](
+      [this, SharedR, MemMgr = std::move(MemMgr), Deps = std::move(Deps)](
           object::OwningBinary<object::ObjectFile> Obj,
           std::unique_ptr<RuntimeDyld::LoadedObjectInfo> LoadedObjInfo,
           Error Err) mutable {
@@ -430,15 +425,16 @@ Error RTDyldObjectLinkingLayer::handleRemoveResources(JITDylib &JD,
 void RTDyldObjectLinkingLayer::handleTransferResources(JITDylib &JD,
                                                        ResourceKey DstKey,
                                                        ResourceKey SrcKey) {
-  if (MemMgrs.contains(SrcKey)) {
-    // DstKey may not be in the DenseMap yet, so the following line may resize
-    // the container and invalidate iterators and value references.
+  auto I = MemMgrs.find(SrcKey);
+  if (I != MemMgrs.end()) {
+    auto &SrcMemMgrs = I->second;
     auto &DstMemMgrs = MemMgrs[DstKey];
-    auto &SrcMemMgrs = MemMgrs[SrcKey];
     DstMemMgrs.reserve(DstMemMgrs.size() + SrcMemMgrs.size());
     for (auto &MemMgr : SrcMemMgrs)
       DstMemMgrs.push_back(std::move(MemMgr));
 
+    // Erase SrcKey entry using value rather than iterator I: I may have been
+    // invalidated when we looked up DstKey.
     MemMgrs.erase(SrcKey);
   }
 }

@@ -72,7 +72,7 @@ void populateExpandReallocPatterns(RewritePatternSet &patterns,
 /// Appends patterns for emulating wide integer memref operations with ops over
 /// narrower integer types.
 void populateMemRefWideIntEmulationPatterns(
-    const arith::WideIntEmulationConverter &typeConverter,
+    arith::WideIntEmulationConverter &typeConverter,
     RewritePatternSet &patterns);
 
 /// Appends type conversions for emulating wide integer memref operations with
@@ -83,7 +83,7 @@ void populateMemRefWideIntEmulationConversions(
 /// Appends patterns for emulating memref operations over narrow types with ops
 /// over wider types.
 void populateMemRefNarrowTypeEmulationPatterns(
-    const arith::NarrowTypeEmulationConverter &typeConverter,
+    arith::NarrowTypeEmulationConverter &typeConverter,
     RewritePatternSet &patterns);
 
 /// Appends type conversions for emulating memref operations over narrow types

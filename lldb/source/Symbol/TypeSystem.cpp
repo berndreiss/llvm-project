@@ -157,10 +157,6 @@ bool TypeSystem::IsMeaninglessWithoutDynamicResolution(void *type) {
   return false;
 }
 
-ConstString TypeSystem::GetMangledTypeName(void *type) {
-  return GetTypeName(type, false);
-}
-
 ConstString TypeSystem::DeclGetMangledName(void *opaque_decl) {
   return ConstString();
 }

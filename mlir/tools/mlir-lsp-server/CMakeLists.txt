@@ -47,7 +47,6 @@ set(LIBS
   MLIRLspServerLib
   MLIRParser
   MLIRPass
-  MLIRTensorAllExtensions
   MLIRTransforms
   MLIRTransformUtils
   MLIRSupport

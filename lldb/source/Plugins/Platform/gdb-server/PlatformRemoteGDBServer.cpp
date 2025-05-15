@@ -215,24 +215,27 @@ bool PlatformRemoteGDBServer::IsConnected() const {
 
 Status PlatformRemoteGDBServer::ConnectRemote(Args &args) {
   Status error;
-  if (IsConnected())
-    return Status::FromErrorStringWithFormat(
-        "the platform is already connected to '%s', "
-        "execute 'platform disconnect' to close the "
-        "current connection",
-        GetHostname());
+  if (IsConnected()) {
+    error.SetErrorStringWithFormat("the platform is already connected to '%s', "
+                                   "execute 'platform disconnect' to close the "
+                                   "current connection",
+                                   GetHostname());
+    return error;
+  }
 
-  if (args.GetArgumentCount() != 1)
-    return Status::FromErrorString(
+  if (args.GetArgumentCount() != 1) {
+    error.SetErrorString(
         "\"platform connect\" takes a single argument: <connect-url>");
+    return error;
+  }
 
   const char *url = args.GetArgumentAtIndex(0);
   if (!url)
-    return Status::FromErrorString("URL is null.");
+    return Status("URL is null.");
 
   std::optional<URI> parsed_url = URI::Parse(url);
   if (!parsed_url)
-    return Status::FromErrorStringWithFormat("Invalid URL: %s", url);
+    return Status("Invalid URL: %s", url);
 
   // We're going to reuse the hostname when we connect to the debugserver.
   m_platform_scheme = parsed_url->scheme.str();
@@ -267,7 +270,7 @@ Status PlatformRemoteGDBServer::ConnectRemote(Args &args) {
   } else {
     client_up->Disconnect();
     if (error.Success())
-      error = Status::FromErrorString("handshake failed");
+      error.SetErrorString("handshake failed");
   }
   return error;
 }
@@ -325,7 +328,7 @@ Status PlatformRemoteGDBServer::LaunchProcess(ProcessLaunchInfo &launch_info) {
   LLDB_LOGF(log, "PlatformRemoteGDBServer::%s() called", __FUNCTION__);
 
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   auto num_file_actions = launch_info.GetNumFileActions();
   for (decltype(num_file_actions) i = 0; i < num_file_actions; ++i) {
     const auto file_action = launch_info.GetFileActionAtIndex(i);
@@ -376,9 +379,9 @@ Status PlatformRemoteGDBServer::LaunchProcess(ProcessLaunchInfo &launch_info) {
     if (FileSpec exe_file = launch_info.GetExecutableFile())
       args.ReplaceArgumentAtIndex(0, exe_file.GetPath(false));
     if (llvm::Error err = m_gdb_client_up->LaunchProcess(args)) {
-      error = Status::FromErrorStringWithFormatv(
-          "Cannot launch '{0}': {1}", args.GetArgumentAtIndex(0),
-          llvm::fmt_consume(std::move(err)));
+      error.SetErrorStringWithFormatv("Cannot launch '{0}': {1}",
+                                      args.GetArgumentAtIndex(0),
+                                      llvm::fmt_consume(std::move(err)));
       return error;
     }
   }
@@ -395,15 +398,14 @@ Status PlatformRemoteGDBServer::LaunchProcess(ProcessLaunchInfo &launch_info) {
               "PlatformRemoteGDBServer::%s() launch succeeded but we "
               "didn't get a valid process id back!",
               __FUNCTION__);
-    error = Status::FromErrorString("failed to get PID");
+    error.SetErrorString("failed to get PID");
   }
   return error;
 }
 
 Status PlatformRemoteGDBServer::KillProcess(const lldb::pid_t pid) {
   if (!KillSpawnedProcess(pid))
-    return Status::FromErrorStringWithFormat(
-        "failed to kill remote spawned process");
+    return Status("failed to kill remote spawned process");
   return Status();
 }
 
@@ -417,8 +419,8 @@ PlatformRemoteGDBServer::DebugProcess(ProcessLaunchInfo &launch_info,
       lldb::pid_t debugserver_pid = LLDB_INVALID_PROCESS_ID;
       std::string connect_url;
       if (!LaunchGDBServer(debugserver_pid, connect_url)) {
-        error = Status::FromErrorStringWithFormat(
-            "unable to launch a GDB server on '%s'", GetHostname());
+        error.SetErrorStringWithFormat("unable to launch a GDB server on '%s'",
+                                       GetHostname());
       } else {
         // The darwin always currently uses the GDB remote debugger plug-in
         // so even when debugging locally we are debugging remotely!
@@ -442,7 +444,7 @@ PlatformRemoteGDBServer::DebugProcess(ProcessLaunchInfo &launch_info,
         }
       }
     } else {
-      error = Status::FromErrorString("not connected to remote gdb server");
+      error.SetErrorString("not connected to remote gdb server");
     }
   }
   return process_sp;
@@ -496,8 +498,8 @@ lldb::ProcessSP PlatformRemoteGDBServer::Attach(
       lldb::pid_t debugserver_pid = LLDB_INVALID_PROCESS_ID;
       std::string connect_url;
       if (!LaunchGDBServer(debugserver_pid, connect_url)) {
-        error = Status::FromErrorStringWithFormat(
-            "unable to launch a GDB server on '%s'", GetHostname());
+        error.SetErrorStringWithFormat("unable to launch a GDB server on '%s'",
+                                       GetHostname());
       } else {
         if (target == nullptr) {
           TargetSP new_target_sp;
@@ -531,7 +533,7 @@ lldb::ProcessSP PlatformRemoteGDBServer::Attach(
         }
       }
     } else {
-      error = Status::FromErrorString("not connected to remote gdb server");
+      error.SetErrorString("not connected to remote gdb server");
     }
   }
   return process_sp;
@@ -540,7 +542,7 @@ lldb::ProcessSP PlatformRemoteGDBServer::Attach(
 Status PlatformRemoteGDBServer::MakeDirectory(const FileSpec &file_spec,
                                               uint32_t mode) {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   Status error = m_gdb_client_up->MakeDirectory(file_spec, mode);
   Log *log = GetLog(LLDBLog::Platform);
   LLDB_LOGF(log,
@@ -554,7 +556,7 @@ Status PlatformRemoteGDBServer::MakeDirectory(const FileSpec &file_spec,
 Status PlatformRemoteGDBServer::GetFilePermissions(const FileSpec &file_spec,
                                                    uint32_t &file_permissions) {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   Status error =
       m_gdb_client_up->GetFilePermissions(file_spec, file_permissions);
   Log *log = GetLog(LLDBLog::Platform);
@@ -569,7 +571,7 @@ Status PlatformRemoteGDBServer::GetFilePermissions(const FileSpec &file_spec,
 Status PlatformRemoteGDBServer::SetFilePermissions(const FileSpec &file_spec,
                                                    uint32_t file_permissions) {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   Status error =
       m_gdb_client_up->SetFilePermissions(file_spec, file_permissions);
   Log *log = GetLog(LLDBLog::Platform);
@@ -593,7 +595,7 @@ lldb::user_id_t PlatformRemoteGDBServer::OpenFile(const FileSpec &file_spec,
 bool PlatformRemoteGDBServer::CloseFile(lldb::user_id_t fd, Status &error) {
   if (IsConnected())
     return m_gdb_client_up->CloseFile(fd, error);
-  error = Status::FromErrorStringWithFormat("Not connected.");
+  error = Status("Not connected.");
   return false;
 }
 
@@ -615,7 +617,7 @@ uint64_t PlatformRemoteGDBServer::ReadFile(lldb::user_id_t fd, uint64_t offset,
                                            Status &error) {
   if (IsConnected())
     return m_gdb_client_up->ReadFile(fd, offset, dst, dst_len, error);
-  error = Status::FromErrorStringWithFormat("Not connected.");
+  error = Status("Not connected.");
   return 0;
 }
 
@@ -624,7 +626,7 @@ uint64_t PlatformRemoteGDBServer::WriteFile(lldb::user_id_t fd, uint64_t offset,
                                             Status &error) {
   if (IsConnected())
     return m_gdb_client_up->WriteFile(fd, offset, src, src_len, error);
-  error = Status::FromErrorStringWithFormat("Not connected.");
+  error = Status("Not connected.");
   return 0;
 }
 
@@ -639,7 +641,7 @@ Status PlatformRemoteGDBServer::CreateSymlink(
     const FileSpec &dst) // The symlink points to dst
 {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   Status error = m_gdb_client_up->CreateSymlink(src, dst);
   Log *log = GetLog(LLDBLog::Platform);
   LLDB_LOGF(log,
@@ -652,7 +654,7 @@ Status PlatformRemoteGDBServer::CreateSymlink(
 
 Status PlatformRemoteGDBServer::Unlink(const FileSpec &file_spec) {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   Status error = m_gdb_client_up->Unlink(file_spec);
   Log *log = GetLog(LLDBLog::Platform);
   LLDB_LOGF(log, "PlatformRemoteGDBServer::Unlink(path='%s') error = %u (%s)",
@@ -677,7 +679,7 @@ Status PlatformRemoteGDBServer::RunShellCommand(
         *command_output, // Pass NULL if you don't want the command output
     const Timeout<std::micro> &timeout) {
   if (!IsConnected())
-    return Status::FromErrorStringWithFormat("Not connected.");
+    return Status("Not connected.");
   return m_gdb_client_up->RunShellCommand(command, working_dir, status_ptr,
                                           signo_ptr, command_output, timeout);
 }

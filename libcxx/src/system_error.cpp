@@ -26,7 +26,7 @@
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace {
-#if _LIBCPP_HAS_THREADS
+#if !defined(_LIBCPP_HAS_NO_THREADS)
 
 //  GLIBC also uses 1024 as the maximum buffer size internally.
 constexpr size_t strerror_buff_size = 1024;
@@ -92,7 +92,7 @@ string do_strerror_r(int ev) {
 }
 #  endif
 
-#endif // _LIBCPP_HAS_THREADS
+#endif // !defined(_LIBCPP_HAS_NO_THREADS)
 
 string make_error_str(const error_code& ec, string what_arg) {
   if (ec) {
@@ -110,10 +110,10 @@ string make_error_str(const error_code& ec) {
   }
   return string();
 }
-} // namespace
+} // end namespace
 
 string __do_message::message(int ev) const {
-#if !_LIBCPP_HAS_THREADS
+#if defined(_LIBCPP_HAS_NO_THREADS)
   return string(::strerror(ev));
 #else
   return do_strerror_r(ev);
@@ -211,7 +211,7 @@ system_error::system_error(int ev, const error_category& ecat)
 system_error::~system_error() noexcept {}
 
 void __throw_system_error(int ev, const char* what_arg) {
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
   std::__throw_system_error(error_code(ev, system_category()), what_arg);
 #else
   // The above could also handle the no-exception case, but for size, avoid referencing system_category() unnecessarily.

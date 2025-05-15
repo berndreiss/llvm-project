@@ -25,7 +25,6 @@ class ScalarEvolution;
 class PredicatedScalarEvolution;
 class TargetLibraryInfo;
 class VPBuilder;
-class VPRecipeBuilder;
 
 struct VPlanTransforms {
   /// Replaces the VPInstructions in \p Plan with corresponding
@@ -36,11 +35,11 @@ struct VPlanTransforms {
                                 GetIntOrFpInductionDescriptor,
                             ScalarEvolution &SE, const TargetLibraryInfo &TLI);
 
-  /// Try to have all users of fixed-order recurrences appear after the recipe
-  /// defining their previous value, by either sinking users or hoisting recipes
-  /// defining their previous value (and its operands). Then introduce
-  /// FirstOrderRecurrenceSplice VPInstructions to combine the value from the
-  /// recurrence phis and previous values.
+  /// Sink users of fixed-order recurrences after the recipe defining their
+  /// previous value. Then introduce FirstOrderRecurrenceSplice VPInstructions
+  /// to combine the value from the recurrence phis and previous values. The
+  /// current implementation assumes all users can be sunk after the previous
+  /// value, which is enforced by earlier legality checks.
   /// \returns true if all users of fixed-order recurrences could be re-arranged
   /// as needed or false if it is not possible. In the latter case, \p Plan is
   /// not valid.
@@ -48,9 +47,6 @@ struct VPlanTransforms {
 
   /// Clear NSW/NUW flags from reduction instructions if necessary.
   static void clearReductionWrapFlags(VPlan &Plan);
-
-  /// Explicitly unroll \p Plan by \p UF.
-  static void unrollByUF(VPlan &Plan, unsigned UF, LLVMContext &Ctx);
 
   /// Optimize \p Plan based on \p BestVF and \p BestUF. This may restrict the
   /// resulting plan to \p BestVF and \p BestUF.
@@ -61,7 +57,7 @@ struct VPlanTransforms {
   /// Apply VPlan-to-VPlan optimizations to \p Plan, including induction recipe
   /// optimizations, dead recipe removal, replicate region optimizations and
   /// block merging.
-  static void optimize(VPlan &Plan);
+  static void optimize(VPlan &Plan, ScalarEvolution &SE);
 
   /// Wrap predicated VPReplicateRecipes with a mask operand in an if-then
   /// region block and remove the mask operand. Optimize the created regions by
@@ -85,7 +81,8 @@ struct VPlanTransforms {
   /// will be folded later.
   static void
   truncateToMinimalBitwidths(VPlan &Plan,
-                             const MapVector<Instruction *, uint64_t> &MinBWs);
+                             const MapVector<Instruction *, uint64_t> &MinBWs,
+                             LLVMContext &Ctx);
 
   /// Drop poison flags from recipes that may generate a poison value that is
   /// used after vectorization, even when their operands are not poison. Those
@@ -108,21 +105,7 @@ struct VPlanTransforms {
   /// VPCanonicalIVPHIRecipe is only used to control the loop after
   /// this transformation.
   /// \returns true if the transformation succeeds, or false if it doesn't.
-  static bool
-  tryAddExplicitVectorLength(VPlan &Plan,
-                             const std::optional<unsigned> &MaxEVLSafeElements);
-
-  // For each Interleave Group in \p InterleaveGroups replace the Recipes
-  // widening its memory instructions with a single VPInterleaveRecipe at its
-  // insertion point.
-  static void createInterleaveGroups(
-      VPlan &Plan,
-      const SmallPtrSetImpl<const InterleaveGroup<Instruction> *>
-          &InterleaveGroups,
-      VPRecipeBuilder &RecipeBuilder, bool ScalarEpilogueAllowed);
-
-  /// Remove dead recipes from \p Plan.
-  static void removeDeadRecipes(VPlan &Plan);
+  static bool tryAddExplicitVectorLength(VPlan &Plan);
 };
 
 } // namespace llvm

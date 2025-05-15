@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
 #include <vector>
 
 #include "test_macros.h"

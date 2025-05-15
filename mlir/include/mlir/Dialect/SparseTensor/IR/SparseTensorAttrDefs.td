@@ -24,16 +24,15 @@ class SparseTensor_Attr<string name,
 // sparse tensor levels.
 //===----------------------------------------------------------------------===//
 
-def I64BitSetAttr : TypedAttrBase<I64, "IntegerAttr",
+def LevelSetAttr :
+    TypedAttrBase<
+      I64, "IntegerAttr",
       And<[CPred<"::llvm::isa<::mlir::IntegerAttr>($_self)">,
            CPred<"::llvm::cast<::mlir::IntegerAttr>($_self).getType().isInteger(64)">]>,
       "LevelSet attribute"> {
-  let returnType = [{::mlir::sparse_tensor::I64BitSet}];
-  let convertFromStorage = [{::mlir::sparse_tensor::I64BitSet($_self.getValue().getZExtValue())}];
+  let returnType = [{::mlir::sparse_tensor::LevelSet}];
+  let convertFromStorage = [{::mlir::sparse_tensor::LevelSet($_self.getValue().getZExtValue())}];
 }
-
-def I64BitSetArrayAttr :
-    TypedArrayAttrBase<I64BitSetAttr, "I64BitSet array attribute">;
 
 //===----------------------------------------------------------------------===//
 // These attributes are just like `IndexAttr` except that they clarify whether
@@ -586,10 +585,10 @@ def IsSparseTensorSlicePred
           "  ::mlir::sparse_tensor::getSparseTensorEncoding($_self).isSlice()">;
 
 class SparseTensorOf<list<Type> allowedTypes>
-  : RankedTensorOf<allowedTypes, [IsSparseTensorPred], "sparse tensor">;
+  : TensorOf<allowedTypes, [IsSparseTensorPred], "sparse tensor">;
 
 class SparseTensorSliceOf<list<Type> allowedTypes>
-  : RankedTensorOf<allowedTypes, [IsSparseTensorSlicePred], "sparse tensor slice">;
+  : TensorOf<allowedTypes, [IsSparseTensorSlicePred], "sparse tensor slice">;
 
 class ScalarLikeOf<list<Type> allowedTypes>
   : AnyTypeOf<[0DTensorOf<allowedTypes>, AnyTypeOf<allowedTypes>], "scalar like">;

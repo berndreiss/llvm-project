@@ -18,8 +18,6 @@ using namespace mlir::transform;
 namespace {
 class Extension : public TransformDialectExtension<Extension> {
 public:
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(Extension)
-
   using Base::Base;
   void init() { declareGeneratedDialect<func::FuncDialect>(); }
 };

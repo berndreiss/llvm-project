@@ -209,9 +209,6 @@ public:
     return State->getDWOUnits();
   }
 
-  /// Return true of this DWARF context is a DWP file.
-  bool isDWP() const;
-
   /// Get units from .debug_types.dwo in the DWO context.
   unit_iterator_range dwo_types_section_units() {
     DWARFUnitVector &DWOUnits = State->getDWOUnits();
@@ -265,10 +262,7 @@ public:
   }
 
   DWARFCompileUnit *getDWOCompileUnitForHash(uint64_t Hash);
-  DWARFTypeUnit *getTypeUnitForHash(uint64_t Hash, bool IsDWO);
-
-  /// Return the DWARF unit that includes an offset (relative to .debug_info).
-  DWARFUnit *getUnitForOffset(uint64_t Offset);
+  DWARFTypeUnit *getTypeUnitForHash(uint16_t Version, uint64_t Hash, bool IsDWO);
 
   /// Return the compile unit that includes an offset (relative to .debug_info).
   DWARFCompileUnit *getCompileUnitForOffset(uint64_t Offset);

@@ -61,7 +61,7 @@ TEST_F(TestPPC64InstEmulation, TestSimpleFunction) {
   UnwindPlan::RowSP row_sp;
   AddressRange sample_range;
   UnwindPlan unwind_plan(eRegisterKindLLDB);
-  UnwindPlan::Row::AbstractRegisterLocation regloc;
+  UnwindPlan::Row::RegisterLocation regloc;
 
   // prologue and epilogue of:
   // int main() {
@@ -180,7 +180,7 @@ TEST_F(TestPPC64InstEmulation, TestMediumFunction) {
   UnwindPlan::RowSP row_sp;
   AddressRange sample_range;
   UnwindPlan unwind_plan(eRegisterKindLLDB);
-  UnwindPlan::Row::AbstractRegisterLocation regloc;
+  UnwindPlan::Row::RegisterLocation regloc;
 
   // prologue and epilogue of main() (call-func.c),
   // with several calls and stack variables.

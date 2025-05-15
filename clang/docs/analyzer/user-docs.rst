@@ -12,4 +12,3 @@ Contents:
    user-docs/FilingBugs
    user-docs/CrossTranslationUnit
    user-docs/TaintAnalysisConfiguration
-   user-docs/FAQ

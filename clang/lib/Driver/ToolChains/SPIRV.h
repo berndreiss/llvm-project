@@ -57,7 +57,8 @@ class LLVM_LIBRARY_VISIBILITY SPIRVToolChain final : public ToolChain {
 
 public:
   SPIRVToolChain(const Driver &D, const llvm::Triple &Triple,
-                 const llvm::opt::ArgList &Args);
+                 const llvm::opt::ArgList &Args)
+      : ToolChain(D, Triple, Args) {}
 
   bool useIntegratedAs() const override { return true; }
 
@@ -71,7 +72,6 @@ public:
   }
   bool isPICDefaultForced() const override { return false; }
   bool SupportsProfiling() const override { return false; }
-  bool HasNativeLLVMSupport() const override;
 
   clang::driver::Tool *SelectTool(const JobAction &JA) const override;
 
@@ -81,7 +81,6 @@ protected:
 
 private:
   clang::driver::Tool *getTranslator() const;
-  bool NativeLLVMSupport;
 };
 
 } // namespace toolchains

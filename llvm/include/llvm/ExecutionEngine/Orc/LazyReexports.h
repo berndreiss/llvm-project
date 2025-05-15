@@ -19,7 +19,6 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/IndirectionUtils.h"
-#include "llvm/ExecutionEngine/Orc/RedirectionManager.h"
 #include "llvm/ExecutionEngine/Orc/Speculation.h"
 
 namespace llvm {
@@ -141,7 +140,7 @@ createLocalLazyCallThroughManager(const Triple &T, ExecutionSession &ES,
 class LazyReexportsMaterializationUnit : public MaterializationUnit {
 public:
   LazyReexportsMaterializationUnit(LazyCallThroughManager &LCTManager,
-                                   RedirectableSymbolManager &RSManager,
+                                   IndirectStubsManager &ISManager,
                                    JITDylib &SourceJD,
                                    SymbolAliasMap CallableAliases,
                                    ImplSymbolMap *SrcJDLoc);
@@ -155,7 +154,7 @@ private:
   extractFlags(const SymbolAliasMap &Aliases);
 
   LazyCallThroughManager &LCTManager;
-  RedirectableSymbolManager &RSManager;
+  IndirectStubsManager &ISManager;
   JITDylib &SourceJD;
   SymbolAliasMap CallableAliases;
   ImplSymbolMap *AliaseeTable;
@@ -166,11 +165,11 @@ private:
 /// first call. All subsequent calls will go directly to the aliasee.
 inline std::unique_ptr<LazyReexportsMaterializationUnit>
 lazyReexports(LazyCallThroughManager &LCTManager,
-              RedirectableSymbolManager &RSManager, JITDylib &SourceJD,
+              IndirectStubsManager &ISManager, JITDylib &SourceJD,
               SymbolAliasMap CallableAliases,
               ImplSymbolMap *SrcJDLoc = nullptr) {
   return std::make_unique<LazyReexportsMaterializationUnit>(
-      LCTManager, RSManager, SourceJD, std::move(CallableAliases), SrcJDLoc);
+      LCTManager, ISManager, SourceJD, std::move(CallableAliases), SrcJDLoc);
 }
 
 } // End namespace orc

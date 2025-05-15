@@ -97,8 +97,7 @@ lldb_private::Status SelectHelper::Select() {
   // numeric value.
   lldbassert(m_fd_map.size() <= FD_SETSIZE);
   if (m_fd_map.size() > FD_SETSIZE)
-    return lldb_private::Status::FromErrorString(
-        "Too many file descriptors for select()");
+    return lldb_private::Status("Too many file descriptors for select()");
 #endif
 
   std::optional<lldb::socket_t> max_read_fd;
@@ -111,8 +110,7 @@ lldb_private::Status SelectHelper::Select() {
 #if !defined(__APPLE__) && !defined(_WIN32)
     lldbassert(fd < static_cast<int>(FD_SETSIZE));
     if (fd >= static_cast<int>(FD_SETSIZE)) {
-      error = lldb_private::Status::FromErrorStringWithFormat(
-          "%i is too large for select()", fd);
+      error.SetErrorStringWithFormat("%i is too large for select()", fd);
       return error;
     }
 #endif
@@ -126,7 +124,8 @@ lldb_private::Status SelectHelper::Select() {
   }
 
   if (!max_fd) {
-    return lldb_private::Status::FromErrorString("no valid file descriptors");
+    error.SetErrorString("no valid file descriptors");
+    return error;
   }
 
   const unsigned nfds = static_cast<unsigned>(*max_fd) + 1;
@@ -216,7 +215,7 @@ lldb_private::Status SelectHelper::Select() {
                                      error_fdset_ptr, tv_ptr);
     if (num_set_fds < 0) {
       // We got an error
-      error = lldb_private::Status::FromErrno();
+      error.SetErrorToErrno();
       if (error.GetError() == EINTR) {
         error.Clear();
         continue; // Keep calling select if we get EINTR
@@ -224,8 +223,9 @@ lldb_private::Status SelectHelper::Select() {
         return error;
     } else if (num_set_fds == 0) {
       // Timeout
-      return lldb_private::Status(ETIMEDOUT, lldb::eErrorTypePOSIX,
-                                  "timed out");
+      error.SetError(ETIMEDOUT, lldb::eErrorTypePOSIX);
+      error.SetErrorString("timed out");
+      return error;
     } else {
       // One or more descriptors were set, update the FDInfo::select_is_set
       // mask so users can ask the SelectHelper class so clients can call one

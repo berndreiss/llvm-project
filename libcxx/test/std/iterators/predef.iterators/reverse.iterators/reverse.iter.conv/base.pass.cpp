@@ -18,28 +18,20 @@
 #include "test_macros.h"
 #include "test_iterators.h"
 
-template <class Iter>
-TEST_CONSTEXPR_CXX17 void test() {
-  int i = 0;
-  Iter iter(&i);
-  std::reverse_iterator<Iter> const reverse(iter);
-  typename std::reverse_iterator<Iter>::iterator_type base = reverse.base();
-  assert(base == Iter(&i));
-}
-
-TEST_CONSTEXPR_CXX17 bool tests() {
-  test<bidirectional_iterator<int*> >();
-  test<random_access_iterator<int*> >();
-#if TEST_STD_VER >= 20
-  test<cpp20_random_access_iterator<int*>>();
-#endif
-  return true;
+TEST_CONSTEXPR_CXX17 bool test() {
+    typedef bidirectional_iterator<int*> Iter;
+    int i = 0;
+    Iter iter(&i);
+    std::reverse_iterator<Iter> const reverse(iter);
+    std::reverse_iterator<Iter>::iterator_type base = reverse.base();
+    assert(base == Iter(&i));
+    return true;
 }
 
 int main(int, char**) {
-  tests();
+    test();
 #if TEST_STD_VER > 14
-  static_assert(tests(), "");
+    static_assert(test(), "");
 #endif
-  return 0;
+    return 0;
 }

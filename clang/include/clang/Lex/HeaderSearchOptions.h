@@ -35,6 +35,9 @@ enum IncludeDirGroup {
   /// Paths for '\#include <>' added by '-I'.
   Angled,
 
+  /// Like Angled, but marks header maps used when building frameworks.
+  IndexHeaderMap,
+
   /// Like Angled, but marks system directories.
   System,
 
@@ -267,12 +270,6 @@ public:
   LLVM_PREFERRED_TYPE(bool)
   unsigned ModulesIncludeVFSUsage : 1;
 
-  /// Whether we should look for a module in module maps only in provided
-  /// header search paths or if we are allowed to look for module maps in
-  /// subdirectories of provided paths too.
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned AllowModuleMapSubdirectorySearch : 1;
-
   HeaderSearchOptions(StringRef _Sysroot = "/")
       : Sysroot(_Sysroot), ModuleFormat("raw"), DisableModuleHash(false),
         ImplicitModuleMaps(false), ModuleMapFileHomeIsCwd(false),
@@ -288,8 +285,7 @@ public:
         ModulesSkipHeaderSearchPaths(false),
         ModulesSkipPragmaDiagnosticMappings(false),
         ModulesPruneNonAffectingModuleMaps(true), ModulesHashContent(false),
-        ModulesStrictContextHash(false), ModulesIncludeVFSUsage(false),
-        AllowModuleMapSubdirectorySearch(true) {}
+        ModulesStrictContextHash(false), ModulesIncludeVFSUsage(false) {}
 
   /// AddPath - Add the \p Path path to the specified \p Group list.
   void AddPath(StringRef Path, frontend::IncludeDirGroup Group,

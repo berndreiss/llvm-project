@@ -3,6 +3,7 @@ add_llvm_component_library(LLVMLTO
   LTOBackend.cpp
   LTOModule.cpp
   LTOCodeGenerator.cpp
+  SummaryBasedOptimizations.cpp
   UpdateCompilerUsed.cpp
   ThinLTOCodeGenerator.cpp
 
@@ -21,7 +22,6 @@ add_llvm_component_library(LLVMLTO
   BinaryFormat
   BitReader
   BitWriter
-  CGData
   CodeGen
   CodeGenTypes
   Core

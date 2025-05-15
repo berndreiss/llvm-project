@@ -1,9 +1,8 @@
 ; Make sure that absolute source dir is detected correctly regardless of the platform.
 
 ; On powerpc llvm-nm describes win_func as a global variable, not a function. It breaks the test.
-; On PlayStation, (pre-relocated) .debug_aranges cause symbolization to fail, also breaking the test.
-; These are not essential to DWARF path handling code we're testing here.
-; UNSUPPORTED: target=powerpc{{.*}}, target=x86_64-{{.*-ps[45]}}
+; It is not essential to DWARF path handling code we're testing here.
+; UNSUPPORTED: target=powerpc{{.*}}
 ; REQUIRES: object-emission
 ; RUN: %llc_dwarf -O0 -filetype=obj -o %t < %s
 ; RUN: llvm-nm --radix=o %t | grep posix_absolute_func > %t.posix_absolute_func

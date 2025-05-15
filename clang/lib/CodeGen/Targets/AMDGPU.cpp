@@ -9,7 +9,6 @@
 #include "ABIInfoImpl.h"
 #include "TargetInfo.h"
 #include "clang/Basic/TargetOptions.h"
-#include "llvm/Support/AMDGPUAddrSpace.h"
 
 using namespace clang;
 using namespace clang::CodeGen;
@@ -312,9 +311,6 @@ public:
                                          SyncScope Scope,
                                          llvm::AtomicOrdering Ordering,
                                          llvm::LLVMContext &Ctx) const override;
-  void setTargetAtomicMetadata(CodeGenFunction &CGF,
-                               llvm::Instruction &AtomicInst,
-                               const AtomicExpr *Expr = nullptr) const override;
   llvm::Value *createEnqueuedBlockKernel(CodeGenFunction &CGF,
                                          llvm::Function *BlockInvokeFunc,
                                          llvm::Type *BlockTy) const override;
@@ -454,6 +450,9 @@ void AMDGPUTargetCodeGenInfo::setTargetAttributes(
   if (FD)
     setFunctionDeclAttributes(FD, F, M);
 
+  if (M.getContext().getTargetInfo().allowAMDGPUUnsafeFPAtomics())
+    F->addFnAttr("amdgpu-unsafe-fp-atomics", "true");
+
   if (!getABIInfo().getCodeGenOpts().EmitIEEENaNCompliantInsts)
     F->addFnAttr("amdgpu-ieee", "false");
 }
@@ -545,43 +544,6 @@ AMDGPUTargetCodeGenInfo::getLLVMSyncScopeID(const LangOptions &LangOpts,
   }
 
   return Ctx.getOrInsertSyncScopeID(Name);
-}
-
-void AMDGPUTargetCodeGenInfo::setTargetAtomicMetadata(
-    CodeGenFunction &CGF, llvm::Instruction &AtomicInst,
-    const AtomicExpr *AE) const {
-  auto *RMW = dyn_cast<llvm::AtomicRMWInst>(&AtomicInst);
-  auto *CmpX = dyn_cast<llvm::AtomicCmpXchgInst>(&AtomicInst);
-
-  // OpenCL and old style HIP atomics consider atomics targeting thread private
-  // memory to be undefined.
-  //
-  // TODO: This is probably undefined for atomic load/store, but there's not
-  // much direct codegen benefit to knowing this.
-  if (((RMW && RMW->getPointerAddressSpace() == llvm::AMDGPUAS::FLAT_ADDRESS) ||
-       (CmpX &&
-        CmpX->getPointerAddressSpace() == llvm::AMDGPUAS::FLAT_ADDRESS)) &&
-      AE && AE->threadPrivateMemoryAtomicsAreUndefined()) {
-    llvm::MDBuilder MDHelper(CGF.getLLVMContext());
-    llvm::MDNode *ASRange = MDHelper.createRange(
-        llvm::APInt(32, llvm::AMDGPUAS::PRIVATE_ADDRESS),
-        llvm::APInt(32, llvm::AMDGPUAS::PRIVATE_ADDRESS + 1));
-    AtomicInst.setMetadata(llvm::LLVMContext::MD_noalias_addrspace, ASRange);
-  }
-
-  if (!RMW || !CGF.getTarget().allowAMDGPUUnsafeFPAtomics())
-    return;
-
-  // TODO: Introduce new, more controlled options that also work for integers,
-  // and deprecate allowAMDGPUUnsafeFPAtomics.
-  llvm::AtomicRMWInst::BinOp RMWOp = RMW->getOperation();
-  if (llvm::AtomicRMWInst::isFPOperation(RMWOp)) {
-    llvm::MDNode *Empty = llvm::MDNode::get(CGF.getLLVMContext(), {});
-    RMW->setMetadata("amdgpu.no.fine.grained.memory", Empty);
-
-    if (RMWOp == llvm::AtomicRMWInst::FAdd && RMW->getType()->isFloatTy())
-      RMW->setMetadata("amdgpu.ignore.denormal.mode", Empty);
-  }
 }
 
 bool AMDGPUTargetCodeGenInfo::shouldEmitStaticExternCAliases() const {

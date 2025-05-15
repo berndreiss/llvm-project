@@ -48,7 +48,6 @@ public:
   std::unique_ptr<FunctionLoweringInfo> FuncInfo;
   SwiftErrorValueTracking *SwiftError;
   MachineFunction *MF;
-  MachineModuleInfo *MMI;
   MachineRegisterInfo *RegInfo;
   SelectionDAG *CurDAG;
   std::unique_ptr<SelectionDAGBuilder> SDB;
@@ -56,7 +55,7 @@ public:
   AssumptionCache *AC = nullptr;
   GCFunctionInfo *GFI = nullptr;
   SSPLayoutInfo *SP = nullptr;
-#if !defined(NDEBUG) && LLVM_ENABLE_ABI_BREAKING_CHECKS
+#if LLVM_ENABLE_ABI_BREAKING_CHECKS
   TargetTransformInfo *TTI = nullptr;
 #endif
   CodeGenOptLevel OptLevel;
@@ -463,7 +462,6 @@ private:
   void Select_READ_REGISTER(SDNode *Op);
   void Select_WRITE_REGISTER(SDNode *Op);
   void Select_UNDEF(SDNode *N);
-  void Select_FAKE_USE(SDNode *N);
   void CannotYetSelect(SDNode *N);
 
   void Select_FREEZE(SDNode *N);
@@ -551,7 +549,6 @@ protected:
 public:
   PreservedAnalyses run(MachineFunction &MF,
                         MachineFunctionAnalysisManager &MFAM);
-  static bool isRequired() { return true; }
 };
 }
 

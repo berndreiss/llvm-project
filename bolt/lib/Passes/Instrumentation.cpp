@@ -109,8 +109,9 @@ static bool hasAArch64ExclusiveMemop(
     BinaryBasicBlock *BB = BBQueue.front().first;
     bool IsLoad = BBQueue.front().second;
     BBQueue.pop();
-    if (!Visited.insert(BB).second)
+    if (Visited.find(BB) != Visited.end())
       continue;
+    Visited.insert(BB);
 
     for (const MCInst &Inst : *BB) {
       // Two loads one after another - skip whole function
@@ -125,7 +126,8 @@ static bool hasAArch64ExclusiveMemop(
       if (BC.MIB->isAArch64ExclusiveLoad(Inst))
         IsLoad = true;
 
-      if (IsLoad && BBToSkip.insert(BB).second) {
+      if (IsLoad && BBToSkip.find(BB) == BBToSkip.end()) {
+        BBToSkip.insert(BB);
         if (opts::Verbosity >= 2) {
           outs() << "BOLT-INSTRUMENTER: skip BB " << BB->getName()
                  << " due to exclusive instruction in function "

@@ -460,19 +460,15 @@ private:
 // and specialized for each distinct set of type parameter values.
 class DerivedTypeDetails {
 public:
-  const SymbolVector &paramNameOrder() const { return paramNameOrder_; }
-  const SymbolVector &paramDeclOrder() const { return paramDeclOrder_; }
+  const std::list<SourceName> &paramNames() const { return paramNames_; }
+  const SymbolVector &paramDecls() const { return paramDecls_; }
   bool sequence() const { return sequence_; }
   bool isDECStructure() const { return isDECStructure_; }
   std::map<SourceName, SymbolRef> &finals() { return finals_; }
   const std::map<SourceName, SymbolRef> &finals() const { return finals_; }
   bool isForwardReferenced() const { return isForwardReferenced_; }
-  void add_paramNameOrder(const Symbol &symbol) {
-    paramNameOrder_.push_back(symbol);
-  }
-  void add_paramDeclOrder(const Symbol &symbol) {
-    paramDeclOrder_.push_back(symbol);
-  }
+  void add_paramName(const SourceName &name) { paramNames_.push_back(name); }
+  void add_paramDecl(const Symbol &symbol) { paramDecls_.push_back(symbol); }
   void add_component(const Symbol &);
   void set_sequence(bool x = true) { sequence_ = x; }
   void set_isDECStructure(bool x = true) { isDECStructure_ = x; }
@@ -495,12 +491,12 @@ public:
   const Symbol *GetFinalForRank(int) const;
 
 private:
-  // These are (1) the symbols of the derived type parameters in the order
+  // These are (1) the names of the derived type parameters in the order
   // in which they appear on the type definition statement(s), and (2) the
   // symbols that correspond to those names in the order in which their
   // declarations appear in the derived type definition(s).
-  SymbolVector paramNameOrder_;
-  SymbolVector paramDeclOrder_;
+  std::list<SourceName> paramNames_;
+  SymbolVector paramDecls_;
   // These are the names of the derived type's components in component
   // order.  A parent component, if any, appears first in this list.
   std::list<SourceName> componentNames_;
@@ -569,19 +565,18 @@ private:
 
 class TypeParamDetails {
 public:
-  TypeParamDetails() = default;
+  explicit TypeParamDetails(common::TypeParamAttr attr) : attr_{attr} {}
   TypeParamDetails(const TypeParamDetails &) = default;
-  std::optional<common::TypeParamAttr> attr() const { return attr_; }
-  TypeParamDetails &set_attr(common::TypeParamAttr);
+  common::TypeParamAttr attr() const { return attr_; }
   MaybeIntExpr &init() { return init_; }
   const MaybeIntExpr &init() const { return init_; }
   void set_init(MaybeIntExpr &&expr) { init_ = std::move(expr); }
   const DeclTypeSpec *type() const { return type_; }
-  TypeParamDetails &set_type(const DeclTypeSpec &);
+  void set_type(const DeclTypeSpec &);
   void ReplaceType(const DeclTypeSpec &);
 
 private:
-  std::optional<common::TypeParamAttr> attr_;
+  common::TypeParamAttr attr_;
   MaybeIntExpr init_;
   const DeclTypeSpec *type_{nullptr};
 };
@@ -755,7 +750,7 @@ public:
       OmpDeclarativeAllocateDirective, OmpExecutableAllocateDirective,
       OmpDeclareSimd, OmpDeclareTarget, OmpThreadprivate, OmpDeclareReduction,
       OmpFlushed, OmpCriticalLock, OmpIfSpecified, OmpNone, OmpPreDetermined,
-      OmpImplicit, OmpDependObject);
+      OmpImplicit);
   using Flags = common::EnumSet<Flag, Flag_enumSize>;
 
   const Scope &owner() const { return *owner_; }
@@ -778,7 +773,7 @@ public:
   void set_offset(std::size_t offset) { offset_ = offset; }
   // Give the symbol a name with a different source location but same chars.
   void ReplaceName(const SourceName &);
-  static std::string OmpFlagToClauseName(Flag ompFlag);
+  std::string OmpFlagToClauseName(Flag ompFlag);
 
   // Does symbol have this type of details?
   template <typename D> bool has() const {

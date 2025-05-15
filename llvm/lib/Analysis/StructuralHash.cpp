@@ -14,40 +14,21 @@
 #include "llvm/Analysis/StructuralHash.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/StructuralHash.h"
-#include "llvm/Support/Format.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
 
 PreservedAnalyses StructuralHashPrinterPass::run(Module &M,
                                                  ModuleAnalysisManager &MAM) {
   OS << "Module Hash: "
-     << format("%016" PRIx64,
-               StructuralHash(M, Options != StructuralHashOptions::None))
+     << Twine::utohexstr(StructuralHash(M, EnableDetailedStructuralHash))
      << "\n";
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
-    if (Options == StructuralHashOptions::CallTargetIgnored) {
-      auto IgnoreOp = [&](const Instruction *I, unsigned OpndIdx) {
-        return I->getOpcode() == Instruction::Call &&
-               isa<Constant>(I->getOperand(OpndIdx));
-      };
-      auto FuncHashInfo = StructuralHashWithDifferences(F, IgnoreOp);
-      OS << "Function " << F.getName()
-         << " Hash: " << format("%016" PRIx64, FuncHashInfo.FunctionHash)
-         << "\n";
-      for (auto &[IndexPair, OpndHash] : *FuncHashInfo.IndexOperandHashMap) {
-        auto [InstIndex, OpndIndex] = IndexPair;
-        OS << "\tIgnored Operand Hash: " << format("%016" PRIx64, OpndHash)
-           << " at (" << InstIndex << "," << OpndIndex << ")\n";
-      }
-    } else {
-      OS << "Function " << F.getName() << " Hash: "
-         << format(
-                "%016" PRIx64,
-                StructuralHash(F, Options == StructuralHashOptions::Detailed))
-         << "\n";
-    }
+    OS << "Function " << F.getName() << " Hash: "
+       << Twine::utohexstr(StructuralHash(F, EnableDetailedStructuralHash))
+       << "\n";
   }
   return PreservedAnalyses::all();
 }

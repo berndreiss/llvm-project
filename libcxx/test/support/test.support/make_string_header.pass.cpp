@@ -1,5 +1,4 @@
 //===----------------------------------------------------------------------===//
-//
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
@@ -31,7 +30,7 @@ int main(int, char**) {
     ==  L" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN"
              "OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
 #endif
-#if _LIBCPP_HAS_CHAR8_T
+#ifndef _LIBCPP_HAS_NO_CHAR8_T
   assert(MAKE_STRING(char8_t,
          " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN"
              "OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")

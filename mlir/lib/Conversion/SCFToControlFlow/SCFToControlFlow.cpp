@@ -15,7 +15,6 @@
 
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/SCF/Transforms/Transforms.h"
 #include "mlir/IR/Builders.h"
@@ -371,18 +370,9 @@ LogicalResult ForLowering::matchAndRewrite(ForOp forOp,
   auto comparison = rewriter.create<arith::CmpIOp>(
       loc, arith::CmpIPredicate::slt, iv, upperBound);
 
-  auto condBranchOp = rewriter.create<cf::CondBranchOp>(
-      loc, comparison, firstBodyBlock, ArrayRef<Value>(), endBlock,
-      ArrayRef<Value>());
-
-  // Let the CondBranchOp carry the LLVM attributes from the ForOp, such as the
-  // llvm.loop_annotation attribute.
-  SmallVector<NamedAttribute> llvmAttrs;
-  llvm::copy_if(forOp->getAttrs(), std::back_inserter(llvmAttrs),
-                [](auto attr) {
-                  return isa<LLVM::LLVMDialect>(attr.getValue().getDialect());
-                });
-  condBranchOp->setDiscardableAttrs(llvmAttrs);
+  rewriter.create<cf::CondBranchOp>(loc, comparison, firstBodyBlock,
+                                    ArrayRef<Value>(), endBlock,
+                                    ArrayRef<Value>());
   // The result of the loop operation is the values of the condition block
   // arguments except the induction variable on the last iteration.
   rewriter.replaceOp(forOp, conditionBlock->getArguments().drop_front());
@@ -482,10 +472,7 @@ LogicalResult
 ParallelLowering::matchAndRewrite(ParallelOp parallelOp,
                                   PatternRewriter &rewriter) const {
   Location loc = parallelOp.getLoc();
-  auto reductionOp = dyn_cast<ReduceOp>(parallelOp.getBody()->getTerminator());
-  if (!reductionOp) {
-    return failure();
-  }
+  auto reductionOp = cast<ReduceOp>(parallelOp.getBody()->getTerminator());
 
   // For a parallel loop, we essentially need to create an n-dimensional loop
   // nest. We do this by translating to scf.for ops and have those lowered in

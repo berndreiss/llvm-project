@@ -33,7 +33,8 @@ define float @fneg(float %a) nounwind {
 ;
 ; RV32IZFINX-LABEL: fneg:
 ; RV32IZFINX:       # %bb.0:
-; RV32IZFINX-NEXT:    fneg.s a0, a0
+; RV32IZFINX-NEXT:    lui a1, 524288
+; RV32IZFINX-NEXT:    xor a0, a0, a1
 ; RV32IZFINX-NEXT:    ret
 ;
 ; RV64I-LABEL: fneg:
@@ -50,7 +51,8 @@ define float @fneg(float %a) nounwind {
 ;
 ; RV64IZFINX-LABEL: fneg:
 ; RV64IZFINX:       # %bb.0:
-; RV64IZFINX-NEXT:    fneg.s a0, a0
+; RV64IZFINX-NEXT:    lui a1, 524288
+; RV64IZFINX-NEXT:    xor a0, a0, a1
 ; RV64IZFINX-NEXT:    ret
   %1 = fneg float %a
   ret float %1
@@ -73,7 +75,8 @@ define float @fabs(float %a) nounwind {
 ;
 ; RV32IZFINX-LABEL: fabs:
 ; RV32IZFINX:       # %bb.0:
-; RV32IZFINX-NEXT:    fabs.s a0, a0
+; RV32IZFINX-NEXT:    slli a0, a0, 1
+; RV32IZFINX-NEXT:    srli a0, a0, 1
 ; RV32IZFINX-NEXT:    ret
 ;
 ; RV64I-LABEL: fabs:
@@ -90,7 +93,8 @@ define float @fabs(float %a) nounwind {
 ;
 ; RV64IZFINX-LABEL: fabs:
 ; RV64IZFINX:       # %bb.0:
-; RV64IZFINX-NEXT:    fabs.s a0, a0
+; RV64IZFINX-NEXT:    slli a0, a0, 33
+; RV64IZFINX-NEXT:    srli a0, a0, 33
 ; RV64IZFINX-NEXT:    ret
   %1 = call float @llvm.fabs.f32(float %a)
   ret float %1
@@ -124,7 +128,8 @@ define float @fcopysign_fneg(float %a, float %b) nounwind {
 ;
 ; RV32IZFINX-LABEL: fcopysign_fneg:
 ; RV32IZFINX:       # %bb.0:
-; RV32IZFINX-NEXT:    fsgnjn.s a0, a0, a1
+; RV32IZFINX-NEXT:    not a1, a1
+; RV32IZFINX-NEXT:    fsgnj.s a0, a0, a1
 ; RV32IZFINX-NEXT:    ret
 ;
 ; RV64I-LABEL: fcopysign_fneg:

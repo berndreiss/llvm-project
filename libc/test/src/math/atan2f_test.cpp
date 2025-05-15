@@ -73,18 +73,18 @@ TEST_F(LlvmLibcAtan2fTest, InFloatRange) {
 
     for (uint32_t i = 0, v = X_START; i <= X_COUNT; ++i, v += X_STEP) {
       float x = FPBits(v).get_val();
-      if (FPBits(v).is_nan() || FPBits(v).is_inf() || x < 0.0)
+      if (isnan(x) || isinf(x) || x < 0.0)
         continue;
 
       for (uint32_t j = 0, w = Y_START; j <= Y_COUNT; ++j, w += Y_STEP) {
         float y = FPBits(w).get_val();
-        if (FPBits(w).is_nan() || FPBits(w).is_inf())
+        if (isnan(y) || isinf(y))
           continue;
 
         LIBC_NAMESPACE::libc_errno = 0;
         float result = LIBC_NAMESPACE::atan2f(x, y);
         ++total_count;
-        if (FPBits(result).is_nan() || FPBits(result).is_inf())
+        if (isnan(result) || isinf(result))
           continue;
 
         ++finite_count;

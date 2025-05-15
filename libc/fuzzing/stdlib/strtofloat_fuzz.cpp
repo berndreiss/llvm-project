@@ -118,10 +118,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
       __builtin_trap();
     // If any result is NaN, all of them should be NaN. We can't use the usual
     // comparisons because NaN != NaN.
-    if (FPBits<float>(float_result).is_nan() !=
-        FPBits<float>(strtof_result).is_nan())
+    if (isnan(float_result) ^ isnan(strtof_result))
       __builtin_trap();
-    if (!FPBits<float>(float_result).is_nan() && float_result != strtof_result)
+    if (!isnan(float_result) && float_result != strtof_result)
       __builtin_trap();
     mpfr_clear(mpfr_float);
   }
@@ -137,12 +136,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     ptrdiff_t strtod_strlen = out_ptr - str_ptr;
     if (result_strlen != strtod_strlen)
       __builtin_trap();
-    if (FPBits<double>(double_result).is_nan() !=
-            FPBits<double>(strtod_result).is_nan() ||
-        FPBits<double>(double_result).is_nan() !=
-            FPBits<double>(atof_result).is_nan())
+    if (isnan(double_result) ^ isnan(strtod_result) ||
+        isnan(double_result) ^ isnan(atof_result))
       __builtin_trap();
-    if (!FPBits<double>(double_result).is_nan() &&
+    if (!isnan(double_result) &&
         (double_result != strtod_result || double_result != atof_result))
       __builtin_trap();
     mpfr_clear(mpfr_double);
@@ -159,11 +156,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     ptrdiff_t strtold_strlen = out_ptr - str_ptr;
     if (result_strlen != strtold_strlen)
       __builtin_trap();
-    if (FPBits<long double>(long_double_result).is_nan() ^
-        FPBits<long double>(strtold_result).is_nan())
+    if (isnan(long_double_result) ^ isnan(strtold_result))
       __builtin_trap();
-    if (!FPBits<long double>(long_double_result).is_nan() &&
-        long_double_result != strtold_result)
+    if (!isnan(long_double_result) && long_double_result != strtold_result)
       __builtin_trap();
     mpfr_clear(mpfr_long_double);
   }

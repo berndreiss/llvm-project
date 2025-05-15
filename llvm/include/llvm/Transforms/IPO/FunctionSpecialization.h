@@ -64,13 +64,6 @@
 // - Perhaps a post-inlining function specialization pass could be more
 //   aggressive on literal constants.
 //
-// Limitations:
-// ------------
-// - We are unable to consider specializations of functions called from indirect
-//   callsites whose pointer operand has a lattice value that is known to be
-//   constant, either from IPSCCP or previous iterations of FuncSpec. This is
-//   because SCCP has not yet replaced the uses of the known constant.
-//
 // References:
 // -----------
 // 2021 LLVM Dev Mtg “Introducing function specialisation, and can we enable
@@ -138,24 +131,52 @@ struct Spec {
   // Profitability of the specialization.
   unsigned Score;
 
-  // Number of instructions in the specialization.
-  unsigned CodeSize;
-
   // List of call sites, matching this specialization.
   SmallVector<CallBase *> CallSites;
 
-  Spec(Function *F, const SpecSig &S, unsigned Score, unsigned CodeSize)
-      : F(F), Sig(S), Score(Score), CodeSize(CodeSize) {}
-  Spec(Function *F, const SpecSig &&S, unsigned Score, unsigned CodeSize)
-      : F(F), Sig(S), Score(Score), CodeSize(CodeSize) {}
+  Spec(Function *F, const SpecSig &S, unsigned Score)
+      : F(F), Sig(S), Score(Score) {}
+  Spec(Function *F, const SpecSig &&S, unsigned Score)
+      : F(F), Sig(S), Score(Score) {}
+};
+
+struct Bonus {
+  unsigned CodeSize = 0;
+  unsigned Latency = 0;
+
+  Bonus() = default;
+
+  Bonus(Cost CodeSize, Cost Latency) {
+    int64_t Sz = *CodeSize.getValue();
+    int64_t Ltc = *Latency.getValue();
+
+    assert(Sz >= 0 && Ltc >= 0 && "CodeSize and Latency cannot be negative");
+    // It is safe to down cast since we know the arguments
+    // cannot be negative and Cost is of type int64_t.
+    this->CodeSize = static_cast<unsigned>(Sz);
+    this->Latency = static_cast<unsigned>(Ltc);
+  }
+
+  Bonus &operator+=(const Bonus RHS) {
+    CodeSize += RHS.CodeSize;
+    Latency += RHS.Latency;
+    return *this;
+  }
+
+  Bonus operator+(const Bonus RHS) const {
+    return Bonus(CodeSize + RHS.CodeSize, Latency + RHS.Latency);
+  }
+
+  bool operator==(const Bonus RHS) const {
+    return CodeSize == RHS.CodeSize && Latency == RHS.Latency;
+  }
 };
 
 class InstCostVisitor : public InstVisitor<InstCostVisitor, Constant *> {
-  std::function<BlockFrequencyInfo &(Function &)> GetBFI;
-  Function *F;
   const DataLayout &DL;
+  BlockFrequencyInfo &BFI;
   TargetTransformInfo &TTI;
-  const SCCPSolver &Solver;
+  SCCPSolver &Solver;
 
   ConstMap KnownConstants;
   // Basic blocks known to be unreachable after constant propagation.
@@ -171,30 +192,26 @@ class InstCostVisitor : public InstVisitor<InstCostVisitor, Constant *> {
   ConstMap::iterator LastVisited;
 
 public:
-  InstCostVisitor(std::function<BlockFrequencyInfo &(Function &)> GetBFI,
-                  Function *F, const DataLayout &DL, TargetTransformInfo &TTI,
-                  SCCPSolver &Solver)
-      : GetBFI(GetBFI), F(F), DL(DL), TTI(TTI), Solver(Solver) {}
+  InstCostVisitor(const DataLayout &DL, BlockFrequencyInfo &BFI,
+                  TargetTransformInfo &TTI, SCCPSolver &Solver)
+      : DL(DL), BFI(BFI), TTI(TTI), Solver(Solver) {}
 
-  bool isBlockExecutable(BasicBlock *BB) const {
+  bool isBlockExecutable(BasicBlock *BB) {
     return Solver.isBlockExecutable(BB) && !DeadBlocks.contains(BB);
   }
 
-  Cost getCodeSizeSavingsForArg(Argument *A, Constant *C);
+  Bonus getSpecializationBonus(Argument *A, Constant *C);
 
-  Cost getCodeSizeSavingsFromPendingPHIs();
-
-  Cost getLatencySavingsForKnownConstants();
+  Bonus getBonusFromPendingPHIs();
 
 private:
   friend class InstVisitor<InstCostVisitor, Constant *>;
 
-  Constant *findConstantFor(Value *V) const;
+  static bool canEliminateSuccessor(BasicBlock *BB, BasicBlock *Succ,
+                                    DenseSet<BasicBlock *> &DeadBlocks);
 
-  bool canEliminateSuccessor(BasicBlock *BB, BasicBlock *Succ) const;
-
-  Cost getCodeSizeSavingsForUser(Instruction *User, Value *Use = nullptr,
-                                 Constant *C = nullptr);
+  Bonus getUserBonus(Instruction *User, Value *Use = nullptr,
+                     Constant *C = nullptr);
 
   Cost estimateBasicBlocks(SmallVectorImpl<BasicBlock *> &WorkList);
   Cost estimateSwitchInst(SwitchInst &I);
@@ -266,8 +283,9 @@ public:
   bool run();
 
   InstCostVisitor getInstCostVisitorFor(Function *F) {
+    auto &BFI = GetBFI(*F);
     auto &TTI = GetTTI(*F);
-    return InstCostVisitor(GetBFI, F, M.getDataLayout(), TTI, Solver);
+    return InstCostVisitor(M.getDataLayout(), BFI, TTI, Solver);
   }
 
 private:

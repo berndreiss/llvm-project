@@ -98,9 +98,7 @@ export namespace std {
 
   using std::is_nothrow_destructible;
 
-#if _LIBCPP_STD_VER >= 23 && __has_builtin(__builtin_is_implicit_lifetime)
-  using std::is_implicit_lifetime;
-#endif
+  //  using std::is_implicit_lifetime;
 
   using std::has_virtual_destructor;
 
@@ -116,9 +114,6 @@ export namespace std {
 
   // [meta.rel], type relations
   using std::is_base_of;
-#if _LIBCPP_STD_VER >= 26 && __has_builtin(__builtin_is_virtual_base_of)
-  using std::is_virtual_base_of;
-#endif
   using std::is_convertible;
   // using std::is_layout_compatible;
   using std::is_nothrow_convertible;
@@ -248,9 +243,7 @@ export namespace std {
   using std::is_destructible_v;
   using std::is_empty_v;
   using std::is_final_v;
-#if _LIBCPP_STD_VER >= 23 && __has_builtin(__builtin_is_implicit_lifetime)
-  using std::is_implicit_lifetime_v;
-#endif
+  // using std::is_implicit_lifetime_v;
   using std::is_move_assignable_v;
   using std::is_move_constructible_v;
   using std::is_nothrow_assignable_v;
@@ -294,9 +287,6 @@ export namespace std {
 
   // [meta.rel], type relations
   using std::is_base_of_v;
-#if _LIBCPP_STD_VER >= 26 && __has_builtin(__builtin_is_virtual_base_of)
-  using std::is_virtual_base_of_v;
-#endif
   using std::is_convertible_v;
   using std::is_invocable_r_v;
   using std::is_invocable_v;

@@ -32,6 +32,7 @@ public:
   Status CreateNew(bool child_process_inherit) override;
 
   // Create a named pipe.
+  Status CreateNewNamed(bool child_process_inherit);
   Status CreateNew(llvm::StringRef name, bool child_process_inherit) override;
   Status CreateWithUniqueName(llvm::StringRef prefix,
                               bool child_process_inherit,
@@ -59,9 +60,7 @@ public:
 
   Status Delete(llvm::StringRef name) override;
 
-  Status WriteWithTimeout(const void *buf, size_t size,
-                          const std::chrono::microseconds &timeout,
-                          size_t &bytes_written) override;
+  Status Write(const void *buf, size_t size, size_t &bytes_written) override;
   Status ReadWithTimeout(void *buf, size_t size,
                          const std::chrono::microseconds &timeout,
                          size_t &bytes_read) override;

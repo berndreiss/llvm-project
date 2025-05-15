@@ -87,8 +87,10 @@ private:
 };
 
 struct Chunk {
-  Chunk(ArrayRef<FormatToken *> Tokens) : Tokens(Tokens) {}
-  Chunk(ArrayRef<UnwrappedLine> Children) : Children(Children) {}
+  Chunk(ArrayRef<FormatToken *> Tokens)
+      : Tokens(Tokens.begin(), Tokens.end()) {}
+  Chunk(ArrayRef<UnwrappedLine> Children)
+      : Children(Children.begin(), Children.end()) {}
   SmallVector<UnwrappedLineNode, 1> Tokens;
   SmallVector<UnwrappedLine, 0> Children;
 };

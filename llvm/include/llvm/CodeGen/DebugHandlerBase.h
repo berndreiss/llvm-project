@@ -74,7 +74,7 @@ protected:
 
   /// This location indicates end of function prologue and beginning of
   /// function body.
-  const MachineInstr *PrologEndLoc;
+  DebugLoc PrologEndLoc;
 
   /// This block includes epilogue instructions.
   const MachineBasicBlock *EpilogBeginBlock = nullptr;
@@ -136,8 +136,6 @@ public:
 
   void beginBasicBlockSection(const MachineBasicBlock &MBB);
   void endBasicBlockSection(const MachineBasicBlock &MBB);
-
-  virtual void beginCodeAlignment(const MachineBasicBlock &MBB) {}
 
   /// Return Label preceding the instruction.
   MCSymbol *getLabelBeforeInsn(const MachineInstr *MI);

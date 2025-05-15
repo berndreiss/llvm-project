@@ -80,13 +80,9 @@ unsigned getNumberOfDesignated(const InitListExpr *SyntacticInitList) {
   });
 }
 
-AST_MATCHER(CXXRecordDecl, isAggregate) {
-  return Node.hasDefinition() && Node.isAggregate();
-}
+AST_MATCHER(CXXRecordDecl, isAggregate) { return Node.isAggregate(); }
 
-AST_MATCHER(CXXRecordDecl, isPOD) {
-  return Node.hasDefinition() && Node.isPOD();
-}
+AST_MATCHER(CXXRecordDecl, isPOD) { return Node.isPOD(); }
 
 AST_MATCHER(InitListExpr, isFullyDesignated) {
   if (const InitListExpr *SyntacticForm =

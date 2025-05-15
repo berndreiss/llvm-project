@@ -1,5 +1,5 @@
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+#include "../clcmacro.h"
 
 _CLC_OVERLOAD _CLC_DEF char clz(char x) {
   return clz((ushort)(uchar)x) - 8;

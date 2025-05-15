@@ -5,6 +5,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: no-threads
 
 // <mutex>
 
@@ -12,26 +14,21 @@
 
 // mutex_type *mutex() const;
 
-#include <cassert>
-#include <memory>
 #include <mutex>
+#include <cassert>
 
-#include "checking_mutex.h"
 #include "test_macros.h"
 
-#if TEST_STD_VER >= 11
-static_assert(noexcept(std::declval<std::unique_lock<checking_mutex>&>().mutex()), "");
-#endif
+std::mutex m;
 
-int main(int, char**) {
-  checking_mutex mux;
-  const std::unique_lock<checking_mutex> lock0; // Make sure `mutex()` is `const`
-  static_assert(std::is_same<decltype(lock0.mutex()), checking_mutex*>::value, "");
-  assert(lock0.mutex() == nullptr);
-  std::unique_lock<checking_mutex> lock1(mux);
-  assert(lock1.mutex() == std::addressof(mux));
-  lock1.unlock();
-  assert(lock1.mutex() == std::addressof(mux));
+int main(int, char**)
+{
+    std::unique_lock<std::mutex> lk0;
+    assert(lk0.mutex() == nullptr);
+    std::unique_lock<std::mutex> lk1(m);
+    assert(lk1.mutex() == &m);
+    lk1.unlock();
+    assert(lk1.mutex() == &m);
 
   return 0;
 }

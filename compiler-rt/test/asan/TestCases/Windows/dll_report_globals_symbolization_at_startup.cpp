@@ -10,8 +10,9 @@
 #include <windows.h>
 #include <stdio.h>
 
+extern "C" {
 #if defined(EXE)
-extern "C" __declspec(dllimport) int foo_from_dll();
+__declspec(dllimport) int foo_from_dll();
 
 // CHECK: in DLL(reason=1)
 int main(int argc, char **argv) {
@@ -22,7 +23,6 @@ int main(int argc, char **argv) {
 // CHECK: in DLL(reason=0)
 }
 #elif defined(DLL)
-extern "C" {
 // This global is registered at startup.
 int x[42];
 
@@ -35,7 +35,7 @@ BOOL WINAPI DllMain(HMODULE, DWORD reason, LPVOID) {
   fflush(0);
   return TRUE;
 }
-}
 #else
 # error oops!
 #endif
+}

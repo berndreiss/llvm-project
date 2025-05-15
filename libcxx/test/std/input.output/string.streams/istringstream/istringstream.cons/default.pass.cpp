@@ -19,7 +19,6 @@
 #include <cassert>
 
 #include "test_macros.h"
-#include "operator_hijacker.h"
 #if TEST_STD_VER >= 11
 #include "test_convertible.h"
 
@@ -34,53 +33,28 @@ int main(int, char**)
 {
     {
         std::istringstream ss;
-        assert(ss.rdbuf() != nullptr);
+        assert(ss.rdbuf() != 0);
         assert(ss.good());
         assert(ss.str() == "");
-    }
-    {
-      std::basic_istringstream<char, std::char_traits<char>, operator_hijacker_allocator<char> > ss;
-      assert(ss.rdbuf() != nullptr);
-      assert(ss.good());
-      assert(ss.str() == "");
     }
     {
         std::istringstream ss(std::ios_base::in);
-        assert(ss.rdbuf() != nullptr);
+        assert(ss.rdbuf() != 0);
         assert(ss.good());
         assert(ss.str() == "");
-    }
-    {
-      std::basic_istringstream<char, std::char_traits<char>, operator_hijacker_allocator<char> > ss(std::ios_base::in);
-      assert(ss.rdbuf() != nullptr);
-      assert(ss.good());
-      assert(ss.str() == "");
     }
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
     {
         std::wistringstream ss;
-        assert(ss.rdbuf() != nullptr);
+        assert(ss.rdbuf() != 0);
         assert(ss.good());
         assert(ss.str() == L"");
     }
     {
         std::wistringstream ss(std::ios_base::in);
-        assert(ss.rdbuf() != nullptr);
+        assert(ss.rdbuf() != 0);
         assert(ss.good());
         assert(ss.str() == L"");
-    }
-    {
-      std::basic_istringstream<wchar_t, std::char_traits<wchar_t>, operator_hijacker_allocator<wchar_t> > ss;
-      assert(ss.rdbuf() != nullptr);
-      assert(ss.good());
-      assert(ss.str() == L"");
-    }
-    {
-      std::basic_istringstream<wchar_t, std::char_traits<wchar_t>, operator_hijacker_allocator<wchar_t> > ss(
-          std::ios_base::in);
-      assert(ss.rdbuf() != nullptr);
-      assert(ss.good());
-      assert(ss.str() == L"");
     }
 #endif
 

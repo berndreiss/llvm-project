@@ -29,8 +29,9 @@ public:
     return diag->getKind() == eDiagnosticOriginClang;
   }
 
-  ClangDiagnostic(DiagnosticDetail detail, uint32_t compiler_id)
-      : Diagnostic(eDiagnosticOriginClang, compiler_id, detail) {}
+  ClangDiagnostic(llvm::StringRef message, lldb::Severity severity,
+                  uint32_t compiler_id)
+      : Diagnostic(message, severity, eDiagnosticOriginClang, compiler_id) {}
 
   ~ClangDiagnostic() override = default;
 

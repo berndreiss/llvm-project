@@ -35,7 +35,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __find_end {
+namespace __find_end {
+struct __fn {
   template <forward_iterator _Iter1,
             sentinel_for<_Iter1> _Sent1,
             forward_iterator _Iter2,
@@ -86,9 +87,10 @@ struct __find_end {
     return {__ret.first, __ret.second};
   }
 };
+} // namespace __find_end
 
 inline namespace __cpo {
-inline constexpr auto find_end = __find_end{};
+inline constexpr auto find_end = __find_end::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

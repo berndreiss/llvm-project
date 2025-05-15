@@ -80,8 +80,7 @@ SearchFilterSP SearchFilter::CreateFromStructuredData(
     Status &error) {
   SearchFilterSP result_sp;
   if (!filter_dict.IsValid()) {
-    error = Status::FromErrorString(
-        "Can't deserialize from an invalid data object.");
+    error.SetErrorString("Can't deserialize from an invalid data object.");
     return result_sp;
   }
 
@@ -90,14 +89,13 @@ SearchFilterSP SearchFilter::CreateFromStructuredData(
   bool success = filter_dict.GetValueForKeyAsString(
       GetSerializationSubclassKey(), subclass_name);
   if (!success) {
-    error = Status::FromErrorString("Filter data missing subclass key");
+    error.SetErrorString("Filter data missing subclass key");
     return result_sp;
   }
 
   FilterTy filter_type = NameToFilterTy(subclass_name);
   if (filter_type == UnknownFilter) {
-    error = Status::FromErrorStringWithFormatv("Unknown filter type: {0}.",
-                                               subclass_name);
+    error.SetErrorStringWithFormatv("Unknown filter type: {0}.", subclass_name);
     return result_sp;
   }
 
@@ -105,8 +103,7 @@ SearchFilterSP SearchFilter::CreateFromStructuredData(
   success = filter_dict.GetValueForKeyAsDictionary(
       GetSerializationSubclassOptionsKey(), subclass_options);
   if (!success || !subclass_options || !subclass_options->IsValid()) {
-    error =
-        Status::FromErrorString("Filter data missing subclass options key.");
+    error.SetErrorString("Filter data missing subclass options key.");
     return result_sp;
   }
 
@@ -128,8 +125,7 @@ SearchFilterSP SearchFilter::CreateFromStructuredData(
         target_sp, *subclass_options, error);
     break;
   case Exception:
-    error =
-        Status::FromErrorString("Can't serialize exception breakpoints yet.");
+    error.SetErrorString("Can't serialize exception breakpoints yet.");
     break;
   default:
     llvm_unreachable("Should never get an uresolvable filter type.");
@@ -464,14 +460,13 @@ SearchFilterSP SearchFilterByModule::CreateFromStructuredData(
   bool success = data_dict.GetValueForKeyAsArray(GetKey(OptionNames::ModList),
                                                  modules_array);
   if (!success) {
-    error = Status::FromErrorString(
-        "SFBM::CFSD: Could not find the module list key.");
+    error.SetErrorString("SFBM::CFSD: Could not find the module list key.");
     return nullptr;
   }
 
   size_t num_modules = modules_array->GetSize();
   if (num_modules > 1) {
-    error = Status::FromErrorString(
+    error.SetErrorString(
         "SFBM::CFSD: Only one modules allowed for SearchFilterByModule.");
     return nullptr;
   }
@@ -479,8 +474,7 @@ SearchFilterSP SearchFilterByModule::CreateFromStructuredData(
   std::optional<llvm::StringRef> maybe_module =
       modules_array->GetItemAtIndexAsString(0);
   if (!maybe_module) {
-    error =
-        Status::FromErrorString("SFBM::CFSD: filter module item not a string.");
+    error.SetErrorString("SFBM::CFSD: filter module item not a string.");
     return nullptr;
   }
   FileSpec module_spec(*maybe_module);
@@ -605,7 +599,7 @@ SearchFilterSP SearchFilterByModuleList::CreateFromStructuredData(
     std::optional<llvm::StringRef> maybe_module =
         modules_array->GetItemAtIndexAsString(i);
     if (!maybe_module) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "SFBM::CFSD: filter module item %zu not a string.", i);
       return nullptr;
     }
@@ -653,7 +647,7 @@ lldb::SearchFilterSP SearchFilterByModuleListAndCU::CreateFromStructuredData(
       std::optional<llvm::StringRef> maybe_module =
           modules_array->GetItemAtIndexAsString(i);
       if (!maybe_module) {
-        error = Status::FromErrorStringWithFormat(
+        error.SetErrorStringWithFormat(
             "SFBM::CFSD: filter module item %zu not a string.", i);
         return result_sp;
       }
@@ -665,8 +659,7 @@ lldb::SearchFilterSP SearchFilterByModuleListAndCU::CreateFromStructuredData(
   success =
       data_dict.GetValueForKeyAsArray(GetKey(OptionNames::CUList), cus_array);
   if (!success) {
-    error =
-        Status::FromErrorString("SFBM::CFSD: Could not find the CU list key.");
+    error.SetErrorString("SFBM::CFSD: Could not find the CU list key.");
     return result_sp;
   }
 
@@ -676,7 +669,7 @@ lldb::SearchFilterSP SearchFilterByModuleListAndCU::CreateFromStructuredData(
     std::optional<llvm::StringRef> maybe_cu =
         cus_array->GetItemAtIndexAsString(i);
     if (!maybe_cu) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "SFBM::CFSD: filter CU item %zu not a string.", i);
       return nullptr;
     }

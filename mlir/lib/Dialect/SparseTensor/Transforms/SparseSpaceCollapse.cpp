@@ -141,10 +141,10 @@ void collapseSparseSpace(MutableArrayRef<CollapseSpaceInfo> toCollapse) {
   auto cloned = llvm::cast<IterateOp>(builder.clone(*innermost, mapper));
   builder.setInsertionPointToStart(cloned.getBody());
 
-  I64BitSet crdUsedLvls;
+  LevelSet crdUsedLvls;
   unsigned shift = 0, argIdx = 1;
   for (auto info : toCollapse.drop_back()) {
-    I64BitSet set = info.loop.getCrdUsedLvls();
+    LevelSet set = info.loop.getCrdUsedLvls();
     crdUsedLvls |= set.lshift(shift);
     shift += info.loop.getSpaceDim();
     for (BlockArgument crd : info.loop.getCrds()) {

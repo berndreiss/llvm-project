@@ -1081,7 +1081,7 @@ arith::WideIntEmulationConverter::WideIntEmulationConverter(
     if (width == 2 * maxIntWidth)
       return VectorType::get(2, IntegerType::get(ty.getContext(), maxIntWidth));
 
-    return nullptr;
+    return std::nullopt;
   });
 
   // Vector case.
@@ -1102,7 +1102,7 @@ arith::WideIntEmulationConverter::WideIntEmulationConverter(
                              IntegerType::get(ty.getContext(), maxIntWidth));
     }
 
-    return nullptr;
+    return std::nullopt;
   });
 
   // Function case.
@@ -1111,19 +1111,18 @@ arith::WideIntEmulationConverter::WideIntEmulationConverter(
     //   (i2N, i2N) -> i2N --> (vector<2xiN>, vector<2xiN>) -> vector<2xiN>
     SmallVector<Type> inputs;
     if (failed(convertTypes(ty.getInputs(), inputs)))
-      return nullptr;
+      return std::nullopt;
 
     SmallVector<Type> results;
     if (failed(convertTypes(ty.getResults(), results)))
-      return nullptr;
+      return std::nullopt;
 
     return FunctionType::get(ty.getContext(), inputs, results);
   });
 }
 
 void arith::populateArithWideIntEmulationPatterns(
-    const WideIntEmulationConverter &typeConverter,
-    RewritePatternSet &patterns) {
+    WideIntEmulationConverter &typeConverter, RewritePatternSet &patterns) {
   // Populate `func.*` conversion patterns.
   populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns,
                                                                  typeConverter);

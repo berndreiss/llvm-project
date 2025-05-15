@@ -75,7 +75,7 @@ void RISCVInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   printAnnotation(O, Annot);
 }
 
-void RISCVInstPrinter::printRegName(raw_ostream &O, MCRegister Reg) {
+void RISCVInstPrinter::printRegName(raw_ostream &O, MCRegister Reg) const {
   markup(O, Markup::Register) << getRegisterName(Reg);
 }
 
@@ -265,6 +265,8 @@ void RISCVInstPrinter::printRegReg(const MCInst *MI, unsigned OpNo,
   const MCOperand &MO = MI->getOperand(OpNo);
 
   assert(MO.isReg() && "printRegReg can only print register operands");
+  if (MO.getReg() == RISCV::NoRegister)
+    return;
   printRegName(O, MO.getReg());
 
   O << "(";

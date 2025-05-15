@@ -3,6 +3,7 @@ add_lldb_unittest(LLDBCoreTests
   DiagnosticEventTest.cpp
   DumpDataExtractorTest.cpp
   DumpRegisterInfoTest.cpp
+  FileSpecListTest.cpp
   FormatEntityTest.cpp
   MangledTest.cpp
   ModuleSpecTest.cpp

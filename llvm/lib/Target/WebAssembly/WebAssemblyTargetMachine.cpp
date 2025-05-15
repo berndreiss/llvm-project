@@ -133,10 +133,7 @@ WebAssemblyTargetMachine::WebAssemblyTargetMachine(
   // WebAssembly type-checks instructions, but a noreturn function with a return
   // type that doesn't match the context will cause a check failure. So we lower
   // LLVM 'unreachable' to ISD::TRAP and then lower that to WebAssembly's
-  // 'unreachable' instructions which is meant for that case. Formerly, we also
-  // needed to add checks to SP failure emission in the instruction selection
-  // backends, but this has since been tied to TrapUnreachable and is no longer
-  // necessary.
+  // 'unreachable' instructions which is meant for that case.
   this->Options.TrapUnreachable = true;
   this->Options.NoTrapAfterNoreturn = false;
 
@@ -233,30 +230,13 @@ public:
 
 private:
   FeatureBitset coalesceFeatures(const Module &M) {
-    // Union the features of all defined functions. Start with an empty set, so
-    // that if a feature is disabled in every function, we'll compute it as
-    // disabled. If any function lacks a target-features attribute, it'll
-    // default to the target CPU from the `TargetMachine`.
-    FeatureBitset Features;
-    bool AnyDefinedFuncs = false;
-    for (auto &F : M) {
-      if (F.isDeclaration())
-        continue;
-
+    FeatureBitset Features =
+        WasmTM
+            ->getSubtargetImpl(std::string(WasmTM->getTargetCPU()),
+                               std::string(WasmTM->getTargetFeatureString()))
+            ->getFeatureBits();
+    for (auto &F : M)
       Features |= WasmTM->getSubtargetImpl(F)->getFeatureBits();
-      AnyDefinedFuncs = true;
-    }
-
-    // If we have no defined functions, use the target CPU from the
-    // `TargetMachine`.
-    if (!AnyDefinedFuncs) {
-      Features =
-          WasmTM
-              ->getSubtargetImpl(std::string(WasmTM->getTargetCPU()),
-                                 std::string(WasmTM->getTargetFeatureString()))
-              ->getFeatureBits();
-    }
-
     return Features;
   }
 
@@ -568,7 +548,6 @@ void WebAssemblyPassConfig::addPostRegAlloc() {
   disablePass(&StackMapLivenessID);
   disablePass(&PatchableFunctionID);
   disablePass(&ShrinkWrapID);
-  disablePass(&RemoveLoadsIntoFakeUsesID);
 
   // This pass hurts code size for wasm because it can generate irreducible
   // control flow.

@@ -31,15 +31,8 @@ namespace llvm {
 class StringRef;
 class TargetMachine;
 
-/// ThinLTOCodeGeneratorImpl - Namespace used for ThinLTOCodeGenerator
-/// implementation details. It should be considered private to the
-/// implementation.
-namespace ThinLTOCodeGeneratorImpl {
-struct TargetMachineBuilder;
-}
-
 /// Helper to gather options relevant to the target machine creation
-struct ThinLTOCodeGeneratorImpl::TargetMachineBuilder {
+struct TargetMachineBuilder {
   Triple TheTriple;
   std::string MCpu;
   std::string MAttr;
@@ -283,7 +276,7 @@ public:
    */
   void gatherImportedSummariesForModule(
       Module &Module, ModuleSummaryIndex &Index,
-      ModuleToSummariesForIndexTy &ModuleToSummariesForIndex,
+      std::map<std::string, GVSummaryMapTy> &ModuleToSummariesForIndex,
       GVSummaryPtrSet &DecSummaries, const lto::InputFile &File);
 
   /**
@@ -308,7 +301,7 @@ public:
 
 private:
   /// Helper factory to build a TargetMachine
-  ThinLTOCodeGeneratorImpl::TargetMachineBuilder TMBuilder;
+  TargetMachineBuilder TMBuilder;
 
   /// Vector holding the in-memory buffer containing the produced binaries, when
   /// SavedObjectsDirectoryPath isn't set.

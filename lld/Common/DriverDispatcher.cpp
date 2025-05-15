@@ -113,7 +113,8 @@ parseFlavorWithoutMinGW(llvm::SmallVectorImpl<const char *> &argsV) {
 
   // Deduct the flavor from argv[0].
   StringRef arg0 = path::filename(argsV[0]);
-  arg0.consume_back_insensitive(".exe");
+  if (arg0.ends_with_insensitive(".exe"))
+    arg0 = arg0.drop_back(4);
   Flavor f = parseProgname(arg0);
   if (f == Invalid) {
     err("lld is a generic driver.\n"

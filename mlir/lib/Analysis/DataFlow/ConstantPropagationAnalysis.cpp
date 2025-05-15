@@ -43,7 +43,7 @@ void ConstantValue::print(raw_ostream &os) const {
 // SparseConstantPropagation
 //===----------------------------------------------------------------------===//
 
-LogicalResult SparseConstantPropagation::visitOperation(
+void SparseConstantPropagation::visitOperation(
     Operation *op, ArrayRef<const Lattice<ConstantValue> *> operands,
     ArrayRef<Lattice<ConstantValue> *> results) {
   LLVM_DEBUG(llvm::dbgs() << "SCP: Visiting operation: " << *op << "\n");
@@ -54,14 +54,14 @@ LogicalResult SparseConstantPropagation::visitOperation(
   // folding.
   if (op->getNumRegions()) {
     setAllToEntryStates(results);
-    return success();
+    return;
   }
 
   SmallVector<Attribute, 8> constantOperands;
   constantOperands.reserve(op->getNumOperands());
   for (auto *operandLattice : operands) {
     if (operandLattice->getValue().isUninitialized())
-      return success();
+      return;
     constantOperands.push_back(operandLattice->getValue().getConstantValue());
   }
 
@@ -77,7 +77,7 @@ LogicalResult SparseConstantPropagation::visitOperation(
   foldResults.reserve(op->getNumResults());
   if (failed(op->fold(constantOperands, foldResults))) {
     setAllToEntryStates(results);
-    return success();
+    return;
   }
 
   // If the folding was in-place, mark the results as overdefined and reset
@@ -87,7 +87,7 @@ LogicalResult SparseConstantPropagation::visitOperation(
     op->setOperands(originalOperands);
     op->setAttrs(originalAttrs);
     setAllToEntryStates(results);
-    return success();
+    return;
   }
 
   // Merge the fold results into the lattice for this operation.
@@ -108,7 +108,6 @@ LogicalResult SparseConstantPropagation::visitOperation(
           lattice, *getLatticeElement(foldResult.get<Value>()));
     }
   }
-  return success();
 }
 
 void SparseConstantPropagation::setToEntryState(

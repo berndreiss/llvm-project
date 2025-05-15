@@ -26,15 +26,14 @@ TEST(CachedCyclicReplacerTest, testNoRecursion) {
 
 TEST(CachedCyclicReplacerTest, testInPlaceRecursionPruneAnywhere) {
   // Replacer cycles through ints 0 -> 1 -> 2 -> 0 -> ...
-  std::optional<CachedCyclicReplacer<int, int>> replacer;
-  replacer.emplace(
-      /*replacer=*/[&](int n) { return (*replacer)((n + 1) % 3); },
+  CachedCyclicReplacer<int, int> replacer(
+      /*replacer=*/[&](int n) { return replacer((n + 1) % 3); },
       /*cycleBreaker=*/[&](int n) { return -1; });
 
   // Starting at 0.
-  EXPECT_EQ((*replacer)(0), -1);
+  EXPECT_EQ(replacer(0), -1);
   // Starting at 2.
-  EXPECT_EQ((*replacer)(2), -1);
+  EXPECT_EQ(replacer(2), -1);
 }
 
 //===----------------------------------------------------------------------===//
@@ -225,8 +224,7 @@ public:
     /// Add a recursive-self-node, i.e. a duplicate of the original node that is
     /// meant to represent an indirection to it.
     std::pair<Node, int64_t> addRecursiveSelfNode(Graph::Node originalId) {
-      auto node = addNode(originalId, nextRecursionId);
-      return {node, nextRecursionId++};
+      return {addNode(originalId, nextRecursionId), nextRecursionId++};
     }
     void addEdge(Node src, Node sink) { connections.addEdge(src, sink); }
 

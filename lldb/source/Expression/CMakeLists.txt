@@ -27,7 +27,6 @@ add_lldb_library(lldbExpression NO_PLUGIN_DEPENDENCIES
     lldbSymbol
     lldbTarget
     lldbUtility
-    lldbValueObject
 
   LINK_COMPONENTS
     Core

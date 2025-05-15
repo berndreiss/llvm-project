@@ -76,7 +76,8 @@ void GPUToSPIRVPass::runOnOperation() {
     // module inside the original GPU module, as that's the expectaion of the
     // normal GPU compilation pipeline.
     if (targetEnvSupportsKernelCapability(moduleOp)) {
-      builder.setInsertionPointToStart(moduleOp.getBody());
+      builder.setInsertionPoint(moduleOp.getBody(),
+                                moduleOp.getBody()->begin());
     } else {
       builder.setInsertionPoint(moduleOp.getOperation());
     }

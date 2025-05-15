@@ -603,7 +603,7 @@ void doRc(std::string Src, std::string Dest, RcOptions &Opts,
 
   // Read and tokenize the input file.
   ErrorOr<std::unique_ptr<MemoryBuffer>> File =
-      MemoryBuffer::getFile(PreprocessedFile, /*IsText=*/true);
+      MemoryBuffer::getFile(PreprocessedFile);
   if (!File) {
     fatalError("Error opening file '" + Twine(PreprocessedFile) +
                "': " + File.getError().message());
@@ -682,7 +682,7 @@ void doCvtres(std::string Src, std::string Dest, std::string TargetTriple) {
   object::WindowsResourceParser Parser;
 
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
-      MemoryBuffer::getFile(Src, /*IsText=*/true);
+      MemoryBuffer::getFile(Src);
   if (!BufferOrErr)
     fatalError("Error opening file '" + Twine(Src) +
                "': " + BufferOrErr.getError().message());

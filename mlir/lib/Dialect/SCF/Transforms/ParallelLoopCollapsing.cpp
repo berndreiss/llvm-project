@@ -8,7 +8,6 @@
 
 #include "mlir/Dialect/SCF/Transforms/Passes.h"
 
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/SCF/Utils/Utils.h"
 #include "mlir/Transforms/RegionUtils.h"

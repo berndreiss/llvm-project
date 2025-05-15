@@ -186,16 +186,16 @@ struct ErrorHandler {
   T report(const error_code& ec, const char* msg, ...) const {
     va_list ap;
     va_start(ap, msg);
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try {
-#endif // _LIBCPP_HAS_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
       report_impl(ec, msg, ap);
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     } catch (...) {
       va_end(ap);
       throw;
     }
-#endif // _LIBCPP_HAS_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     va_end(ap);
     return error_value<T>();
   }
@@ -206,16 +206,16 @@ struct ErrorHandler {
   T report(errc const& err, const char* msg, ...) const {
     va_list ap;
     va_start(ap, msg);
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try {
-#endif // _LIBCPP_HAS_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
       report_impl(make_error_code(err), msg, ap);
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     } catch (...) {
       va_end(ap);
       throw;
     }
-#endif // _LIBCPP_HAS_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
     va_end(ap);
     return error_value<T>();
   }
@@ -225,7 +225,7 @@ private:
   ErrorHandler& operator=(ErrorHandler const&) = delete;
 };
 
-} // namespace detail
+} // end namespace detail
 
 _LIBCPP_END_NAMESPACE_FILESYSTEM
 

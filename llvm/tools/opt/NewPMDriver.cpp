@@ -227,6 +227,10 @@ static cl::opt<bool> DisableLoopUnrolling(
     "disable-loop-unrolling",
     cl::desc("Disable loop unrolling in all relevant passes"), cl::init(false));
 
+namespace llvm {
+extern cl::opt<bool> PrintPipelinePasses;
+} // namespace llvm
+
 template <typename PassManagerT>
 bool tryParsePipelineText(PassBuilder &PB,
                           const cl::opt<std::string> &PipelineOpt) {
@@ -294,19 +298,19 @@ static void registerEPCallbacks(PassBuilder &PB) {
   if (tryParsePipelineText<ModulePassManager>(
           PB, PipelineEarlySimplificationEPPipeline))
     PB.registerPipelineEarlySimplificationEPCallback(
-        [&PB](ModulePassManager &PM, OptimizationLevel, ThinOrFullLTOPhase) {
+        [&PB](ModulePassManager &PM, OptimizationLevel) {
           ExitOnError Err("Unable to parse EarlySimplification pipeline: ");
           Err(PB.parsePassPipeline(PM, PipelineEarlySimplificationEPPipeline));
         });
   if (tryParsePipelineText<ModulePassManager>(PB, OptimizerEarlyEPPipeline))
     PB.registerOptimizerEarlyEPCallback(
-        [&PB](ModulePassManager &PM, OptimizationLevel, ThinOrFullLTOPhase) {
+        [&PB](ModulePassManager &PM, OptimizationLevel) {
           ExitOnError Err("Unable to parse OptimizerEarlyEP pipeline: ");
           Err(PB.parsePassPipeline(PM, OptimizerEarlyEPPipeline));
         });
   if (tryParsePipelineText<ModulePassManager>(PB, OptimizerLastEPPipeline))
     PB.registerOptimizerLastEPCallback(
-        [&PB](ModulePassManager &PM, OptimizationLevel, ThinOrFullLTOPhase) {
+        [&PB](ModulePassManager &PM, OptimizationLevel) {
           ExitOnError Err("Unable to parse OptimizerLastEP pipeline: ");
           Err(PB.parsePassPipeline(PM, OptimizerLastEPPipeline));
         });
@@ -343,6 +347,8 @@ bool llvm::runPassPipeline(
     bool ShouldPreserveBitcodeUseListOrder, bool EmitSummaryIndex,
     bool EmitModuleHash, bool EnableDebugify, bool VerifyDIPreserve,
     bool UnifiedLTO) {
+  bool VerifyEachPass = VK == VK_VerifyEachPass;
+
   auto FS = vfs::getRealFileSystem();
   std::optional<PGOOptions> P;
   switch (PGOKindFlag) {
@@ -408,7 +414,7 @@ bool llvm::runPassPipeline(
   PrintPassOpts.Verbose = DebugPM == DebugLogging::Verbose;
   PrintPassOpts.SkipAnalyses = DebugPM == DebugLogging::Quiet;
   StandardInstrumentations SI(M.getContext(), DebugPM != DebugLogging::None,
-                              VK == VerifierKind::EachPass, PrintPassOpts);
+                              VerifyEachPass, PrintPassOpts);
   SI.registerCallbacks(PIC, &MAM);
   DebugifyEachInstrumentation Debugify;
   DebugifyStatsMap DIStatsMap;
@@ -481,7 +487,7 @@ bool llvm::runPassPipeline(
     }
   }
 
-  if (VK != VerifierKind::None)
+  if (VK > VK_NoVerifier)
     MPM.addPass(VerifierPass());
   if (EnableDebugify)
     MPM.addPass(NewPMCheckDebugifyPass(false, "", &DIStatsMap));

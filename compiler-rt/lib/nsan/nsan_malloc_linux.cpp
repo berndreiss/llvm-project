@@ -11,17 +11,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "interception/interception.h"
-#include "nsan.h"
-#include "nsan_allocator.h"
+#include "nsan/nsan.h"
 #include "sanitizer_common/sanitizer_allocator_dlsym.h"
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_platform.h"
 #include "sanitizer_common/sanitizer_platform_interceptors.h"
-#include "sanitizer_common/sanitizer_stacktrace.h"
 
 #if !SANITIZER_APPLE && !SANITIZER_WINDOWS
 using namespace __sanitizer;
-using namespace __nsan;
+using __nsan::nsan_initialized;
 
 namespace {
 struct DlsymAlloc : public DlSymAllocator<DlsymAlloc> {
@@ -30,53 +28,78 @@ struct DlsymAlloc : public DlSymAllocator<DlsymAlloc> {
 } // namespace
 
 INTERCEPTOR(void *, aligned_alloc, uptr align, uptr size) {
-  return nsan_aligned_alloc(align, size);
+  void *res = REAL(aligned_alloc)(align, size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), size);
+  return res;
 }
 
 INTERCEPTOR(void *, calloc, uptr nmemb, uptr size) {
   if (DlsymAlloc::Use())
     return DlsymAlloc::Callocate(nmemb, size);
-  return nsan_calloc(nmemb, size);
+
+  void *res = REAL(calloc)(nmemb, size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), nmemb * size);
+  return res;
 }
 
 INTERCEPTOR(void, free, void *ptr) {
-  if (UNLIKELY(!ptr))
-    return;
   if (DlsymAlloc::PointerIsMine(ptr))
     return DlsymAlloc::Free(ptr);
-  NsanDeallocate(ptr);
+  REAL(free)(ptr);
 }
 
 INTERCEPTOR(void *, malloc, uptr size) {
   if (DlsymAlloc::Use())
     return DlsymAlloc::Allocate(size);
-  return nsan_malloc(size);
+  void *res = REAL(malloc)(size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), size);
+  return res;
 }
 
 INTERCEPTOR(void *, realloc, void *ptr, uptr size) {
   if (DlsymAlloc::Use() || DlsymAlloc::PointerIsMine(ptr))
     return DlsymAlloc::Realloc(ptr, size);
-  return nsan_realloc(ptr, size);
+  void *res = REAL(realloc)(ptr, size);
+  // TODO: We might want to copy the types from the original allocation
+  // (although that would require that we know its size).
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), size);
+  return res;
 }
 
 #if SANITIZER_INTERCEPT_REALLOCARRAY
 INTERCEPTOR(void *, reallocarray, void *ptr, uptr nmemb, uptr size) {
-  return nsan_reallocarray(ptr, nmemb, size);
+  void *res = REAL(reallocarray)(ptr, nmemb, size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), nmemb * size);
+  return res;
 }
 #endif // SANITIZER_INTERCEPT_REALLOCARRAY
 
 INTERCEPTOR(int, posix_memalign, void **memptr, uptr align, uptr size) {
-  return nsan_posix_memalign(memptr, align, size);
+  int res = REAL(posix_memalign)(memptr, align, size);
+  if (res == 0 && *memptr)
+    __nsan_set_value_unknown(static_cast<u8 *>(*memptr), size);
+  return res;
 }
 
 // Deprecated allocation functions (memalign, etc).
 #if SANITIZER_INTERCEPT_MEMALIGN
 INTERCEPTOR(void *, memalign, uptr align, uptr size) {
-  return nsan_memalign(align, size);
+  void *const res = REAL(memalign)(align, size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), size);
+  return res;
 }
 
 INTERCEPTOR(void *, __libc_memalign, uptr align, uptr size) {
-  return nsan_memalign(align, size);
+  void *const res = REAL(__libc_memalign)(align, size);
+  if (res)
+    __nsan_set_value_unknown(static_cast<u8 *>(res), size);
+  return res;
 }
 #endif
 

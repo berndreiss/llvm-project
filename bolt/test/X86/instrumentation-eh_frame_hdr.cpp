@@ -6,9 +6,8 @@
 // RUN: %clangxx %cxxflags -static -Wl,-q %s -o %t.exe -Wl,--entry=_start
 // RUN: llvm-bolt %t.exe -o %t.instr -instrument \
 // RUN:   --instrumentation-file=%t.fdata -instrumentation-sleep-time=1
-// RUN: llvm-readelf -SW %t.instr | grep -v bolt > %t.sections
-// RUN: llvm-readelf -lW %t.instr | grep LOAD | tail -n 1 >> %t.sections
-// RUN: FileCheck %s < %t.sections
+// RUN: (llvm-readelf -SW %t.instr | grep -v bolt; llvm-readelf -lW %t.instr | \
+// RUN:   grep LOAD | tail -n 1) | FileCheck %s
 
 // CHECK: {{.*}} .eh_frame_hdr PROGBITS [[#%x, EH_ADDR:]]
 // CHECK: LOAD 0x[[#%x, LD_OFFSET:]] 0x[[#%x, LD_VADDR:]] 0x[[#%x, LD_FSIZE:]]

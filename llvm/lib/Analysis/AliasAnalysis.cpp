@@ -29,6 +29,7 @@
 #include "llvm/Analysis/CaptureTracking.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/ObjCARCAliasAnalysis.h"
 #include "llvm/Analysis/ScalarEvolutionAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -46,6 +47,7 @@
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
+#include <algorithm>
 #include <cassert>
 #include <functional>
 #include <iterator>
@@ -419,6 +421,42 @@ raw_ostream &llvm::operator<<(raw_ostream &OS, AliasResult AR) {
     if (AR.hasOffset())
       OS << " (off " << AR.getOffset() << ")";
     break;
+  }
+  return OS;
+}
+
+raw_ostream &llvm::operator<<(raw_ostream &OS, ModRefInfo MR) {
+  switch (MR) {
+  case ModRefInfo::NoModRef:
+    OS << "NoModRef";
+    break;
+  case ModRefInfo::Ref:
+    OS << "Ref";
+    break;
+  case ModRefInfo::Mod:
+    OS << "Mod";
+    break;
+  case ModRefInfo::ModRef:
+    OS << "ModRef";
+    break;
+  }
+  return OS;
+}
+
+raw_ostream &llvm::operator<<(raw_ostream &OS, MemoryEffects ME) {
+  for (IRMemLocation Loc : MemoryEffects::locations()) {
+    switch (Loc) {
+    case IRMemLocation::ArgMem:
+      OS << "ArgMem: ";
+      break;
+    case IRMemLocation::InaccessibleMem:
+      OS << "InaccessibleMem: ";
+      break;
+    case IRMemLocation::Other:
+      OS << "Other: ";
+      break;
+    }
+    OS << ME.getModRef(Loc) << ", ";
   }
   return OS;
 }
@@ -890,10 +928,7 @@ bool llvm::isWritableObject(const Value *Object,
     return true;
 
   if (auto *A = dyn_cast<Argument>(Object)) {
-    // Also require noalias, otherwise writability at function entry cannot be
-    // generalized to writability at other program points, even if the pointer
-    // does not escape.
-    if (A->hasAttribute(Attribute::Writable) && A->hasNoAliasAttr()) {
+    if (A->hasAttribute(Attribute::Writable)) {
       ExplicitlyDereferenceableOnly = true;
       return true;
     }

@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   FrontendOpenMP
   )
 
-add_clang_library(clangTidyAbseilModule STATIC
+add_clang_library(clangTidyAbseilModule
   AbseilTidyModule.cpp
   CleanupCtadCheck.cpp
   DurationAdditionCheck.cpp

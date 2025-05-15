@@ -28,9 +28,9 @@ void init(void * __attribute__((pass_dynamic_object_size(0))));
 // CHECK-LABEL: define dso_local void @test1(
 // CHECK-SAME: ptr nocapture noundef readonly [[FOO:%.*]]) local_unnamed_addr #[[ATTR0:[0-9]+]] {
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[GROWABLE:%.*]] = getelementptr inbounds nuw i8, ptr [[FOO]], i64 8
+// CHECK-NEXT:    [[GROWABLE:%.*]] = getelementptr inbounds i8, ptr [[FOO]], i64 8
 // CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[GROWABLE]], align 8, !tbaa [[TBAA2:![0-9]+]]
-// CHECK-NEXT:    [[ARRAY:%.*]] = getelementptr inbounds nuw i8, ptr [[TMP0]], i64 12
+// CHECK-NEXT:    [[ARRAY:%.*]] = getelementptr inbounds i8, ptr [[TMP0]], i64 12
 // CHECK-NEXT:    [[DOT_COUNTED_BY_GEP:%.*]] = getelementptr inbounds i8, ptr [[TMP0]], i64 8
 // CHECK-NEXT:    [[DOT_COUNTED_BY_LOAD:%.*]] = load i32, ptr [[DOT_COUNTED_BY_GEP]], align 4
 // CHECK-NEXT:    [[TMP1:%.*]] = sext i32 [[DOT_COUNTED_BY_LOAD]] to i64
@@ -47,7 +47,7 @@ void test1(struct bucket *foo) {
 // CHECK-LABEL: define dso_local void @test2(
 // CHECK-SAME: ptr noundef [[FOO:%.*]]) local_unnamed_addr #[[ATTR0]] {
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[ARRAY:%.*]] = getelementptr inbounds nuw i8, ptr [[FOO]], i64 16
+// CHECK-NEXT:    [[ARRAY:%.*]] = getelementptr inbounds i8, ptr [[FOO]], i64 16
 // CHECK-NEXT:    [[DOT_COUNTED_BY_GEP:%.*]] = getelementptr inbounds i8, ptr [[FOO]], i64 12
 // CHECK-NEXT:    [[DOT_COUNTED_BY_LOAD:%.*]] = load i32, ptr [[DOT_COUNTED_BY_GEP]], align 4
 // CHECK-NEXT:    [[TMP0:%.*]] = sext i32 [[DOT_COUNTED_BY_LOAD]] to i64
@@ -60,3 +60,11 @@ void test1(struct bucket *foo) {
 void test2(struct bucket2 *foo) {
         init(foo->growable.array);
 }
+//.
+// CHECK: [[TBAA2]] = !{[[META3:![0-9]+]], [[META7:![0-9]+]], i64 8}
+// CHECK: [[META3]] = !{!"bucket", [[META4:![0-9]+]], i64 0, [[META7]], i64 8, [[META4]], i64 16}
+// CHECK: [[META4]] = !{!"int", [[META5:![0-9]+]], i64 0}
+// CHECK: [[META5]] = !{!"omnipotent char", [[META6:![0-9]+]], i64 0}
+// CHECK: [[META6]] = !{!"Simple C/C++ TBAA"}
+// CHECK: [[META7]] = !{!"any pointer", [[META5]], i64 0}
+//.

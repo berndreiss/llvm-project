@@ -14,7 +14,6 @@
 #include "terminator.h"
 #include "tools.h"
 #include "type-info.h"
-#include "flang/Runtime/allocator-registry.h"
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -51,9 +50,7 @@ RT_API_ATTRS void Descriptor::Establish(TypeCode t, std::size_t elementBytes,
       GetDimension(j).SetByteStride(0);
     }
   }
-  if (addendum) {
-    SetHasAddendum();
-  }
+  raw_.f18Addendum = addendum;
   DescriptorAddendum *a{Addendum()};
   RUNTIME_CHECK(terminator, addendum == (a != nullptr));
   if (a) {
@@ -154,15 +151,6 @@ RT_API_ATTRS std::size_t Descriptor::Elements() const {
   return elements;
 }
 
-RT_API_ATTRS static inline int MapAllocIdx(const Descriptor &desc) {
-#ifdef RT_DEVICE_COMPILATION
-  // Force default allocator in device code.
-  return kDefaultAllocator;
-#else
-  return desc.GetAllocIdx();
-#endif
-}
-
 RT_API_ATTRS int Descriptor::Allocate() {
   std::size_t elementBytes{ElementBytes()};
   if (static_cast<std::int64_t>(elementBytes) < 0) {
@@ -171,11 +159,10 @@ RT_API_ATTRS int Descriptor::Allocate() {
     elementBytes = raw_.elem_len = 0;
   }
   std::size_t byteSize{Elements() * elementBytes};
-  AllocFct alloc{allocatorRegistry.GetAllocator(MapAllocIdx(*this))};
   // Zero size allocation is possible in Fortran and the resulting
   // descriptor must be allocated/associated. Since std::malloc(0)
   // result is implementation defined, always allocate at least one byte.
-  void *p{alloc(byteSize ? byteSize : 1)};
+  void *p{byteSize ? std::malloc(byteSize) : std::malloc(1)};
   if (!p) {
     return CFI_ERROR_MEM_ALLOCATION;
   }
@@ -217,8 +204,7 @@ RT_API_ATTRS int Descriptor::Deallocate() {
   if (!descriptor.base_addr) {
     return CFI_ERROR_BASE_ADDR_NULL;
   } else {
-    FreeFct free{allocatorRegistry.GetDeallocator(MapAllocIdx(*this))};
-    free(descriptor.base_addr);
+    std::free(descriptor.base_addr);
     descriptor.base_addr = nullptr;
     return CFI_SUCCESS;
   }
@@ -304,9 +290,7 @@ void Descriptor::Dump(FILE *f) const {
   std::fprintf(f, "  rank      %d\n", static_cast<int>(raw_.rank));
   std::fprintf(f, "  type      %d\n", static_cast<int>(raw_.type));
   std::fprintf(f, "  attribute %d\n", static_cast<int>(raw_.attribute));
-  std::fprintf(f, "  extra     %d\n", static_cast<int>(raw_.extra));
-  std::fprintf(f, "    addendum  %d\n", static_cast<int>(HasAddendum()));
-  std::fprintf(f, "    alloc_idx %d\n", static_cast<int>(GetAllocIdx()));
+  std::fprintf(f, "  addendum  %d\n", static_cast<int>(raw_.f18Addendum));
   for (int j{0}; j < raw_.rank; ++j) {
     std::fprintf(f, "  dim[%d] lower_bound %jd\n", j,
         static_cast<std::intmax_t>(raw_.dim[j].lower_bound));

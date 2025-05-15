@@ -71,14 +71,6 @@ LogicalResult
 mlir::bufferization::dropEquivalentBufferResults(ModuleOp module) {
   IRRewriter rewriter(module.getContext());
 
-  DenseMap<func::FuncOp, DenseSet<func::CallOp>> callerMap;
-  // Collect the mapping of functions to their call sites.
-  module.walk([&](func::CallOp callOp) {
-    if (func::FuncOp calledFunc = getCalledFunction(callOp)) {
-      callerMap[calledFunc].insert(callOp);
-    }
-  });
-
   for (auto funcOp : module.getOps<func::FuncOp>()) {
     if (funcOp.isExternal())
       continue;
@@ -117,7 +109,10 @@ mlir::bufferization::dropEquivalentBufferResults(ModuleOp module) {
     returnOp.getOperandsMutable().assign(newReturnValues);
 
     // Update function calls.
-    for (func::CallOp callOp : callerMap[funcOp]) {
+    module.walk([&](func::CallOp callOp) {
+      if (getCalledFunction(callOp) != funcOp)
+        return WalkResult::skip();
+
       rewriter.setInsertionPoint(callOp);
       auto newCallOp = rewriter.create<func::CallOp>(callOp.getLoc(), funcOp,
                                                      callOp.getOperands());
@@ -141,7 +136,8 @@ mlir::bufferization::dropEquivalentBufferResults(ModuleOp module) {
         newResults.push_back(replacement);
       }
       rewriter.replaceOp(callOp, newResults);
-    }
+      return WalkResult::advance();
+    });
   }
 
   return success();

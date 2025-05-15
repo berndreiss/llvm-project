@@ -35,29 +35,27 @@ constexpr void test_unsized() {
     ASSERT_SAME_TYPE(decltype(std::ranges::distance(It(a), Sent(It(a)))), std::iter_difference_t<It>);
   }
   {
-    auto check = [&a]<class ItQual, class SentQual> {
-      It first = It(a);
-      Sent last = Sent(It(a + 3));
-      assert(std::ranges::distance(static_cast<ItQual>(first), static_cast<SentQual>(last)) == 3);
-    };
+    It first = It(a);
+    auto last = Sent(It(a + 3));
+    assert(std::ranges::distance(first, last) == 3);
 
     // Test all const/ref-qualifications of both operands.
-    check.template operator()<It&, Sent&>();
-    check.template operator()<It&, Sent&&>();
-    check.template operator()<It&, const Sent&>();
-    check.template operator()<It&, const Sent&&>();
-    check.template operator()<It&&, Sent&>();
-    check.template operator()<It&&, Sent&&>();
-    check.template operator()<It&&, const Sent&>();
-    check.template operator()<It&&, const Sent&&>();
-    check.template operator()<const It&, Sent&>();
-    check.template operator()<const It&, Sent&&>();
-    check.template operator()<const It&, const Sent&>();
-    check.template operator()<const It&, const Sent&&>();
-    check.template operator()<const It&&, Sent&>();
-    check.template operator()<const It&&, Sent&&>();
-    check.template operator()<const It&&, const Sent&>();
-    check.template operator()<const It&&, const Sent&&>();
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<const Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<const Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<const Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<const Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<const Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<const Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<Sent&&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<const Sent&>(last)) == 3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<const Sent&&>(last)) == 3);
   }
 }
 
@@ -66,29 +64,27 @@ constexpr void test_sized() {
   static_assert(std::sized_sentinel_for<Sent, It>);
   int a[] = {1,2,3};
   {
-    auto check = [&a]<class ItQual, class SentQual> {
-      It first = It(a + 3);
-      Sent last = Sent(It(a));
-      assert(std::ranges::distance(static_cast<ItQual>(first), static_cast<SentQual>(last)) == -3);
-    };
+    It first = It(a + 3);
+    auto last = Sent(It(a));
+    assert(std::ranges::distance(first, last) == -3);
 
     // Test all const/ref-qualifications of both operands.
-    check.template operator()<It&, Sent&>();
-    check.template operator()<It&, Sent&&>();
-    check.template operator()<It&, const Sent&>();
-    check.template operator()<It&, const Sent&&>();
-    check.template operator()<It&&, Sent&>();
-    check.template operator()<It&&, Sent&&>();
-    check.template operator()<It&&, const Sent&>();
-    check.template operator()<It&&, const Sent&&>();
-    check.template operator()<const It&, Sent&>();
-    check.template operator()<const It&, Sent&&>();
-    check.template operator()<const It&, const Sent&>();
-    check.template operator()<const It&, const Sent&&>();
-    check.template operator()<const It&&, Sent&>();
-    check.template operator()<const It&&, Sent&&>();
-    check.template operator()<const It&&, const Sent&>();
-    check.template operator()<const It&&, const Sent&&>();
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<const Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&>(first), static_cast<const Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<const Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<It&&>(first), static_cast<const Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<const Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&>(first), static_cast<const Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<Sent&&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<const Sent&>(last)) == -3);
+    assert(std::ranges::distance(static_cast<const It&&>(first), static_cast<const Sent&&>(last)) == -3);
   }
   {
     It first = It(a);

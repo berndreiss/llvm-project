@@ -21,7 +21,7 @@ class Pass;
 #define GEN_PASS_DECL_CONVERTMATHTOLLVMPASS
 #include "mlir/Conversion/Passes.h.inc"
 
-void populateMathToLLVMConversionPatterns(const LLVMTypeConverter &converter,
+void populateMathToLLVMConversionPatterns(LLVMTypeConverter &converter,
                                           RewritePatternSet &patterns,
                                           bool approximateLog1p = true);
 

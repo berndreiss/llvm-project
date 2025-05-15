@@ -14,10 +14,9 @@ directories::
         - docs
         - examples
         - fuzzing
-        - hdr
         - include
         - lib
-        - newhdrgen
+        - spec
         - src
         - startup
         - test
@@ -63,14 +62,6 @@ The directory structure within this directory mirrors the directory structure
 of the top-level ``libc`` directory itself. For more details, see
 :doc:`fuzzing`.
 
-The ``hdr`` directory
----------------------
-
-This directory contains proxy headers which are included from the files in the
-src directory. These proxy headers either include our internal type or macro
-definitions, or the system's type or macro definitions, depending on if we are
-in fullbuild or overlay mode.
-
 The ``include`` directory
 -------------------------
 
@@ -89,14 +80,13 @@ The ``lib`` directory
 This directory contains a ``CMakeLists.txt`` file listing the targets for the
 public libraries ``libc.a``, ``libm.a`` etc.
 
-The ``newhdrgen`` directory
----------------------------
+The ``spec`` directory
+----------------------
 
-This directory contains the sources and specifications for the types, macros
-and entrypoint functions. These definitions are organized in the ``yaml``
-subdirectory and match the organization of the ``*.h.def`` files. This folder
-also contains the python sources for new headergen, which is what generates the
-headers.
+This directory contains the specifications for the types, macros, and entrypoint
+functions. These definitions come from the various standards and extensions
+LLVM-libc supports, and they are used along with the ``*.h.def`` files and the
+config files to generate the headers for fullbuild mode.
 
 The ``src`` directory
 ---------------------

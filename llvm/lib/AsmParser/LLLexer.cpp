@@ -25,21 +25,9 @@
 
 using namespace llvm;
 
-// Both the lexer and parser can issue error messages. If the lexer issues a
-// lexer error, since we do not terminate execution immediately, usually that
-// is followed by the parser issuing a parser error. However, the error issued
-// by the lexer is more relevant in that case as opposed to potentially more
-// generic parser error. So instead of always recording the last error message
-// use the `Priority` to establish a priority, with Lexer > Parser > None. We
-// record the issued message only if the message has same or higher priority
-// than the existing one. This prevents lexer errors from being overwritten by
-// parser errors.
-void LLLexer::Error(LocTy ErrorLoc, const Twine &Msg,
-                    LLLexer::ErrorPriority Priority) {
-  if (Priority < ErrorInfo.Priority)
-    return;
-  ErrorInfo.Error = SM.GetMessage(ErrorLoc, SourceMgr::DK_Error, Msg);
-  ErrorInfo.Priority = Priority;
+bool LLLexer::Error(LocTy ErrorLoc, const Twine &Msg) const {
+  ErrorInfo = SM.GetMessage(ErrorLoc, SourceMgr::DK_Error, Msg);
+  return true;
 }
 
 void LLLexer::Warning(LocTy WarningLoc, const Twine &Msg) const {
@@ -60,8 +48,8 @@ uint64_t LLLexer::atoull(const char *Buffer, const char *End) {
     uint64_t OldRes = Result;
     Result *= 10;
     Result += *Buffer-'0';
-    if (Result < OldRes) { // overflow detected.
-      LexError("constant bigger than 64 bits detected");
+    if (Result < OldRes) {  // Uh, oh, overflow detected!!!
+      Error("constant bigger than 64 bits detected!");
       return 0;
     }
   }
@@ -75,8 +63,8 @@ uint64_t LLLexer::HexIntToVal(const char *Buffer, const char *End) {
     Result *= 16;
     Result += hexDigitValue(*Buffer);
 
-    if (Result < OldRes) { // overflow detected.
-      LexError("constant bigger than 64 bits detected");
+    if (Result < OldRes) {   // Uh, oh, overflow detected!!!
+      Error("constant bigger than 64 bits detected!");
       return 0;
     }
   }
@@ -99,7 +87,7 @@ void LLLexer::HexToIntPair(const char *Buffer, const char *End,
     Pair[1] += hexDigitValue(*Buffer);
   }
   if (Buffer != End)
-    LexError("constant bigger than 128 bits detected");
+    Error("constant bigger than 128 bits detected!");
 }
 
 /// FP80HexToIntPair - translate an 80 bit FP80 number (20 hexits) into
@@ -118,7 +106,7 @@ void LLLexer::FP80HexToIntPair(const char *Buffer, const char *End,
     Pair[0] += hexDigitValue(*Buffer);
   }
   if (Buffer != End)
-    LexError("constant bigger than 128 bits detected");
+    Error("constant bigger than 128 bits detected!");
 }
 
 // UnEscapeLexed - Run through the specified buffer and change \xx codes to the
@@ -200,6 +188,7 @@ lltok::Kind LLLexer::LexToken() {
       // Handle letters: [a-zA-Z_]
       if (isalpha(static_cast<unsigned char>(CurChar)) || CurChar == '_')
         return LexIdentifier();
+
       return lltok::Error;
     case EOF: return lltok::Eof;
     case 0:
@@ -250,12 +239,6 @@ lltok::Kind LLLexer::LexToken() {
     case ',': return lltok::comma;
     case '*': return lltok::star;
     case '|': return lltok::bar;
-    case '/':
-      if (getNextChar() != '*')
-        return lltok::Error;
-      if (SkipCComment())
-        return lltok::Error;
-      continue;
     }
   }
 }
@@ -264,28 +247,6 @@ void LLLexer::SkipLineComment() {
   while (true) {
     if (CurPtr[0] == '\n' || CurPtr[0] == '\r' || getNextChar() == EOF)
       return;
-  }
-}
-
-/// This skips C-style /**/ comments. Returns true if there
-/// was an error.
-bool LLLexer::SkipCComment() {
-  while (true) {
-    int CurChar = getNextChar();
-    switch (CurChar) {
-    case EOF:
-      LexError("unterminated comment");
-      return true;
-    case '*':
-      // End of the comment?
-      CurChar = getNextChar();
-      if (CurChar == '/')
-        return false;
-      if (CurChar == EOF) {
-        LexError("unterminated comment");
-        return true;
-      }
-    }
   }
 }
 
@@ -312,14 +273,14 @@ lltok::Kind LLLexer::LexDollar() {
       int CurChar = getNextChar();
 
       if (CurChar == EOF) {
-        LexError("end of file in COMDAT variable name");
+        Error("end of file in COMDAT variable name");
         return lltok::Error;
       }
       if (CurChar == '"') {
         StrVal.assign(TokStart + 2, CurPtr - 1);
         UnEscapeLexed(StrVal);
         if (StringRef(StrVal).contains(0)) {
-          LexError("NUL character is not allowed in names");
+          Error("Null bytes are not allowed in names");
           return lltok::Error;
         }
         return lltok::ComdatVar;
@@ -341,7 +302,7 @@ lltok::Kind LLLexer::ReadString(lltok::Kind kind) {
     int CurChar = getNextChar();
 
     if (CurChar == EOF) {
-      LexError("end of file in string constant");
+      Error("end of file in string constant");
       return lltok::Error;
     }
     if (CurChar == '"') {
@@ -381,7 +342,7 @@ lltok::Kind LLLexer::LexUIntID(lltok::Kind Token) {
 
   uint64_t Val = atoull(TokStart + 1, CurPtr);
   if ((unsigned)Val != Val)
-    LexError("invalid value number (too large)");
+    Error("invalid value number (too large)!");
   UIntVal = unsigned(Val);
   return Token;
 }
@@ -395,14 +356,14 @@ lltok::Kind LLLexer::LexVar(lltok::Kind Var, lltok::Kind VarID) {
       int CurChar = getNextChar();
 
       if (CurChar == EOF) {
-        LexError("end of file in global variable name");
+        Error("end of file in global variable name");
         return lltok::Error;
       }
       if (CurChar == '"') {
         StrVal.assign(TokStart+2, CurPtr-1);
         UnEscapeLexed(StrVal);
         if (StringRef(StrVal).contains(0)) {
-          LexError("NUL character is not allowed in names");
+          Error("Null bytes are not allowed in names");
           return lltok::Error;
         }
         return Var;
@@ -437,7 +398,7 @@ lltok::Kind LLLexer::LexQuote() {
   if (CurPtr[0] == ':') {
     ++CurPtr;
     if (StringRef(StrVal).contains(0)) {
-      LexError("NUL character is not allowed in names");
+      Error("Null bytes are not allowed in names");
       kind = lltok::Error;
     } else {
       kind = lltok::LabelStr;
@@ -519,7 +480,7 @@ lltok::Kind LLLexer::LexIdentifier() {
     uint64_t NumBits = atoull(StartChar, CurPtr);
     if (NumBits < IntegerType::MIN_INT_BITS ||
         NumBits > IntegerType::MAX_INT_BITS) {
-      LexError("bitwidth for integer type out of range");
+      Error("bitwidth for integer type out of range!");
       return lltok::Error;
     }
     TyVal = IntegerType::get(Context, NumBits);
@@ -610,7 +571,6 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(disjoint);
   KEYWORD(inbounds);
   KEYWORD(nneg);
-  KEYWORD(samesign);
   KEYWORD(inrange);
   KEYWORD(addrspace);
   KEYWORD(section);
@@ -744,8 +704,6 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(umin); KEYWORD(fmax); KEYWORD(fmin);
   KEYWORD(uinc_wrap);
   KEYWORD(udec_wrap);
-  KEYWORD(usub_cond);
-  KEYWORD(usub_sat);
 
   KEYWORD(splat);
   KEYWORD(vscale);
@@ -880,6 +838,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   TYPEKEYWORD("ppc_fp128", Type::getPPC_FP128Ty(Context));
   TYPEKEYWORD("label",     Type::getLabelTy(Context));
   TYPEKEYWORD("metadata",  Type::getMetadataTy(Context));
+  TYPEKEYWORD("x86_mmx",   Type::getX86_MMXTy(Context));
   TYPEKEYWORD("x86_amx",   Type::getX86_AMXTy(Context));
   TYPEKEYWORD("token",     Type::getTokenTy(Context));
   TYPEKEYWORD("ptr",       PointerType::getUnqual(Context));
@@ -1149,7 +1108,7 @@ lltok::Kind LLLexer::LexDigitOrNegative() {
     uint64_t Val = atoull(TokStart, CurPtr);
     ++CurPtr; // Skip the colon.
     if ((unsigned)Val != Val)
-      LexError("invalid value number (too large)");
+      Error("invalid value number (too large)!");
     UIntVal = unsigned(Val);
     return lltok::LabelID;
   }

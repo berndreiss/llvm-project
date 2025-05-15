@@ -27,13 +27,11 @@ export namespace std {
 
   // [ptr.launder], pointer optimization barrier
   using std::launder;
-#if _LIBCPP_STD_VER >= 17
-#  if defined(__GCC_DESTRUCTIVE_SIZE) && defined(__GCC_CONSTRUCTIVE_SIZE)
+#if 0
   // [hardware.interference], hardware interference size
   using std::hardware_constructive_interference_size;
   using std::hardware_destructive_interference_size;
-#  endif
-#endif // _LIBCPP_STD_VER >= 17
+#endif
 } // namespace std
 
 export {

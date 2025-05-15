@@ -476,13 +476,6 @@ void darwin::Linker::AddLinkArgs(Compilation &C, const ArgList &Args,
         llvm::sys::path::append(Path, "default.profdata");
       CmdArgs.push_back(Args.MakeArgString(Twine("--cs-profile-path=") + Path));
     }
-
-    auto *CodeGenDataGenArg =
-        Args.getLastArg(options::OPT_fcodegen_data_generate_EQ);
-    if (CodeGenDataGenArg)
-      CmdArgs.push_back(
-          Args.MakeArgString(Twine("--codegen-data-generate-path=") +
-                             CodeGenDataGenArg->getValue()));
   }
 }
 
@@ -640,32 +633,6 @@ void darwin::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back("-mllvm");
   CmdArgs.push_back("-enable-linkonceodr-outlining");
 
-  // Propagate codegen data flags to the linker for the LLVM backend.
-  auto *CodeGenDataGenArg =
-      Args.getLastArg(options::OPT_fcodegen_data_generate_EQ);
-  auto *CodeGenDataUseArg = Args.getLastArg(options::OPT_fcodegen_data_use_EQ);
-
-  // We only allow one of them to be specified.
-  const Driver &D = getToolChain().getDriver();
-  if (CodeGenDataGenArg && CodeGenDataUseArg)
-    D.Diag(diag::err_drv_argument_not_allowed_with)
-        << CodeGenDataGenArg->getAsString(Args)
-        << CodeGenDataUseArg->getAsString(Args);
-
-  // For codegen data gen, the output file is passed to the linker
-  // while a boolean flag is passed to the LLVM backend.
-  if (CodeGenDataGenArg) {
-    CmdArgs.push_back("-mllvm");
-    CmdArgs.push_back("-codegen-data-generate");
-  }
-
-  // For codegen data use, the input file is passed to the LLVM backend.
-  if (CodeGenDataUseArg) {
-    CmdArgs.push_back("-mllvm");
-    CmdArgs.push_back(Args.MakeArgString(Twine("-codegen-data-use-path=") +
-                                         CodeGenDataUseArg->getValue()));
-  }
-
   // Setup statistics file output.
   SmallString<128> StatsFile =
       getStatsFileName(Args, Output, Inputs[0], getToolChain().getDriver());
@@ -713,8 +680,7 @@ void darwin::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   // Additional linker set-up and flags for Fortran. This is required in order
   // to generate executables.
-  if (getToolChain().getDriver().IsFlangMode() &&
-      !Args.hasArg(options::OPT_nostdlib, options::OPT_nodefaultlibs)) {
+  if (getToolChain().getDriver().IsFlangMode()) {
     addFortranRuntimeLibraryPath(getToolChain(), Args, CmdArgs);
     addFortranRuntimeLibs(getToolChain(), Args, CmdArgs);
   }
@@ -1553,8 +1519,6 @@ void DarwinClang::AddLinkRuntimeLibArgs(const ArgList &Args,
     const char *sanitizer = nullptr;
     if (Sanitize.needsUbsanRt()) {
       sanitizer = "UndefinedBehaviorSanitizer";
-    } else if (Sanitize.needsRtsanRt()) {
-      sanitizer = "RealtimeSanitizer";
     } else if (Sanitize.needsAsanRt()) {
       sanitizer = "AddressSanitizer";
     } else if (Sanitize.needsTsanRt()) {
@@ -1576,11 +1540,6 @@ void DarwinClang::AddLinkRuntimeLibArgs(const ArgList &Args,
                "Static sanitizer runtimes not supported");
         AddLinkSanitizerLibArgs(Args, CmdArgs, "asan");
       }
-    }
-    if (Sanitize.needsRtsanRt()) {
-      assert(Sanitize.needsSharedRt() &&
-             "Static sanitizer runtimes not supported");
-      AddLinkSanitizerLibArgs(Args, CmdArgs, "rtsan");
     }
     if (Sanitize.needsLsanRt())
       AddLinkSanitizerLibArgs(Args, CmdArgs, "lsan");
@@ -3108,35 +3067,6 @@ void Darwin::addClangTargetOptions(
   if (!DriverArgs.hasArgNoClaim(options::OPT_fdefine_target_os_macros,
                                 options::OPT_fno_define_target_os_macros))
     CC1Args.push_back("-fdefine-target-os-macros");
-
-  // Disable subdirectory modulemap search on sufficiently recent SDKs.
-  if (SDKInfo &&
-      !DriverArgs.hasFlag(options::OPT_fmodulemap_allow_subdirectory_search,
-                          options::OPT_fno_modulemap_allow_subdirectory_search,
-                          false)) {
-    bool RequiresSubdirectorySearch;
-    VersionTuple SDKVersion = SDKInfo->getVersion();
-    switch (TargetPlatform) {
-    default:
-      RequiresSubdirectorySearch = true;
-      break;
-    case MacOS:
-      RequiresSubdirectorySearch = SDKVersion < VersionTuple(15, 0);
-      break;
-    case IPhoneOS:
-    case TvOS:
-      RequiresSubdirectorySearch = SDKVersion < VersionTuple(18, 0);
-      break;
-    case WatchOS:
-      RequiresSubdirectorySearch = SDKVersion < VersionTuple(11, 0);
-      break;
-    case XROS:
-      RequiresSubdirectorySearch = SDKVersion < VersionTuple(2, 0);
-      break;
-    }
-    if (!RequiresSubdirectorySearch)
-      CC1Args.push_back("-fno-modulemap-allow-subdirectory-search");
-  }
 }
 
 void Darwin::addClangCC1ASTargetOptions(
@@ -3580,7 +3510,6 @@ SanitizerMask Darwin::getSupportedSanitizers() const {
   Res |= SanitizerKind::Address;
   Res |= SanitizerKind::PointerCompare;
   Res |= SanitizerKind::PointerSubtract;
-  Res |= SanitizerKind::Realtime;
   Res |= SanitizerKind::Leak;
   Res |= SanitizerKind::Fuzzer;
   Res |= SanitizerKind::FuzzerNoLink;

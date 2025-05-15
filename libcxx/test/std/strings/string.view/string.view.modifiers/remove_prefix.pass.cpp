@@ -12,9 +12,8 @@
 
 // void remove_prefix(size_type _n)
 
-#include <cassert>
-#include <cstddef>
 #include <string_view>
+#include <cassert>
 
 #include "test_macros.h"
 

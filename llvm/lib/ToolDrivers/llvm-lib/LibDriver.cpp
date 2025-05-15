@@ -312,7 +312,7 @@ int llvm::libDriverMain(ArrayRef<const char *> ArgsArr) {
   StringSaver Saver(Alloc);
 
   // Parse command line arguments.
-  SmallVector<const char *, 20> NewArgs(ArgsArr);
+  SmallVector<const char *, 20> NewArgs(ArgsArr.begin(), ArgsArr.end());
   cl::ExpandResponseFiles(Saver, cl::TokenizeWindowsCommandLine, NewArgs);
   ArgsArr = NewArgs;
 

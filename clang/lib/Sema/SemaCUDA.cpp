@@ -1068,9 +1068,6 @@ void SemaCUDA::inheritTargetAttrs(FunctionDecl *FD,
 }
 
 std::string SemaCUDA::getConfigureFuncName() const {
-  if (getLangOpts().OffloadViaLLVM)
-    return "__llvmPushCallConfiguration";
-
   if (getLangOpts().HIP)
     return getLangOpts().HIPUseNewLaunchAPI ? "__hipPushCallConfiguration"
                                             : "hipConfigureCall";

@@ -487,7 +487,7 @@ MachineBasicBlock::iterator ARCFrameLowering::eliminateCallFramePseudoInstr(
   return MBB.erase(I);
 }
 
-bool ARCFrameLowering::hasFPImpl(const MachineFunction &MF) const {
+bool ARCFrameLowering::hasFP(const MachineFunction &MF) const {
   const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
   bool HasFP = MF.getTarget().Options.DisableFramePointerElim(MF) ||
                MF.getFrameInfo().hasVarSizedObjects() ||

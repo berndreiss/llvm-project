@@ -20,7 +20,6 @@ add_mlir_dialect_library(MLIRSPIRVConversion
   MLIRDialectUtils
   MLIRFuncDialect
   MLIRIR
-  MLIRPass
   MLIRSPIRVDialect
   MLIRSupport
   MLIRTransformUtils

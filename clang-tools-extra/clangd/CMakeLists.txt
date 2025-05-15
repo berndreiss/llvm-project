@@ -61,7 +61,7 @@ endif()
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}/../clang-tidy")
 include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/../include-cleaner/include")
 
-add_clang_library(clangDaemon STATIC
+add_clang_library(clangDaemon
   AST.cpp
   ASTSignals.cpp
   ClangdLSPServer.cpp
@@ -183,6 +183,7 @@ target_link_libraries(clangDaemon
   ${LLVM_PTHREAD_LIB}
 
   clangIncludeCleaner
+  clangPseudo
   clangTidy
   clangTidyUtils
 

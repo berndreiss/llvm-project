@@ -14,7 +14,6 @@ add_mlir_conversion_library(MLIRMathToLibm
   MLIRArithDialect
   MLIRDialectUtils
   MLIRFuncDialect
-  MLIRLLVMDialect
   MLIRMathDialect
   MLIRPass
   MLIRTransformUtils

@@ -16,7 +16,6 @@
 #include "PThreadMutex.h"
 #include <cstdint>
 #include <ctime>
-#include <functional>
 
 class PThreadEvent {
 public:
@@ -53,12 +52,6 @@ protected:
   uint32_t m_bits;
   uint32_t m_validBits;
   uint32_t m_reset_ack_mask;
-
-  uint32_t GetBitsMasked(uint32_t mask) const { return mask & m_bits; }
-
-  uint32_t WaitForEventsImpl(const uint32_t mask,
-                             const struct timespec *timeout_abstime,
-                             std::function<bool()> predicate) const;
 
 private:
   PThreadEvent(const PThreadEvent &) = delete;

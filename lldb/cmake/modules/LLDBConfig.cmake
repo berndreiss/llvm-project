@@ -188,6 +188,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/../clang/include")
 
 if (LLVM_COMPILER_IS_GCC_COMPATIBLE)
   # Disable GCC warnings
+  append("-Wno-deprecated-declarations" CMAKE_CXX_FLAGS)
   append("-Wno-unknown-pragmas" CMAKE_CXX_FLAGS)
   append("-Wno-strict-aliasing" CMAKE_CXX_FLAGS)
 
@@ -197,6 +198,7 @@ endif()
 
 # Disable Clang warnings
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  append("-Wno-deprecated-register" CMAKE_CXX_FLAGS)
   append("-Wno-vla-extension" CMAKE_CXX_FLAGS)
 endif()
 

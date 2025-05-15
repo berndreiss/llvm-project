@@ -70,14 +70,14 @@ BreakpointOptions::CommandData::CreateFromStructuredData(
       GetKey(OptionNames::Interpreter), interpreter_str);
 
   if (!success) {
-    error = Status::FromErrorString("Missing command language value.");
+    error.SetErrorString("Missing command language value.");
     return data_up;
   }
 
   interp_language = ScriptInterpreter::StringToLanguage(interpreter_str);
   if (interp_language == eScriptLanguageUnknown) {
-    error = Status::FromErrorStringWithFormatv(
-        "Unknown breakpoint command language: {0}.", interpreter_str);
+    error.SetErrorStringWithFormatv("Unknown breakpoint command language: {0}.",
+                                    interpreter_str);
     return data_up;
   }
   data_up->interpreter = interp_language;
@@ -230,8 +230,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
   if (key && options_dict.HasKey(key)) {
     success = options_dict.GetValueForKeyAsBoolean(key, enabled);
     if (!success) {
-      error =
-          Status::FromErrorStringWithFormat("%s key is not a boolean.", key);
+      error.SetErrorStringWithFormat("%s key is not a boolean.", key);
       return nullptr;
     }
     set_options.Set(eEnabled);
@@ -241,8 +240,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
   if (key && options_dict.HasKey(key)) {
     success = options_dict.GetValueForKeyAsBoolean(key, one_shot);
     if (!success) {
-      error =
-          Status::FromErrorStringWithFormat("%s key is not a boolean.", key);
+      error.SetErrorStringWithFormat("%s key is not a boolean.", key);
       return nullptr;
       }
       set_options.Set(eOneShot);
@@ -252,8 +250,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
   if (key && options_dict.HasKey(key)) {
     success = options_dict.GetValueForKeyAsBoolean(key, auto_continue);
     if (!success) {
-      error =
-          Status::FromErrorStringWithFormat("%s key is not a boolean.", key);
+      error.SetErrorStringWithFormat("%s key is not a boolean.", key);
       return nullptr;
       }
       set_options.Set(eAutoContinue);
@@ -263,8 +260,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
   if (key && options_dict.HasKey(key)) {
     success = options_dict.GetValueForKeyAsInteger(key, ignore_count);
     if (!success) {
-      error =
-          Status::FromErrorStringWithFormat("%s key is not an integer.", key);
+      error.SetErrorStringWithFormat("%s key is not an integer.", key);
       return nullptr;
     }
     set_options.Set(eIgnoreCount);
@@ -274,8 +270,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
   if (key && options_dict.HasKey(key)) {
     success = options_dict.GetValueForKeyAsString(key, condition_ref);
     if (!success) {
-      error =
-          Status::FromErrorStringWithFormat("%s key is not an string.", key);
+      error.SetErrorStringWithFormat("%s key is not an string.", key);
       return nullptr;
     }
     set_options.Set(eCondition);
@@ -289,7 +284,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
     Status cmds_error;
     cmd_data_up = CommandData::CreateFromStructuredData(*cmds_dict, cmds_error);
     if (cmds_error.Fail()) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "Failed to deserialize breakpoint command options: %s.",
           cmds_error.AsCString());
       return nullptr;
@@ -305,12 +300,12 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
     else {
       ScriptInterpreter *interp = target.GetDebugger().GetScriptInterpreter();
       if (!interp) {
-        error = Status::FromErrorString(
+        error.SetErrorString(
             "Can't set script commands - no script interpreter");
         return nullptr;
       }
       if (interp->GetLanguage() != cmd_data_up->interpreter) {
-        error = Status::FromErrorStringWithFormat(
+        error.SetErrorStringWithFormat(
             "Current script language doesn't match breakpoint's language: %s",
             ScriptInterpreter::LanguageToString(cmd_data_up->interpreter)
                 .c_str());
@@ -320,8 +315,8 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
       script_error =
           interp->SetBreakpointCommandCallback(*bp_options, cmd_data_up);
       if (script_error.Fail()) {
-        error = Status::FromErrorStringWithFormat(
-            "Error generating script callback: %s.", error.AsCString());
+        error.SetErrorStringWithFormat("Error generating script callback: %s.",
+                                       error.AsCString());
         return nullptr;
       }
     }
@@ -336,7 +331,7 @@ std::unique_ptr<BreakpointOptions> BreakpointOptions::CreateFromStructuredData(
         ThreadSpec::CreateFromStructuredData(*thread_spec_dict,
                                              thread_spec_error);
     if (thread_spec_error.Fail()) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "Failed to deserialize breakpoint thread spec options: %s.",
           thread_spec_error.AsCString());
       return nullptr;

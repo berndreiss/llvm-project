@@ -24,10 +24,9 @@ struct C {
   template<typename T> constexpr C(T t) : v(t) {}
   int v;
 };
-struct D : C { // #defined-here
+struct D : C {
   using C::C;
 };
 static_assert(D(123).v == 123, "");
 
 template<typename T> constexpr D::D(T t) : C(t) {} // expected-error {{does not match any declaration in 'D'}}
-                                                   // expected-note@#defined-here {{defined here}}

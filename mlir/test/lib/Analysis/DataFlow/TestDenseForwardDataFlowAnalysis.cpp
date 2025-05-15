@@ -58,8 +58,8 @@ public:
   /// is propagated with no change. If the operation allocates a resource, then
   /// its reaching definitions is set to empty. If the operation writes to a
   /// resource, then its reaching definition is set to the written value.
-  LogicalResult visitOperation(Operation *op, const LastModification &before,
-                               LastModification *after) override;
+  void visitOperation(Operation *op, const LastModification &before,
+                      LastModification *after) override;
 
   void visitCallControlFlowTransfer(CallOpInterface call,
                                     CallControlFlowAction action,
@@ -83,15 +83,14 @@ private:
 };
 } // end anonymous namespace
 
-LogicalResult LastModifiedAnalysis::visitOperation(
-    Operation *op, const LastModification &before, LastModification *after) {
+void LastModifiedAnalysis::visitOperation(Operation *op,
+                                          const LastModification &before,
+                                          LastModification *after) {
   auto memory = dyn_cast<MemoryEffectOpInterface>(op);
   // If we can't reason about the memory effects, then conservatively assume we
   // can't deduce anything about the last modifications.
-  if (!memory) {
-    setToEntryState(after);
-    return success();
-  }
+  if (!memory)
+    return setToEntryState(after);
 
   SmallVector<MemoryEffects::EffectInstance> effects;
   memory.getEffects(effects);
@@ -107,23 +106,20 @@ LogicalResult LastModifiedAnalysis::visitOperation(
 
     // If we see an effect on anything other than a value, assume we can't
     // deduce anything about the last modifications.
-    if (!value) {
-      setToEntryState(after);
-      return success();
-    }
+    if (!value)
+      return setToEntryState(after);
 
     // If we cannot find the underlying value, we shouldn't just propagate the
     // effects through, return the pessimistic state.
     std::optional<Value> underlyingValue =
         UnderlyingValueAnalysis::getMostUnderlyingValue(
             value, [&](Value value) {
-              return getOrCreateFor<UnderlyingValueLattice>(
-                  getProgramPointAfter(op), value);
+              return getOrCreateFor<UnderlyingValueLattice>(op, value);
             });
 
     // If the underlying value is not yet known, don't propagate yet.
     if (!underlyingValue)
-      return success();
+      return;
 
     underlyingValues.push_back(*underlyingValue);
   }
@@ -132,10 +128,8 @@ LogicalResult LastModifiedAnalysis::visitOperation(
   ChangeResult result = after->join(before);
   for (const auto &[effect, value] : llvm::zip(effects, underlyingValues)) {
     // If the underlying value is known to be unknown, set to fixpoint state.
-    if (!value) {
-      setToEntryState(after);
-      return success();
-    }
+    if (!value)
+      return setToEntryState(after);
 
     // Nothing to do for reads.
     if (isa<MemoryEffects::Read>(effect.getEffect()))
@@ -144,7 +138,6 @@ LogicalResult LastModifiedAnalysis::visitOperation(
     result |= after->set(value, op);
   }
   propagateIfChanged(after, result);
-  return success();
 }
 
 void LastModifiedAnalysis::visitCallControlFlowTransfer(
@@ -158,7 +151,7 @@ void LastModifiedAnalysis::visitCallControlFlowTransfer(
           UnderlyingValueAnalysis::getMostUnderlyingValue(
               operand, [&](Value value) {
                 return getOrCreateFor<UnderlyingValueLattice>(
-                    getProgramPointAfter(call.getOperation()), value);
+                    call.getOperation(), value);
               });
       if (!underlyingValue)
         return;
@@ -176,8 +169,7 @@ void LastModifiedAnalysis::visitCallControlFlowTransfer(
                             testCallAndStore.getStoreBeforeCall()) ||
                            (action == CallControlFlowAction::ExitCallee &&
                             !testCallAndStore.getStoreBeforeCall()))) {
-    (void)visitOperation(call, before, after);
-    return;
+    return visitOperation(call, before, after);
   }
   AbstractDenseForwardDataFlowAnalysis::visitCallControlFlowTransfer(
       call, action, before, after);
@@ -196,7 +188,7 @@ void LastModifiedAnalysis::visitRegionBranchControlFlowTransfer(
           [=](auto storeWithRegion) {
             if ((!regionTo && !storeWithRegion.getStoreBeforeRegion()) ||
                 (!regionFrom && storeWithRegion.getStoreBeforeRegion()))
-              (void)visitOperation(branch, before, after);
+              visitOperation(branch, before, after);
             defaultHandling();
           })
       .Default([=](auto) { defaultHandling(); });
@@ -244,7 +236,7 @@ struct TestLastModifiedPass
         return;
       os << "test_tag: " << tag.getValue() << ":\n";
       const LastModification *lastMods =
-          solver.lookupState<LastModification>(solver.getProgramPointAfter(op));
+          solver.lookupState<LastModification>(op);
       assert(lastMods && "expected a dense lattice");
       for (auto [index, operand] : llvm::enumerate(op->getOperands())) {
         os << " operand #" << index << "\n";

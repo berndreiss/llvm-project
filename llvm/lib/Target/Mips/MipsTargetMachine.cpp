@@ -70,10 +70,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeMipsTarget() {
   initializeMipsDAGToDAGISelLegacyPass(*PR);
 }
 
-static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
-  return std::make_unique<MipsTargetObjectFile>();
-}
-
 static std::string computeDataLayout(const Triple &TT, StringRef CPU,
                                      const TargetOptions &Options,
                                      bool isLittle) {
@@ -103,7 +99,7 @@ static std::string computeDataLayout(const Triple &TT, StringRef CPU,
   // aligned. On N64 64 bit registers are also available and the stack is
   // 128 bit aligned.
   if (ABI.IsN64() || ABI.IsN32())
-    Ret += "-i128:128-n32:64-S128";
+    Ret += "-n32:64-S128";
   else
     Ret += "-n32-S64";
 
@@ -132,7 +128,7 @@ MipsTargetMachine::MipsTargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT, CPU, Options, isLittle), TT,
                         CPU, FS, Options, getEffectiveRelocModel(JIT, RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      isLittle(isLittle), TLOF(createTLOF(getTargetTriple())),
+      isLittle(isLittle), TLOF(std::make_unique<MipsTargetObjectFile>()),
       ABI(MipsABIInfo::computeTargetABI(TT, CPU, Options.MCOptions)),
       Subtarget(nullptr),
       DefaultSubtarget(TT, CPU, FS, isLittle, *this, std::nullopt),

@@ -123,9 +123,6 @@ public:
     return NoWrapKind;
   }
 
-  /// Return true if the instruction is commutative
-  bool isCommutative() const { return Instruction::isCommutative(getOpcode()); }
-
   static bool classof(const Instruction *I) {
     return I->getOpcode() == Instruction::Add ||
            I->getOpcode() == Instruction::Sub ||
@@ -271,21 +268,6 @@ private:
     SubclassOptionalData = FMF.Flags;
   }
 
-  /// Returns true if `Ty` is composed of a single kind of float-poing type
-  /// (possibly repeated within an aggregate).
-  static bool isComposedOfHomogeneousFloatingPointTypes(Type *Ty) {
-    if (auto *StructTy = dyn_cast<StructType>(Ty)) {
-      if (!StructTy->isLiteral() || !StructTy->containsHomogeneousTypes())
-        return false;
-      Ty = StructTy->elements().front();
-    } else if (auto *ArrayTy = dyn_cast<ArrayType>(Ty)) {
-      do {
-        Ty = ArrayTy->getElementType();
-      } while ((ArrayTy = dyn_cast<ArrayType>(Ty)));
-    }
-    return Ty->isFPOrFPVectorTy();
-  };
-
 public:
   /// Test if this operation allows all non-strict floating-point transforms.
   bool isFast() const {
@@ -344,13 +326,6 @@ public:
   /// precision.
   float getFPAccuracy() const;
 
-  /// Returns true if `Ty` is a supported floating-point type for phi, select,
-  /// or call FPMathOperators.
-  static bool isSupportedFloatingPointType(Type *Ty) {
-    return Ty->isFPOrFPVectorTy() ||
-           isComposedOfHomogeneousFloatingPointTypes(Ty);
-  }
-
   static bool classof(const Value *V) {
     unsigned Opcode;
     if (auto *I = dyn_cast<Instruction>(V))
@@ -375,7 +350,10 @@ public:
     case Instruction::PHI:
     case Instruction::Select:
     case Instruction::Call: {
-      return isSupportedFloatingPointType(V->getType());
+      Type *Ty = V->getType();
+      while (ArrayType *ArrTy = dyn_cast<ArrayType>(Ty))
+        Ty = ArrTy->getElementType();
+      return Ty->isFPOrFPVectorTy();
     }
     default:
       return false;
@@ -550,13 +528,13 @@ public:
   /// Collect the offset of this GEP as a map of Values to their associated
   /// APInt multipliers, as well as a total Constant Offset.
   bool collectOffset(const DataLayout &DL, unsigned BitWidth,
-                     SmallMapVector<Value *, APInt, 4> &VariableOffsets,
+                     MapVector<Value *, APInt> &VariableOffsets,
                      APInt &ConstantOffset) const;
 };
 
 template <>
-struct OperandTraits<GEPOperator> : public VariadicOperandTraits<GEPOperator> {
-};
+struct OperandTraits<GEPOperator>
+    : public VariadicOperandTraits<GEPOperator, 1> {};
 
 DEFINE_TRANSPARENT_OPERAND_ACCESSORS(GEPOperator, Value)
 

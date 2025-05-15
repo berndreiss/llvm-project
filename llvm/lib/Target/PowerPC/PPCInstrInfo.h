@@ -17,7 +17,6 @@
 #include "PPC.h"
 #include "PPCRegisterInfo.h"
 #include "llvm/ADT/SmallSet.h"
-#include "llvm/CodeGen/LiveVariables.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
 #define GET_INSTRINFO_HEADER
@@ -455,8 +454,7 @@ public:
 
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
                    const DebugLoc &DL, MCRegister DestReg, MCRegister SrcReg,
-                   bool KillSrc, bool RenamableDest = false,
-                   bool RenamableSrc = false) const override;
+                   bool KillSrc) const override;
 
   void storeRegToStackSlot(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MBBI, Register SrcReg,
@@ -626,10 +624,6 @@ public:
                       const MachineRegisterInfo *MRI) const {
     return isSignOrZeroExtended(Reg, 0, MRI).second;
   }
-  void promoteInstr32To64ForElimEXTSW(const Register &Reg,
-                                      MachineRegisterInfo *MRI,
-                                      unsigned BinOpDepth,
-                                      LiveVariables *LV) const;
 
   bool convertToImmediateForm(MachineInstr &MI,
                               SmallSet<Register, 4> &RegsToUpdate,

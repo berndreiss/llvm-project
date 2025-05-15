@@ -13,9 +13,9 @@
 #ifndef FORTRAN_FRONTEND_COMPILERINVOCATION_H
 #define FORTRAN_FRONTEND_COMPILERINVOCATION_H
 
-#include "flang/Common/LangOptions.h"
 #include "flang/Frontend/CodeGenOptions.h"
 #include "flang/Frontend/FrontendOptions.h"
+#include "flang/Frontend/LangOptions.h"
 #include "flang/Frontend/PreprocessorOptions.h"
 #include "flang/Frontend/TargetOptions.h"
 #include "flang/Lower/LoweringOptions.h"
@@ -84,7 +84,7 @@ class CompilerInvocation : public CompilerInvocationBase {
   Fortran::frontend::CodeGenOptions codeGenOpts;
 
   /// Options controlling language dialect.
-  Fortran::common::LangOptions langOpts;
+  Fortran::frontend::LangOptions langOpts;
 
   // The original invocation of the compiler driver.
   // This string will be set as the return value from the COMPILER_OPTIONS
@@ -158,8 +158,8 @@ public:
   CodeGenOptions &getCodeGenOpts() { return codeGenOpts; }
   const CodeGenOptions &getCodeGenOpts() const { return codeGenOpts; }
 
-  Fortran::common::LangOptions &getLangOpts() { return langOpts; }
-  const Fortran::common::LangOptions &getLangOpts() const { return langOpts; }
+  LangOptions &getLangOpts() { return langOpts; }
+  const LangOptions &getLangOpts() const { return langOpts; }
 
   Fortran::lower::LoweringOptions &getLoweringOpts() { return loweringOpts; }
   const Fortran::lower::LoweringOptions &getLoweringOpts() const {

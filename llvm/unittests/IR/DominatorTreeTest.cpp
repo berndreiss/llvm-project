@@ -607,10 +607,11 @@ TEST(DominatorTree, DeletingEdgesIntroducesInfiniteLoop2) {
         SwitchC->removeCase(SwitchC->case_begin());
         DT->deleteEdge(C, C2);
         PDT->deleteEdge(C, C2);
+        C2->removeFromParent();
 
         EXPECT_EQ(DT->getNode(C2), nullptr);
         PDT->eraseNode(C2);
-        C2->eraseFromParent();
+        delete C2;
 
         EXPECT_TRUE(DT->verify());
         EXPECT_TRUE(PDT->verify());

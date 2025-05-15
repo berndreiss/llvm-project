@@ -11,6 +11,5 @@ add_mlir_library(MLIRShardingInterface
   MLIRDialectUtils
   MLIRIR
   MLIRMeshDialect
-  MLIRTensorDialect
   MLIRSupport
 )

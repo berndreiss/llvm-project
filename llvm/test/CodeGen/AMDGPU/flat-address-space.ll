@@ -123,8 +123,10 @@ define amdgpu_kernel void @zextload_flat_i16(ptr addrspace(1) noalias %out, ptr 
 }
 
 ; GCN-LABEL: flat_scratch_unaligned_load:
-; GFX9: flat_load_dword
-; GFX10PLUS: flat_load_{{dword|b32}}
+; GCN: flat_load_{{ubyte|u8}}
+; GCN: flat_load_{{ubyte|u8}}
+; GCN: flat_load_{{ubyte|u8}}
+; GCN: flat_load_{{ubyte|u8}}
 define amdgpu_kernel void @flat_scratch_unaligned_load() {
   %scratch = alloca i32, addrspace(5)
   %fptr = addrspacecast ptr addrspace(5) %scratch to ptr
@@ -134,8 +136,10 @@ define amdgpu_kernel void @flat_scratch_unaligned_load() {
 }
 
 ; GCN-LABEL: flat_scratch_unaligned_store:
-; GFX9: flat_store_dword
-; GFX10PLUS: flat_store_{{dword|b32}}
+; GCN: flat_store_{{byte|b8}}
+; GCN: flat_store_{{byte|b8}}
+; GCN: flat_store_{{byte|b8}}
+; GCN: flat_store_{{byte|b8}}
 define amdgpu_kernel void @flat_scratch_unaligned_store() {
   %scratch = alloca i32, addrspace(5)
   %fptr = addrspacecast ptr addrspace(5) %scratch to ptr

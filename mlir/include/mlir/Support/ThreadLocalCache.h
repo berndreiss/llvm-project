@@ -27,8 +27,6 @@ template <typename ValueT>
 class ThreadLocalCache {
   struct PerInstanceState;
 
-  using PointerAndFlag = std::pair<ValueT *, std::atomic<bool>>;
-
   /// The "observer" is owned by a thread-local cache instance. It is
   /// constructed the first time a `ThreadLocalCache` instance is accessed by a
   /// thread, unless `perInstanceState` happens to get re-allocated to the same
@@ -43,8 +41,7 @@ class ThreadLocalCache {
     /// This is the double pointer, explicitly allocated because we need to keep
     /// the address stable if the TLC map re-allocates. It is owned by the
     /// observer and shared with the value owner.
-    std::shared_ptr<PointerAndFlag> ptr =
-        std::make_shared<PointerAndFlag>(std::make_pair(nullptr, false));
+    std::shared_ptr<ValueT *> ptr = std::make_shared<ValueT *>(nullptr);
     /// Because the `Owner` instance that lives inside `PerInstanceState`
     /// contains a reference to the double pointer, and likewise this class
     /// contains a reference to the value, we need to synchronize destruction of
@@ -65,21 +62,18 @@ class ThreadLocalCache {
     /// Save a pointer to the reference and write it to the newly created entry.
     Owner(Observer &observer)
         : value(std::make_unique<ValueT>()), ptrRef(observer.ptr) {
-      observer.ptr->second = true;
-      observer.ptr->first = value.get();
+      *observer.ptr = value.get();
     }
     ~Owner() {
-      if (std::shared_ptr<PointerAndFlag> ptr = ptrRef.lock()) {
-        ptr->first = nullptr;
-        ptr->second = false;
-      }
+      if (std::shared_ptr<ValueT *> ptr = ptrRef.lock())
+        *ptr = nullptr;
     }
 
     Owner(Owner &&) = default;
     Owner &operator=(Owner &&) = default;
 
     std::unique_ptr<ValueT> value;
-    std::weak_ptr<PointerAndFlag> ptrRef;
+    std::weak_ptr<ValueT *> ptrRef;
   };
 
   // Keep a separate shared_ptr protected state that can be acquired atomically
@@ -122,7 +116,7 @@ class ThreadLocalCache {
       // back to the data here that is being destroyed.
       for (auto &[instance, observer] : *this)
         if (std::shared_ptr<PerInstanceState> state = observer.keepalive.lock())
-          state->remove(observer.ptr->first);
+          state->remove(*observer.ptr);
     }
 
     /// Clear out any unused entries within the map. This method is not
@@ -130,7 +124,7 @@ class ThreadLocalCache {
     void clearExpiredEntries() {
       for (auto it = this->begin(), e = this->end(); it != e;) {
         auto curIt = it++;
-        if (!curIt->second.ptr->second)
+        if (!*curIt->second.ptr)
           this->erase(curIt);
       }
     }
@@ -148,7 +142,7 @@ public:
     // Check for an already existing instance for this thread.
     CacheType &staticCache = getStaticCache();
     Observer &threadInstance = staticCache[perInstanceState.get()];
-    if (ValueT *value = threadInstance.ptr->first)
+    if (ValueT *value = *threadInstance.ptr)
       return *value;
 
     // Otherwise, create a new instance for this thread.
@@ -163,7 +157,7 @@ public:
     // entries in the static map. The cache is only cleared within the same
     // thread to remove the need to lock the cache itself.
     staticCache.clearExpiredEntries();
-    return *threadInstance.ptr->first;
+    return **threadInstance.ptr;
   }
   ValueT &operator*() { return get(); }
   ValueT *operator->() { return &get(); }

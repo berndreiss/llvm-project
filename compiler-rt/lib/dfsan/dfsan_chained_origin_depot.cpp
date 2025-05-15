@@ -13,18 +13,16 @@
 
 #include "dfsan_chained_origin_depot.h"
 
-using namespace __dfsan;
+namespace __dfsan {
 
 static ChainedOriginDepot chainedOriginDepot;
 
-ChainedOriginDepot* __dfsan::GetChainedOriginDepot() {
-  return &chainedOriginDepot;
-}
+ChainedOriginDepot* GetChainedOriginDepot() { return &chainedOriginDepot; }
 
-void __dfsan::ChainedOriginDepotLockBeforeFork() {
-  chainedOriginDepot.LockBeforeFork();
-}
+void ChainedOriginDepotLockBeforeFork() { chainedOriginDepot.LockBeforeFork(); }
 
-void __dfsan::ChainedOriginDepotUnlockAfterFork(bool fork_child) {
+void ChainedOriginDepotUnlockAfterFork(bool fork_child) {
   chainedOriginDepot.UnlockAfterFork(fork_child);
 }
+
+}  // namespace __dfsan

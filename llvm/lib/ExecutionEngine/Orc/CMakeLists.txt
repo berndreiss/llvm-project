@@ -26,14 +26,11 @@ add_llvm_component_library(LLVMOrcJIT
   IndirectionUtils.cpp
   IRCompileLayer.cpp
   IRTransformLayer.cpp
-  IRPartitionLayer.cpp
   JITTargetMachineBuilder.cpp
   LazyReexports.cpp
   Layer.cpp
-  LoadLinkableFile.cpp
   LookupAndRecordAddrs.cpp
   LLJIT.cpp
-  MachO.cpp
   MachOPlatform.cpp
   MapperJITLinkMemoryManager.cpp
   MemoryMapper.cpp
@@ -51,9 +48,6 @@ add_llvm_component_library(LLVMOrcJIT
   ExecutorProcessControl.cpp
   TaskDispatch.cpp
   ThreadSafeModule.cpp
-  RedirectionManager.cpp
-  JITLinkRedirectableSymbolManager.cpp
-  ReOptimizeLayer.cpp
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/ExecutionEngine/Orc
 
@@ -66,7 +60,6 @@ add_llvm_component_library(LLVMOrcJIT
   ${atomic_lib}
 
   LINK_COMPONENTS
-  BinaryFormat
   Core
   ExecutionEngine
   JITLink

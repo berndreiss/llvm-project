@@ -28,7 +28,6 @@
 #include "llvm/CodeGenTypes/MachineValueType.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -976,33 +975,6 @@ static void emitNonLazyStubs(MachineModuleInfo *MMI, MCStreamer &OutStreamer) {
   }
 }
 
-/// True if this module is being built for windows/msvc, and uses floating
-/// point. This is used to emit an undefined reference to _fltused. This is
-/// needed in Windows kernel or driver contexts to find and prevent code from
-/// modifying non-GPR registers.
-///
-/// TODO: It would be better if this was computed from MIR by looking for
-/// selected floating-point instructions.
-static bool usesMSVCFloatingPoint(const Triple &TT, const Module &M) {
-  // Only needed for MSVC
-  if (!TT.isWindowsMSVCEnvironment())
-    return false;
-
-  for (const Function &F : M) {
-    for (const Instruction &I : instructions(F)) {
-      if (I.getType()->isFPOrFPVectorTy())
-        return true;
-
-      for (const auto &Op : I.operands()) {
-        if (Op->getType()->isFPOrFPVectorTy())
-          return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
   const Triple &TT = TM.getTargetTriple();
 
@@ -1021,7 +993,7 @@ void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
     // safe to set.
     OutStreamer->emitAssemblerFlag(MCAF_SubsectionsViaSymbols);
   } else if (TT.isOSBinFormatCOFF()) {
-    if (usesMSVCFloatingPoint(TT, M)) {
+    if (MMI->usesMSVCFloatingPoint()) {
       // In Windows' libcmt.lib, there is a file which is linked in only if the
       // symbol _fltused is referenced. Linking this in causes some
       // side-effects:
@@ -1067,7 +1039,7 @@ void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
 //===----------------------------------------------------------------------===//
 
 // Force static initialization.
-extern "C" LLVM_C_ABI void LLVMInitializeX86AsmPrinter() {
+extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86AsmPrinter() {
   RegisterAsmPrinter<X86AsmPrinter> X(getTheX86_32Target());
   RegisterAsmPrinter<X86AsmPrinter> Y(getTheX86_64Target());
 }

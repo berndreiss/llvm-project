@@ -19,8 +19,6 @@
 #include "hdr/math_macros.h"
 #include <stdint.h>
 
-using LIBC_NAMESPACE::Sign;
-
 template <typename T>
 class LdExpTestTemplate : public LIBC_NAMESPACE::testing::FEnvSafeTest {
   using FPBits = LIBC_NAMESPACE::fputil::FPBits<T>;

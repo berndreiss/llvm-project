@@ -38,6 +38,7 @@ add_integration_test(
   SRCS
     tls_test.cpp
   DEPENDS
+    libc.include.errno
     libc.include.sys_mman
     libc.src.errno.errno
     libc.src.sys.mman.mmap

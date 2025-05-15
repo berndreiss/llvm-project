@@ -131,10 +131,7 @@ void PlainPrinterBase::printFunctionName(StringRef FunctionName, bool Inlined) {
 
 void LLVMPrinter::printSimpleLocation(StringRef Filename,
                                       const DILineInfo &Info) {
-  OS << Filename << ':' << Info.Line << ':' << Info.Column;
-  if (Info.IsApproximateLine)
-    OS << " " << Info.ApproxString;
-  OS << "\n";
+  OS << Filename << ':' << Info.Line << ':' << Info.Column << '\n';
   printContext(
       SourceCode(Filename, Info.Line, Config.SourceContextLines, Info.Source));
 }
@@ -142,8 +139,6 @@ void LLVMPrinter::printSimpleLocation(StringRef Filename,
 void GNUPrinter::printSimpleLocation(StringRef Filename,
                                      const DILineInfo &Info) {
   OS << Filename << ':' << Info.Line;
-  if (Info.IsApproximateLine)
-    OS << " " << Info.ApproxString;
   if (Info.Discriminator)
     OS << " (discriminator " << Info.Discriminator << ')';
   OS << '\n';
@@ -163,8 +158,6 @@ void PlainPrinterBase::printVerbose(StringRef Filename,
   OS << "  Column: " << Info.Column << '\n';
   if (Info.Discriminator)
     OS << "  Discriminator: " << Info.Discriminator << '\n';
-  if (Info.IsApproximateLine)
-    OS << "  Approximate: true" << '\n';
 }
 
 void LLVMPrinter::printStartAddress(const DILineInfo &Info) {
@@ -301,7 +294,7 @@ static json::Object toJSON(const Request &Request, StringRef ErrorMsg = "") {
 }
 
 static json::Object toJSON(const DILineInfo &LineInfo) {
-  json::Object Obj = json::Object(
+  return json::Object(
       {{"FunctionName", LineInfo.FunctionName != DILineInfo::BadString
                             ? LineInfo.FunctionName
                             : ""},
@@ -316,9 +309,6 @@ static json::Object toJSON(const DILineInfo &LineInfo) {
        {"Line", LineInfo.Line},
        {"Column", LineInfo.Column},
        {"Discriminator", LineInfo.Discriminator}});
-  if (LineInfo.IsApproximateLine)
-    Obj.insert({"Approximate", LineInfo.IsApproximateLine});
-  return Obj;
 }
 
 void JSONPrinter::print(const Request &Request, const DILineInfo &Info) {

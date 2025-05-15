@@ -65,13 +65,9 @@ ExternalFileUnit *ExternalFileUnit::LookUpOrCreateAnonymous(int unit,
   bool exists{false};
   ExternalFileUnit *result{GetUnitMap().LookUpOrCreate(unit, handler, exists)};
   if (result && !exists) {
-    common::optional<Action> action;
-    if (dir == Direction::Output) {
-      action = Action::ReadWrite;
-    }
     if (!result->OpenAnonymousUnit(
             dir == Direction::Input ? OpenStatus::Unknown : OpenStatus::Replace,
-            action, Position::Rewind, Convert::Unknown, handler)) {
+            Action::ReadWrite, Position::Rewind, Convert::Unknown, handler)) {
       // fort.N isn't a writable file
       if (ExternalFileUnit * closed{LookUpForClose(result->unitNumber())}) {
         closed->DestroyClosed();

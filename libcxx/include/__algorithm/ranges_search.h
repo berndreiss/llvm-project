@@ -33,7 +33,8 @@
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __search {
+namespace __search {
+struct __fn {
   template <class _Iter1, class _Sent1, class _Iter2, class _Sent2, class _Pred, class _Proj1, class _Proj2>
   _LIBCPP_HIDE_FROM_ABI static constexpr subrange<_Iter1> __ranges_search_impl(
       _Iter1 __first1,
@@ -119,9 +120,10 @@ struct __search {
         __proj2);
   }
 };
+} // namespace __search
 
 inline namespace __cpo {
-inline constexpr auto search = __search{};
+inline constexpr auto search = __search::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

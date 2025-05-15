@@ -201,7 +201,7 @@ Register MachineSSAUpdater::GetValueInMiddleOfBlock(MachineBasicBlock *BB,
 
   // See if the PHI node can be merged to a single value.  This can happen in
   // loop cases when we get a PHI of itself and one other value.
-  if (Register ConstVal = InsertedPHI->isConstantValuePHI()) {
+  if (unsigned ConstVal = InsertedPHI->isConstantValuePHI()) {
     InsertedPHI->eraseFromParent();
     return ConstVal;
   }
@@ -286,7 +286,7 @@ public:
     bool operator==(const PHI_iterator& x) const { return idx == x.idx; }
     bool operator!=(const PHI_iterator& x) const { return !operator==(x); }
 
-    Register getIncomingValue() { return PHI->getOperand(idx).getReg(); }
+    unsigned getIncomingValue() { return PHI->getOperand(idx).getReg(); }
 
     MachineBasicBlock *getIncomingBlock() {
       return PHI->getOperand(idx+1).getMBB();

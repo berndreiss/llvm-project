@@ -35,8 +35,8 @@ MCAsmBackend::createObjectWriter(raw_pwrite_stream &OS) const {
   bool IsLE = Endian == llvm::endianness::little;
   switch (TW->getFormat()) {
   case Triple::MachO:
-    return std::make_unique<MachObjectWriter>(
-        cast<MCMachObjectTargetWriter>(std::move(TW)), OS, IsLE);
+    return createMachObjectWriter(cast<MCMachObjectTargetWriter>(std::move(TW)),
+                                  OS, IsLE);
   case Triple::COFF:
     return createWinCOFFObjectWriter(
         cast<MCWinCOFFObjectTargetWriter>(std::move(TW)), OS);
@@ -56,7 +56,7 @@ MCAsmBackend::createObjectWriter(raw_pwrite_stream &OS) const {
     return createXCOFFObjectWriter(
         cast<MCXCOFFObjectTargetWriter>(std::move(TW)), OS);
   case Triple::DXContainer:
-    return std::make_unique<DXContainerObjectWriter>(
+    return createDXContainerObjectWriter(
         cast<MCDXContainerTargetWriter>(std::move(TW)), OS);
   default:
     llvm_unreachable("unexpected object format");

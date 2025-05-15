@@ -51,12 +51,7 @@ namespace __xray {
 
 bool patchFunctionEntry(const bool Enable, uint32_t FuncId,
                         const XRaySledEntry &Sled,
-                        const XRayTrampolines &Trampolines,
-                        bool LogArgs) XRAY_NEVER_INSTRUMENT {
-  // TODO: Trampoline addresses are currently inserted at compile-time, using
-  //       __xray_FunctionEntry and __xray_FunctionExit only.
-  //       To support DSO instrumentation, trampolines have to be written during
-  //       patching (see implementation on X86_64, e.g.).
+                        void (*Trampoline)()) XRAY_NEVER_INSTRUMENT {
   const uint64_t Address = Sled.address();
   if (Enable) {
     // lis 0, FuncId[16..32]
@@ -73,13 +68,8 @@ bool patchFunctionEntry(const bool Enable, uint32_t FuncId,
   return true;
 }
 
-bool patchFunctionExit(
-    const bool Enable, uint32_t FuncId, const XRaySledEntry &Sled,
-    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  // TODO: Trampoline addresses are currently inserted at compile-time, using
-  //       __xray_FunctionEntry and __xray_FunctionExit only.
-  //       To support DSO instrumentation, trampolines have to be written during
-  //       patching (see implementation on X86_64, e.g.).
+bool patchFunctionExit(const bool Enable, uint32_t FuncId,
+                       const XRaySledEntry &Sled) XRAY_NEVER_INSTRUMENT {
   const uint64_t Address = Sled.address();
   if (Enable) {
     // lis 0, FuncId[16..32]
@@ -96,10 +86,9 @@ bool patchFunctionExit(
   return true;
 }
 
-bool patchFunctionTailExit(
-    const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
-    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchFunctionExit(Enable, FuncId, Sled, Trampolines);
+bool patchFunctionTailExit(const bool Enable, const uint32_t FuncId,
+                           const XRaySledEntry &Sled) XRAY_NEVER_INSTRUMENT {
+  return patchFunctionExit(Enable, FuncId, Sled);
 }
 
 // FIXME: Maybe implement this better?
@@ -121,11 +110,4 @@ bool patchTypedEvent(const bool Enable, const uint32_t FuncId,
 
 extern "C" void __xray_ArgLoggerEntry() XRAY_NEVER_INSTRUMENT {
   // FIXME: this will have to be implemented in the trampoline assembly file
-}
-
-extern "C" void __xray_FunctionTailExit() XRAY_NEVER_INSTRUMENT {
-  // For PowerPC, calls to __xray_FunctionEntry and __xray_FunctionExit
-  // are statically inserted into the sled. Tail exits are handled like normal
-  // function exits. This trampoline is therefore not implemented.
-  // This stub is placed here to avoid linking issues.
 }

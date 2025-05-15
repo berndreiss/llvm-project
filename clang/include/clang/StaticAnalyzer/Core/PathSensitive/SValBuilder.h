@@ -202,9 +202,11 @@ public:
                                         const Expr *expr,
                                         const LocationContext *LCtx,
                                         unsigned count);
-  DefinedOrUnknownSVal conjureSymbolVal(const void *symbolTag, const Stmt *S,
+  DefinedOrUnknownSVal conjureSymbolVal(const void *symbolTag,
+                                        const Expr *expr,
                                         const LocationContext *LCtx,
-                                        QualType type, unsigned count);
+                                        QualType type,
+                                        unsigned count);
   DefinedOrUnknownSVal conjureSymbolVal(const Stmt *stmt,
                                         const LocationContext *LCtx,
                                         QualType type,
@@ -213,17 +215,17 @@ public:
   /// Conjure a symbol representing heap allocated memory region.
   ///
   /// Note, the expression should represent a location.
-  DefinedSVal getConjuredHeapSymbolVal(const Expr *E,
-                                       const LocationContext *LCtx,
-                                       unsigned Count);
+  DefinedOrUnknownSVal getConjuredHeapSymbolVal(const Expr *E,
+                                                const LocationContext *LCtx,
+                                                unsigned Count);
 
   /// Conjure a symbol representing heap allocated memory region.
   ///
   /// Note, now, the expression *doesn't* need to represent a location.
   /// But the type need to!
-  DefinedSVal getConjuredHeapSymbolVal(const Expr *E,
-                                       const LocationContext *LCtx,
-                                       QualType type, unsigned Count);
+  DefinedOrUnknownSVal getConjuredHeapSymbolVal(const Expr *E,
+                                                const LocationContext *LCtx,
+                                                QualType type, unsigned Count);
 
   /// Create an SVal representing the result of an alloca()-like call, that is,
   /// an AllocaRegion on the stack.

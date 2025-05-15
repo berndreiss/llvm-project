@@ -9,10 +9,6 @@
 //===----------------------------------------------------------------------===//
 /// Define scheduler resources associated with def operands.
 
-// This predicate is true when the rs2 operand of vlse or vsse is x0, false
-// otherwise.
-def VLDSX0Pred : MCSchedPredicate<CheckRegOperand<3, X0>>;
-
 defvar SchedMxList = ["MF8", "MF4", "MF2", "M1", "M2", "M4", "M8"];
 // Used for widening and narrowing instructions as it doesn't contain M8.
 defvar SchedMxListW = !listremove(SchedMxList, ["M8"]);
@@ -364,9 +360,6 @@ defm "" : LMULSchedWrites<"WriteVExtV">;
 defm "" : LMULSchedWrites<"WriteVICALUV">;
 defm "" : LMULSchedWrites<"WriteVICALUX">;
 defm "" : LMULSchedWrites<"WriteVICALUI">;
-defm "" : LMULSchedWrites<"WriteVICALUMV">;
-defm "" : LMULSchedWrites<"WriteVICALUMX">;
-defm "" : LMULSchedWrites<"WriteVICALUMI">;
 // 11.6. Vector Single-Width Bit Shift Instructions
 defm "" : LMULSchedWrites<"WriteVShiftV">;
 defm "" : LMULSchedWrites<"WriteVShiftX">;
@@ -773,11 +766,11 @@ def ReadVMov8V        : SchedRead;
 
 // Others
 def ReadVMask         : SchedRead;
-def ReadVPassthru_WorstCase : SchedRead;
+def ReadVMergeOp_WorstCase : SchedRead;
 foreach mx = SchedMxList in {
-  def ReadVPassthru_ # mx : SchedRead;
+  def ReadVMergeOp_ # mx : SchedRead;
   foreach sew = SchedSEWSet<mx>.val in
-    def ReadVPassthru_ # mx  # "_E" # sew : SchedRead;
+    def ReadVMergeOp_ # mx  # "_E" # sew : SchedRead;
 }
 
 //===----------------------------------------------------------------------===//
@@ -859,9 +852,6 @@ defm "" : LMULWriteRes<"WriteVExtV", []>;
 defm "" : LMULWriteRes<"WriteVICALUV", []>;
 defm "" : LMULWriteRes<"WriteVICALUX", []>;
 defm "" : LMULWriteRes<"WriteVICALUI", []>;
-defm "" : LMULWriteRes<"WriteVICALUMV", []>;
-defm "" : LMULWriteRes<"WriteVICALUMX", []>;
-defm "" : LMULWriteRes<"WriteVICALUMI", []>;
 defm "" : LMULWriteRes<"WriteVShiftV", []>;
 defm "" : LMULWriteRes<"WriteVShiftX", []>;
 defm "" : LMULWriteRes<"WriteVShiftI", []>;
@@ -1149,11 +1139,11 @@ def : ReadAdvance<ReadVMov8V, 0>;
 
 // Others
 def : ReadAdvance<ReadVMask, 0>;
-def : ReadAdvance<ReadVPassthru_WorstCase, 0>;
+def : ReadAdvance<ReadVMergeOp_WorstCase, 0>;
 foreach mx = SchedMxList in {
-  def : ReadAdvance<!cast<SchedRead>("ReadVPassthru_" # mx), 0>;
+  def : ReadAdvance<!cast<SchedRead>("ReadVMergeOp_" # mx), 0>;
   foreach sew = SchedSEWSet<mx>.val in
-    def : ReadAdvance<!cast<SchedRead>("ReadVPassthru_" # mx  # "_E" # sew), 0>;
+    def : ReadAdvance<!cast<SchedRead>("ReadVMergeOp_" # mx  # "_E" # sew), 0>;
 }
 
 } // Unsupported

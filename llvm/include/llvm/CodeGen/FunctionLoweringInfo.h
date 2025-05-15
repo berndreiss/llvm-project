@@ -73,8 +73,8 @@ public:
   /// allocated to hold a pointer to the hidden sret parameter.
   Register DemoteRegister;
 
-  /// A mapping from LLVM basic block number to their machine block.
-  SmallVector<MachineBasicBlock *> MBBMap;
+  /// MBBMap - A mapping from LLVM basic blocks to their machine code entry.
+  DenseMap<const BasicBlock*, MachineBasicBlock *> MBBMap;
 
   /// ValueMap - Since we emit code for the function a basic block at a time,
   /// we must remember which virtual registers hold the values for
@@ -172,9 +172,9 @@ public:
   /// for a value.
   DenseMap<const Value *, ISD::NodeType> PreferredExtendType;
 
-  /// The set of basic blocks visited thus far by instruction selection. Indexed
-  /// by basic block number.
-  SmallVector<bool> VisitedBBs;
+  /// VisitedBBs - The set of basic blocks visited thus far by instruction
+  /// selection.
+  SmallPtrSet<const BasicBlock*, 4> VisitedBBs;
 
   /// PHINodesToUpdate - A list of phi instructions whose operand list will
   /// be updated after processing the current basic block.
@@ -187,9 +187,6 @@ public:
   /// selector registers are copied into these virtual registers by
   /// SelectionDAGISel::PrepareEHLandingPad().
   unsigned ExceptionPointerVirtReg, ExceptionSelectorVirtReg;
-
-  /// The current call site index being processed, if any. 0 if none.
-  unsigned CurCallSite = 0;
 
   /// Collection of dbg.declare instructions handled after argument
   /// lowering and before ISel proper.
@@ -210,11 +207,6 @@ public:
   /// exported from its block.
   bool isExportedInst(const Value *V) const {
     return ValueMap.count(V);
-  }
-
-  MachineBasicBlock *getMBB(const BasicBlock *BB) const {
-    assert(BB->getNumber() < MBBMap.size() && "uninitialized MBBMap?");
-    return MBBMap[BB->getNumber()];
   }
 
   Register CreateReg(MVT VT, bool isDivergent = false);
@@ -288,12 +280,6 @@ public:
 
   Register getCatchPadExceptionPointerVReg(const Value *CPI,
                                            const TargetRegisterClass *RC);
-
-  /// Set the call site currently being processed.
-  void setCurrentCallSite(unsigned Site) { CurCallSite = Site; }
-
-  /// Get the call site currently being processed, if any. Return zero if none.
-  unsigned getCurrentCallSite() { return CurCallSite; }
 
 private:
   /// LiveOutRegInfo - Information about live out vregs.

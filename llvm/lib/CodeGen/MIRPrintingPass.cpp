@@ -13,9 +13,7 @@
 
 #include "llvm/CodeGen/MIRPrinter.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/Passes.h"
-#include "llvm/IR/Function.h"
 #include "llvm/InitializePasses.h"
 
 using namespace llvm;
@@ -26,13 +24,8 @@ PreservedAnalyses PrintMIRPreparePass::run(Module &M, ModuleAnalysisManager &) {
 }
 
 PreservedAnalyses PrintMIRPass::run(MachineFunction &MF,
-                                    MachineFunctionAnalysisManager &MFAM) {
-  auto &MAMP = MFAM.getResult<ModuleAnalysisManagerMachineFunctionProxy>(MF);
-  Module *M = MF.getFunction().getParent();
-  const MachineModuleInfo &MMI =
-      MAMP.getCachedResult<MachineModuleAnalysis>(*M)->getMMI();
-
-  printMIR(OS, MMI, MF);
+                                    MachineFunctionAnalysisManager &) {
+  printMIR(OS, MF);
   return PreservedAnalyses::all();
 }
 
@@ -58,11 +51,7 @@ struct MIRPrintingPass : public MachineFunctionPass {
   bool runOnMachineFunction(MachineFunction &MF) override {
     std::string Str;
     raw_string_ostream StrOS(Str);
-
-    const MachineModuleInfo &MMI =
-        getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
-
-    printMIR(StrOS, MMI, MF);
+    printMIR(StrOS, MF);
     MachineFunctions.append(Str);
     return false;
   }

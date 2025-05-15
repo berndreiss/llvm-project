@@ -1,5 +1,6 @@
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+
+#include "../clcmacro.h"
 
 _CLC_DEFINE_BINARY_BUILTIN(float, fmax, __builtin_fmaxf, float, float);
 

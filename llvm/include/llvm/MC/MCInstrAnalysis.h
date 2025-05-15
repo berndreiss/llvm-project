@@ -85,8 +85,8 @@ public:
     if (isBranch(Inst) || isCall(Inst) || isReturn(Inst) ||
         isIndirectBranch(Inst))
       return true;
-    MCRegister PC = MCRI.getProgramCounter();
-    if (!PC)
+    unsigned PC = MCRI.getProgramCounter();
+    if (PC == 0)
       return false;
     return Info->get(Inst.getOpcode()).hasDefOfPhysReg(Inst, PC, MCRI);
   }

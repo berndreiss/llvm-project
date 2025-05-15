@@ -385,7 +385,7 @@ static void maybeReportRelocationToDiscarded(const SectionChunk *fromChunk,
   os << "relocation against symbol in discarded section: " + name;
   for (const std::string &s : symbolLocations)
     os << s;
-  error(out);
+  error(os.str());
 }
 
 void SectionChunk::writeTo(uint8_t *buf) const {
@@ -570,7 +570,8 @@ void SectionChunk::getBaserels(std::vector<Baserel> *res) {
 // another DLL) This returns the size the relocation is supposed to update,
 // in bits, or 0 if the relocation cannot be handled as a runtime pseudo
 // relocation.
-static int getRuntimePseudoRelocSize(uint16_t type, Triple::ArchType arch) {
+static int getRuntimePseudoRelocSize(uint16_t type,
+                                     llvm::COFF::MachineTypes machine) {
   // Relocations that either contain an absolute address, or a plain
   // relative offset, since the runtime pseudo reloc implementation
   // adds 8/16/32/64 bit values to a memory address.
@@ -596,8 +597,8 @@ static int getRuntimePseudoRelocSize(uint16_t type, Triple::ArchType arch) {
   // the image, or temporarily changed at runtime with VirtualProtect.
   // Since this only operates on direct address values, it doesn't work for
   // ARM/ARM64 relocations, other than the plain ADDR32/ADDR64 relocations.
-  switch (arch) {
-  case Triple::x86_64:
+  switch (machine) {
+  case AMD64:
     switch (type) {
     case IMAGE_REL_AMD64_ADDR64:
       return 64;
@@ -612,7 +613,7 @@ static int getRuntimePseudoRelocSize(uint16_t type, Triple::ArchType arch) {
     default:
       return 0;
     }
-  case Triple::x86:
+  case I386:
     switch (type) {
     case IMAGE_REL_I386_DIR32:
     case IMAGE_REL_I386_REL32:
@@ -620,14 +621,14 @@ static int getRuntimePseudoRelocSize(uint16_t type, Triple::ArchType arch) {
     default:
       return 0;
     }
-  case Triple::thumb:
+  case ARMNT:
     switch (type) {
     case IMAGE_REL_ARM_ADDR32:
       return 32;
     default:
       return 0;
     }
-  case Triple::aarch64:
+  case ARM64:
     switch (type) {
     case IMAGE_REL_ARM64_ADDR64:
       return 64;
@@ -660,7 +661,8 @@ void SectionChunk::getRuntimePseudoRelocs(
     // alive. Thus such dangling references in DWARF sections are expected.
     if (!target->getChunk())
       continue;
-    int sizeInBits = getRuntimePseudoRelocSize(rel.Type, getArch());
+    int sizeInBits =
+        getRuntimePseudoRelocSize(rel.Type, file->ctx.config.machine);
     if (sizeInBits == 0) {
       error("unable to automatically import from " + target->getName() +
             " with relocation type " +
@@ -772,10 +774,6 @@ void StringChunk::writeTo(uint8_t *buf) const {
   buf[str.size()] = '\0';
 }
 
-ImportThunkChunk::ImportThunkChunk(COFFLinkerContext &ctx, Defined *s)
-    : NonSectionCodeChunk(ImportThunkKind), live(!ctx.config.doGC),
-      impSymbol(s), ctx(ctx) {}
-
 ImportThunkChunkX64::ImportThunkChunkX64(COFFLinkerContext &ctx, Defined *s)
     : ImportThunkChunk(ctx, s) {
   // Intel Optimization Manual says that all branch targets
@@ -844,9 +842,14 @@ const uint8_t arm64Thunk[] = {
     0x00, 0x02, 0x1f, 0xd6, // br   x16
 };
 
-size_t RangeExtensionThunkARM64::getSize() const { return sizeof(arm64Thunk); }
+size_t RangeExtensionThunkARM64::getSize() const {
+  assert(ctx.config.machine == ARM64);
+  (void)&ctx;
+  return sizeof(arm64Thunk);
+}
 
 void RangeExtensionThunkARM64::writeTo(uint8_t *buf) const {
+  assert(ctx.config.machine == ARM64);
   memcpy(buf, arm64Thunk, sizeof(arm64Thunk));
   applyArm64Addr(buf + 0, target->getRVA(), rva, 12);
   applyArm64Imm(buf + 4, target->getRVA() & 0xfff, 0);
@@ -1002,7 +1005,16 @@ void BaserelChunk::writeTo(uint8_t *buf) const {
 }
 
 uint8_t Baserel::getDefaultType(llvm::COFF::MachineTypes machine) {
-  return is64Bit(machine) ? IMAGE_REL_BASED_DIR64 : IMAGE_REL_BASED_HIGHLOW;
+  switch (machine) {
+  case AMD64:
+  case ARM64:
+    return IMAGE_REL_BASED_DIR64;
+  case I386:
+  case ARMNT:
+    return IMAGE_REL_BASED_HIGHLOW;
+  default:
+    llvm_unreachable("unknown machine type");
+  }
 }
 
 MergeChunk::MergeChunk(uint32_t alignment)
@@ -1059,92 +1071,6 @@ void AbsolutePointerChunk::writeTo(uint8_t *buf) const {
   } else {
     write32le(buf, value);
   }
-}
-
-void ECExportThunkChunk::writeTo(uint8_t *buf) const {
-  memcpy(buf, ECExportThunkCode, sizeof(ECExportThunkCode));
-  write32le(buf + 10, target->getRVA() - rva - 14);
-}
-
-size_t CHPECodeRangesChunk::getSize() const {
-  return exportThunks.size() * sizeof(chpe_code_range_entry);
-}
-
-void CHPECodeRangesChunk::writeTo(uint8_t *buf) const {
-  auto ranges = reinterpret_cast<chpe_code_range_entry *>(buf);
-
-  for (uint32_t i = 0; i < exportThunks.size(); i++) {
-    Chunk *thunk = exportThunks[i].first;
-    uint32_t start = thunk->getRVA();
-    ranges[i].StartRva = start;
-    ranges[i].EndRva = start + thunk->getSize();
-    ranges[i].EntryPoint = start;
-  }
-}
-
-size_t CHPERedirectionChunk::getSize() const {
-  // Add an extra +1 for a terminator entry.
-  return (exportThunks.size() + 1) * sizeof(chpe_redirection_entry);
-}
-
-void CHPERedirectionChunk::writeTo(uint8_t *buf) const {
-  auto entries = reinterpret_cast<chpe_redirection_entry *>(buf);
-
-  for (uint32_t i = 0; i < exportThunks.size(); i++) {
-    entries[i].Source = exportThunks[i].first->getRVA();
-    entries[i].Destination = exportThunks[i].second->getRVA();
-  }
-}
-
-ImportThunkChunkARM64EC::ImportThunkChunkARM64EC(ImportFile *file)
-    : ImportThunkChunk(file->ctx, file->impSym), file(file) {}
-
-size_t ImportThunkChunkARM64EC::getSize() const {
-  if (!extended)
-    return sizeof(importThunkARM64EC);
-  // The last instruction is replaced with an inline range extension thunk.
-  return sizeof(importThunkARM64EC) + sizeof(arm64Thunk) - sizeof(uint32_t);
-}
-
-void ImportThunkChunkARM64EC::writeTo(uint8_t *buf) const {
-  memcpy(buf, importThunkARM64EC, sizeof(importThunkARM64EC));
-  applyArm64Addr(buf, file->impSym->getRVA(), rva, 12);
-  applyArm64Ldr(buf + 4, file->impSym->getRVA() & 0xfff);
-
-  // The exit thunk may be missing. This can happen if the application only
-  // references a function by its address (in which case the thunk is never
-  // actually used, but is still required to fill the auxiliary IAT), or in
-  // cases of hand-written assembly calling an imported ARM64EC function (where
-  // the exit thunk is ignored by __icall_helper_arm64ec). In such cases, MSVC
-  // link.exe uses 0 as the RVA.
-  uint32_t exitThunkRVA = exitThunk ? exitThunk->getRVA() : 0;
-  applyArm64Addr(buf + 8, exitThunkRVA, rva + 8, 12);
-  applyArm64Imm(buf + 12, exitThunkRVA & 0xfff, 0);
-
-  Defined *helper = cast<Defined>(file->ctx.config.arm64ECIcallHelper);
-  if (extended) {
-    // Replace last instruction with an inline range extension thunk.
-    memcpy(buf + 16, arm64Thunk, sizeof(arm64Thunk));
-    applyArm64Addr(buf + 16, helper->getRVA(), rva + 16, 12);
-    applyArm64Imm(buf + 20, helper->getRVA() & 0xfff, 0);
-  } else {
-    applyArm64Branch26(buf + 16, helper->getRVA() - rva - 16);
-  }
-}
-
-bool ImportThunkChunkARM64EC::verifyRanges() {
-  if (extended)
-    return true;
-  auto helper = cast<Defined>(file->ctx.config.arm64ECIcallHelper);
-  return isInt<28>(helper->getRVA() - rva - 16);
-}
-
-uint32_t ImportThunkChunkARM64EC::extendRanges() {
-  if (extended || verifyRanges())
-    return 0;
-  extended = true;
-  // The last instruction is replaced with an inline range extension thunk.
-  return sizeof(arm64Thunk) - sizeof(uint32_t);
 }
 
 } // namespace lld::coff

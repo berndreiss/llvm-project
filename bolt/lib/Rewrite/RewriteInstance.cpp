@@ -354,7 +354,6 @@ RewriteInstance::RewriteInstance(ELFObjectFileBase *File, const int Argc,
     }
   }
 
-  Relocation::Arch = TheTriple.getArch();
   auto BCOrErr = BinaryContext::createBinaryContext(
       TheTriple, File->getFileName(), Features.get(), IsPIC,
       DWARFContext::create(*File, DWARFContext::ProcessDebugRelocations::Ignore,
@@ -526,9 +525,11 @@ Error RewriteInstance::discoverStorage() {
       NextAvailableOffset = std::max(NextAvailableOffset,
                                      Phdr.p_offset + Phdr.p_filesz);
 
-      BC->SegmentMapInfo[Phdr.p_vaddr] = SegmentInfo{
-          Phdr.p_vaddr,  Phdr.p_memsz, Phdr.p_offset,
-          Phdr.p_filesz, Phdr.p_align, ((Phdr.p_flags & ELF::PF_X) != 0)};
+      BC->SegmentMapInfo[Phdr.p_vaddr] = SegmentInfo{Phdr.p_vaddr,
+                                                     Phdr.p_memsz,
+                                                     Phdr.p_offset,
+                                                     Phdr.p_filesz,
+                                                     Phdr.p_align};
       if (BC->TheTriple->getArch() == llvm::Triple::x86_64 &&
           Phdr.p_vaddr >= BinaryContext::KernelStartX86_64)
         BC->IsLinuxKernel = true;
@@ -789,44 +790,9 @@ void RewriteInstance::discoverFileObjects() {
     BinarySection Section(*BC, *cantFail(Sym.getSection()));
     return Section.isAllocatable();
   };
-  auto checkSymbolInSection = [this](const SymbolInfo &S) {
-    // Sometimes, we encounter symbols with addresses outside their section. If
-    // such symbols happen to fall into another section, they can interfere with
-    // disassembly. Notably, this occurs with AArch64 marker symbols ($d and $t)
-    // that belong to .eh_frame, but end up pointing into .text.
-    // As a workaround, we ignore all symbols that lie outside their sections.
-    auto Section = cantFail(S.Symbol.getSection());
-
-    // Accept all absolute symbols.
-    if (Section == InputFile->section_end())
-      return true;
-
-    uint64_t SecStart = Section->getAddress();
-    uint64_t SecEnd = SecStart + Section->getSize();
-    uint64_t SymEnd = S.Address + ELFSymbolRef(S.Symbol).getSize();
-    if (S.Address >= SecStart && SymEnd <= SecEnd)
-      return true;
-
-    auto SymType = cantFail(S.Symbol.getType());
-    // Skip warnings for common benign cases.
-    if (opts::Verbosity < 1 && SymType == SymbolRef::ST_Other)
-      return false; // E.g. ELF::STT_TLS.
-
-    auto SymName = S.Symbol.getName();
-    auto SecName = cantFail(S.Symbol.getSection())->getName();
-    BC->errs() << "BOLT-WARNING: ignoring symbol "
-               << (SymName ? *SymName : "[unnamed]") << " at 0x"
-               << Twine::utohexstr(S.Address) << ", which lies outside "
-               << (SecName ? *SecName : "[unnamed]") << "\n";
-
-    return false;
-  };
   for (const SymbolRef &Symbol : InputFile->symbols())
-    if (isSymbolInMemory(Symbol)) {
-      SymbolInfo SymInfo{cantFail(Symbol.getAddress()), Symbol};
-      if (checkSymbolInSection(SymInfo))
-        SortedSymbols.push_back(SymInfo);
-    }
+    if (isSymbolInMemory(Symbol))
+      SortedSymbols.push_back({cantFail(Symbol.getAddress()), Symbol});
 
   auto CompareSymbols = [this](const SymbolInfo &A, const SymbolInfo &B) {
     if (A.Address != B.Address)
@@ -1566,7 +1532,7 @@ void RewriteInstance::createPLTBinaryFunction(uint64_t TargetAddress,
 
   MCSymbol *Symbol = Rel->Symbol;
   if (!Symbol) {
-    if (BC->isRISCV() || !Rel->Addend || !Rel->isIRelative())
+    if (!BC->isAArch64() || !Rel->Addend || !Rel->isIRelative())
       return;
 
     // IFUNC trampoline without symbol
@@ -3174,24 +3140,18 @@ void RewriteInstance::initializeMetadataManager() {
 }
 
 void RewriteInstance::processSectionMetadata() {
-  NamedRegionTimer T("processmetadata-section", "process section metadata",
-                     TimerGroupName, TimerGroupDesc, opts::TimeRewrite);
   initializeMetadataManager();
 
   MetadataManager.runSectionInitializers();
 }
 
 void RewriteInstance::processMetadataPreCFG() {
-  NamedRegionTimer T("processmetadata-precfg", "process metadata pre-CFG",
-                     TimerGroupName, TimerGroupDesc, opts::TimeRewrite);
   MetadataManager.runInitializersPreCFG();
 
   processProfileDataPreCFG();
 }
 
 void RewriteInstance::processMetadataPostCFG() {
-  NamedRegionTimer T("processmetadata-postcfg", "process metadata post-CFG",
-                     TimerGroupName, TimerGroupDesc, opts::TimeRewrite);
   MetadataManager.runInitializersPostCFG();
 }
 
@@ -3243,7 +3203,6 @@ void RewriteInstance::processProfileData() {
   if (opts::AggregateOnly) {
     PrintProgramStats PPS(&*BAT);
     BC->logBOLTErrorsAndQuitOnFatal(PPS.runOnFunctions(*BC));
-    TimerGroup::printAll(outs());
     exit(0);
   }
 }
@@ -3586,14 +3545,10 @@ void RewriteInstance::emitAndLink() {
 }
 
 void RewriteInstance::finalizeMetadataPreEmit() {
-  NamedRegionTimer T("finalizemetadata-preemit", "finalize metadata pre-emit",
-                     TimerGroupName, TimerGroupDesc, opts::TimeRewrite);
   MetadataManager.runFinalizersPreEmit();
 }
 
 void RewriteInstance::updateMetadata() {
-  NamedRegionTimer T("updatemetadata-postemit", "update metadata post-emit",
-                     TimerGroupName, TimerGroupDesc, opts::TimeRewrite);
   MetadataManager.runFinalizersAfterEmit();
 
   if (opts::UpdateDebugSections) {
@@ -4280,6 +4235,7 @@ void RewriteInstance::addBoltInfoSection() {
          << "command line:";
   for (int I = 0; I < Argc; ++I)
     DescOS << " " << Argv[I];
+  DescOS.flush();
 
   // Encode as GNU GOLD VERSION so it is easily printable by 'readelf -n'
   const std::string BoltInfo =
@@ -4302,6 +4258,7 @@ void RewriteInstance::encodeBATSection() {
   raw_string_ostream DescOS(DescStr);
 
   BAT->write(*BC, DescOS);
+  DescOS.flush();
 
   const std::string BoltInfo =
       BinarySection::encodeELFNote("BOLT", DescStr, BinarySection::NT_BOLT_BAT);

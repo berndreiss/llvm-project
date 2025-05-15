@@ -736,7 +736,6 @@ static mlir::WalkResult unwrap(MlirWalkResult result) {
   case MlirWalkResultSkip:
     return mlir::WalkResult::skip();
   }
-  llvm_unreachable("unknown result in WalkResult::unwrap");
 }
 
 void mlirOperationWalk(MlirOperation op, MlirOperationWalkCallback callback,

@@ -160,9 +160,7 @@ Expected<std::unique_ptr<MCStreamer>> LLVMTargetMachine::createMCStreamer(
   switch (FileType) {
   case CodeGenFileType::AssemblyFile: {
     MCInstPrinter *InstPrinter = getTarget().createMCInstPrinter(
-        getTargetTriple(),
-        Options.MCOptions.OutputAsmVariant.value_or(MAI.getAssemblerDialect()),
-        MAI, MII, MRI);
+        getTargetTriple(), MAI.getAssemblerDialect(), MAI, MII, MRI);
 
     // Create a code emitter if asked to show the encoding.
     std::unique_ptr<MCCodeEmitter> MCE;
@@ -261,11 +259,9 @@ bool LLVMTargetMachine::addPassesToEmitMC(PassManagerBase &PM, MCContext *&Ctx,
   const MCRegisterInfo &MRI = *getMCRegisterInfo();
   std::unique_ptr<MCCodeEmitter> MCE(
       getTarget().createMCCodeEmitter(*getMCInstrInfo(), *Ctx));
-  if (!MCE)
-    return true;
   MCAsmBackend *MAB =
       getTarget().createMCAsmBackend(STI, MRI, Options.MCOptions);
-  if (!MAB)
+  if (!MCE || !MAB)
     return true;
 
   const Triple &T = getTargetTriple();

@@ -7,7 +7,7 @@ unittest("InstallAPITests") {
     "//llvm/lib/Testing/Support",
   ]
   sources = [
-    "FileListTest.cpp",
     "HeaderFileTest.cpp",
+    "FileListTest.cpp",
   ]
 }

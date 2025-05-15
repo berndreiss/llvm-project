@@ -9,7 +9,7 @@
 
 // <functional>
 
-// template<class R, class T> constexpr unspecified mem_fn(R T::*) noexcept;       // constexpr in C++20
+// template<Returnable R, class T> unspecified mem_fn(R T::* pm);
 
 #include <functional>
 #include <cassert>

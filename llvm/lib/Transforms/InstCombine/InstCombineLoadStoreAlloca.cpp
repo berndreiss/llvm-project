@@ -12,7 +12,6 @@
 
 #include "InstCombineInternal.h"
 #include "llvm/ADT/MapVector.h"
-#include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -36,6 +35,13 @@ static cl::opt<unsigned> MaxCopiedFromConstantUsers(
     "instcombine-max-copied-from-constant-users", cl::init(300),
     cl::desc("Maximum users to visit in copy from constant transform"),
     cl::Hidden);
+
+namespace llvm {
+cl::opt<bool> EnableInferAlignmentPass(
+    "enable-infer-alignment-pass", cl::init(true), cl::Hidden, cl::ZeroOrMore,
+    cl::desc("Enable the InferAlignment pass, disabling alignment inference in "
+             "InstCombine"));
+}
 
 /// isOnlyCopiedFromConstantMemory - Recursively walk the uses of a (derived)
 /// pointer to an alloca.  Ignore any reads of the pointer, return false if we
@@ -281,7 +287,10 @@ bool PointerReplacer::collectUsers() {
   // Ensure that all outstanding (indirect) users of I
   // are inserted into the Worklist. Return false
   // otherwise.
-  return llvm::set_is_subset(ValuesToRevisit, Worklist);
+  for (auto *Inst : ValuesToRevisit)
+    if (!Worklist.contains(Inst))
+      return false;
+  return true;
 }
 
 bool PointerReplacer::collectUsersRecursive(Instruction &I) {
@@ -1003,6 +1012,14 @@ Instruction *InstCombinerImpl::visitLoadInst(LoadInst &LI) {
   if (Instruction *Res = combineLoadToOperationType(*this, LI))
     return Res;
 
+  if (!EnableInferAlignmentPass) {
+    // Attempt to improve the alignment.
+    Align KnownAlign = getOrEnforceKnownAlignment(
+        Op, DL.getPrefTypeAlign(LI.getType()), DL, &LI, &AC, &DT);
+    if (KnownAlign > LI.getAlign())
+      LI.setAlignment(KnownAlign);
+  }
+
   // Replace GEP indices if possible.
   if (Instruction *NewGEPI = replaceGEPIdxWithZero(*this, Op, LI))
     return replaceOperand(LI, 0, NewGEPI);
@@ -1342,6 +1359,14 @@ Instruction *InstCombinerImpl::visitStoreInst(StoreInst &SI) {
   // Try to canonicalize the stored type.
   if (combineStoreToValueType(*this, SI))
     return eraseInstFromFunction(SI);
+
+  if (!EnableInferAlignmentPass) {
+    // Attempt to improve the alignment.
+    const Align KnownAlign = getOrEnforceKnownAlignment(
+        Ptr, DL.getPrefTypeAlign(Val->getType()), DL, &SI, &AC, &DT);
+    if (KnownAlign > SI.getAlign())
+      SI.setAlignment(KnownAlign);
+  }
 
   // Try to canonicalize the stored type.
   if (unpackStoreToAggregate(*this, SI))

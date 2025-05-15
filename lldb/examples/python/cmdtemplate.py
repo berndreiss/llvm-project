@@ -25,12 +25,9 @@ class FrameStatCommand(ParsedCommand):
             '--help" for detailed help.'.format(cls.program)
         )
 
-    def get_flags(self):
-        return lldb.eCommandRequiresFrame | lldb.eCommandProcessMustBePaused
-
     def setup_command_definition(self):
-        ov_parser = self.get_parser()
-        ov_parser.add_option(
+
+        self.ov_parser.add_option(
             "i",
             "in-scope",
             help = "in_scope_only = True",
@@ -39,7 +36,7 @@ class FrameStatCommand(ParsedCommand):
             default = True,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "i",
             "in-scope",
             help = "in_scope_only = True",
@@ -48,7 +45,7 @@ class FrameStatCommand(ParsedCommand):
             default=True,
         )
         
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "a",
             "arguments",
             help = "arguments = True",
@@ -57,7 +54,7 @@ class FrameStatCommand(ParsedCommand):
             default = True,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "l",
             "locals",
             help = "locals = True",
@@ -66,7 +63,7 @@ class FrameStatCommand(ParsedCommand):
             default = True,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "s",
             "statics",
             help = "statics = True",
@@ -103,9 +100,8 @@ class FrameStatCommand(ParsedCommand):
             result.SetError("invalid frame")
             return
 
-        ov_parser = self.get_parser()
         variables_list = frame.GetVariables(
-            ov_parser.arguments, ov_parser.locals, ov_parser.statics, ov_parser.inscope
+            self.ov_parser.arguments, self.ov_parser.locals, self.ov_parser.statics, self.ov_parser.inscope
         )
         variables_count = variables_list.GetSize()
         if variables_count == 0:

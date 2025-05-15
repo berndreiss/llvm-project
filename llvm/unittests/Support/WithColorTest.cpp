@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Support/WithColor.h"
-#include "llvm/Config/llvm-config.h" // for LLVM_ON_UNIX
 #include "gtest/gtest.h"
 
 using namespace llvm;
@@ -19,7 +18,7 @@ TEST(WithColorTest, ColorMode) {
     OS.enable_colors(true);
 
     WithColor(OS, HighlightColor::Error, ColorMode::Disable) << "test";
-    EXPECT_EQ("test", S);
+    EXPECT_EQ("test", OS.str());
   }
 
   {
@@ -28,7 +27,7 @@ TEST(WithColorTest, ColorMode) {
     OS.enable_colors(true);
 
     WithColor(OS, HighlightColor::Error, ColorMode::Auto) << "test";
-    EXPECT_EQ("test", S);
+    EXPECT_EQ("test", OS.str());
   }
 
 #ifdef LLVM_ON_UNIX
@@ -38,7 +37,7 @@ TEST(WithColorTest, ColorMode) {
     OS.enable_colors(true);
 
     WithColor(OS, HighlightColor::Error, ColorMode::Enable) << "test";
-    EXPECT_EQ("\x1B[0;1;31mtest\x1B[0m", S);
+    EXPECT_EQ("\x1B[0;1;31mtest\x1B[0m", OS.str());
   }
 #endif
 }

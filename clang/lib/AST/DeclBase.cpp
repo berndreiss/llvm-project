@@ -879,6 +879,8 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
       return IDNS_Ordinary;
     case Label:
       return IDNS_Label;
+    case IndirectField:
+      return IDNS_Ordinary | IDNS_Member;
 
     case Binding:
     case NonTypeTemplateParm:
@@ -916,7 +918,6 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
       return IDNS_ObjCProtocol;
 
     case Field:
-    case IndirectField:
     case ObjCAtDefsField:
     case ObjCIvar:
       return IDNS_Member;
@@ -1168,10 +1169,6 @@ bool Decl::isInNamedModule() const {
   return getOwningModule() && getOwningModule()->isNamedModule();
 }
 
-bool Decl::isFromHeaderUnit() const {
-  return getOwningModule() && getOwningModule()->isHeaderUnit();
-}
-
 static Decl::Kind getKind(const Decl *D) { return D->getKind(); }
 static Decl::Kind getKind(const DeclContext *DC) { return DC->getDeclKind(); }
 
@@ -1181,19 +1178,14 @@ int64_t Decl::getID() const {
 
 const FunctionType *Decl::getFunctionType(bool BlocksToo) const {
   QualType Ty;
-  if (const auto *D = dyn_cast<ValueDecl>(this))
+  if (isa<BindingDecl>(this))
+    return nullptr;
+  else if (const auto *D = dyn_cast<ValueDecl>(this))
     Ty = D->getType();
   else if (const auto *D = dyn_cast<TypedefNameDecl>(this))
     Ty = D->getUnderlyingType();
   else
     return nullptr;
-
-  if (Ty.isNull()) {
-    // BindingDecls do not have types during parsing, so return nullptr. This is
-    // the only known case where `Ty` is null.
-    assert(isa<BindingDecl>(this));
-    return nullptr;
-  }
 
   if (Ty->isFunctionPointerType())
     Ty = Ty->castAs<PointerType>()->getPointeeType();

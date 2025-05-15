@@ -411,9 +411,9 @@ public:
   /// Build DeclarationFragments for a macro.
   ///
   /// \param Name name of the macro.
-  /// \param MI the associated MacroInfo.
+  /// \param MD the associated MacroDirective.
   static DeclarationFragments getFragmentsForMacro(StringRef Name,
-                                                   const MacroInfo *MI);
+                                                   const MacroDirective *MD);
 
   /// Build DeclarationFragments for a typedef \p TypedefNameDecl.
   static DeclarationFragments

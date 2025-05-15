@@ -5,16 +5,14 @@
 # RUN: llvm-objdump -d --print-imm-hex %t | FileCheck %s --check-prefix=USE
 
 ## Check that we accept --defsym foo2=foo1 form.
-# RUN: ld.lld -o %t2 %t.o --defsym '"foo2"=foo1'
+# RUN: ld.lld -o %t2 %t.o --defsym foo2=foo1
 # RUN: llvm-readelf -s %t2 | FileCheck %s
 # RUN: llvm-objdump -d --print-imm-hex %t2 | FileCheck %s --check-prefix=USE
 
 ## Check we are reporting the error correctly and don't crash
 ## when handling the second --defsym.
-# RUN: not ld.lld -o /dev/null %t.o --defsym ERR+ --defsym foo2=foo1 2>&1 | FileCheck %s --check-prefix=ERR --strict-whitespace
-#      ERR:error: --defsym:1: = expected, but got +
-# ERR-NEXT:>>> ERR+
-# ERR-NEXT:>>>    ^
+# RUN: not ld.lld -o /dev/null %t.o --defsym ERR+ --defsym foo2=foo1 2>&1 | FileCheck %s --check-prefix=ERR
+# ERR: error: --defsym: syntax error: ERR+
 
 # CHECK-DAG: 0000000000000123     0 NOTYPE  GLOBAL DEFAULT   ABS foo1
 # CHECK-DAG: 0000000000000123     0 NOTYPE  GLOBAL DEFAULT   ABS foo2
@@ -43,9 +41,10 @@
 # ERR2: error: --defsym:1: EOF expected, but got ,
 
 # RUN: not ld.lld -o /dev/null %t.o --defsym=foo 2>&1 | FileCheck %s -check-prefix=ERR3
-# ERR3: error: --defsym:1: unexpected EOF
+# ERR3: error: --defsym: syntax error: foo
 
-# RUN: not ld.lld -o /dev/null %t.o --defsym= 2>&1 | FileCheck %s -check-prefix=ERR3
+# RUN: not ld.lld -o /dev/null %t.o --defsym= 2>&1 | FileCheck %s -check-prefix=ERR4
+# ERR4: error: --defsym: syntax error:
 
 .globl foo1
  foo1 = 0x123

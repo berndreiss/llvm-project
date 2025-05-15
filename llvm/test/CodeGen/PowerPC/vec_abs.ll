@@ -19,9 +19,10 @@ declare <4 x float> @llvm.fabs.v4f32(<4 x float>) #1
 
 ; CHECK: xvabssp
 ; CHECK: blr
-; CHECK-NOVSX: vspltisb
-; CHECK-NOVSX: vslw
-; CHECK-NOVSX: vandc
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
 ; CHECK-NOVSX: blr
 
 define <4 x float> @test2_float(<4 x float> %aa) #0 {
@@ -39,8 +40,11 @@ define <4 x float> @test2_float(<4 x float> %aa) #0 {
 ; CHECK: xvnabssp
 ; CHECK: blr
 ; CHECK-NOVSX: vspltisb
-; CHECK-NOVSX: vslw
-; CHECK-NOVSX: vor
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: fabs
+; CHECK-NOVSX: vsubfp
 ; CHECK-NOVSX: blr
 
 define <2 x double> @test_double(<2 x double> %aa) #0 {

@@ -22,7 +22,7 @@ class Pass;
 #include "mlir/Conversion/Passes.h.inc"
 
 namespace ub {
-void populateUBToLLVMConversionPatterns(const LLVMTypeConverter &converter,
+void populateUBToLLVMConversionPatterns(LLVMTypeConverter &converter,
                                         RewritePatternSet &patterns);
 
 void registerConvertUBToLLVMInterface(DialectRegistry &registry);

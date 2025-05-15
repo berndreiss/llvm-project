@@ -27,12 +27,11 @@
 #include <__type_traits/make_unsigned.h>
 #include <__utility/unreachable.h>
 #include <array>
-#include <cstdint>
 #include <limits>
 #include <string>
 #include <string_view>
 
-#if _LIBCPP_HAS_LOCALIZATION
+#ifndef _LIBCPP_HAS_NO_LOCALIZATION
 #  include <__locale>
 #endif
 
@@ -298,7 +297,7 @@ _LIBCPP_HIDE_FROM_ABI typename _FormatContext::iterator __format_integer(
 
   _Iterator __last = __formatter::__to_buffer(__first, __end, __value, __base);
 
-#  if _LIBCPP_HAS_LOCALIZATION
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
   if (__specs.__std_.__locale_specific_form_) {
     const auto& __np  = std::use_facet<numpunct<_CharT>>(__ctx.locale());
     string __grouping = __np.grouping();
@@ -412,7 +411,7 @@ struct _LIBCPP_TEMPLATE_VIS __bool_strings<char> {
   static constexpr string_view __false{"false"};
 };
 
-#  if _LIBCPP_HAS_WIDE_CHARACTERS
+#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
 template <>
 struct _LIBCPP_TEMPLATE_VIS __bool_strings<wchar_t> {
   static constexpr wstring_view __true{L"true"};
@@ -423,7 +422,7 @@ struct _LIBCPP_TEMPLATE_VIS __bool_strings<wchar_t> {
 template <class _CharT, class _FormatContext>
 _LIBCPP_HIDE_FROM_ABI typename _FormatContext::iterator
 __format_bool(bool __value, _FormatContext& __ctx, __format_spec::__parsed_specifications<_CharT> __specs) {
-#  if _LIBCPP_HAS_LOCALIZATION
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
   if (__specs.__std_.__locale_specific_form_) {
     const auto& __np           = std::use_facet<numpunct<_CharT>>(__ctx.locale());
     basic_string<_CharT> __str = __value ? __np.truename() : __np.falsename();
@@ -437,7 +436,7 @@ __format_bool(bool __value, _FormatContext& __ctx, __format_spec::__parsed_speci
 
 } // namespace __formatter
 
-#endif // _LIBCPP_STD_VER >= 20
+#endif //_LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
 

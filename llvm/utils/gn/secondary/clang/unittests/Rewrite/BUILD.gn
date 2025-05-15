@@ -9,5 +9,8 @@ unittest("RewriteTests") {
     "//clang/lib/Tooling",
     "//llvm/lib/Support",
   ]
-  sources = [ "RewriterTest.cpp" ]
+  sources = [
+    "RewriteBufferTest.cpp",
+    "RewriterTest.cpp",
+  ]
 }

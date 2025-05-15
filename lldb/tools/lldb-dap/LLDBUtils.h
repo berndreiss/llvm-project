@@ -10,12 +10,11 @@
 #define LLDB_TOOLS_LLDB_DAP_LLDBUTILS_H
 
 #include "DAPForward.h"
-#include "lldb/API/SBEnvironment.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
+#include <vector>
 
 namespace lldb_dap {
 
@@ -135,17 +134,6 @@ uint32_t GetLLDBThreadIndexID(uint64_t dap_frame_id);
 /// \return
 ///     The LLDB frame index ID.
 uint32_t GetLLDBFrameID(uint64_t dap_frame_id);
-
-/// Gets all the environment variables from the json object depending on if the
-/// kind is an object or an array.
-///
-/// \param[in] arguments
-///     The json object with the launch options
-///
-/// \return
-///     The environment variables stored in the env key
-lldb::SBEnvironment
-GetEnvironmentFromArguments(const llvm::json::Object &arguments);
 
 } // namespace lldb_dap
 

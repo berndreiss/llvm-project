@@ -22,8 +22,6 @@
 	.fpu fpv5-d16
 	.fpu fpv5-sp-d16
 	.fpu fp-armv8
-	.fpu fp-armv8-fullfp16-d16
-	.fpu fp-armv8-fullfp16-sp-d16
 	.fpu neon
 	.fpu neon-fp16
 	.fpu neon-vfpv4

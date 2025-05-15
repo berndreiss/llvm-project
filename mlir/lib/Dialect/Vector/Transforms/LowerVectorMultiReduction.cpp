@@ -67,7 +67,10 @@ public:
     auto srcRank = multiReductionOp.getSourceVectorType().getRank();
 
     // Separate reduction and parallel dims
-    ArrayRef<int64_t> reductionDims = multiReductionOp.getReductionDims();
+    auto reductionDimsRange =
+        multiReductionOp.getReductionDims().getAsValueRange<IntegerAttr>();
+    auto reductionDims = llvm::to_vector<4>(llvm::map_range(
+        reductionDimsRange, [](const APInt &a) { return a.getZExtValue(); }));
     llvm::SmallDenseSet<int64_t> reductionDimsSet(reductionDims.begin(),
                                                   reductionDims.end());
     int64_t reductionSize = reductionDims.size();

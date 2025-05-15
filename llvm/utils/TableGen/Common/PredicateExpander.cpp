@@ -116,10 +116,8 @@ void PredicateExpander::expandCheckRegOperandSimple(raw_ostream &OS,
 
 void PredicateExpander::expandCheckInvalidRegOperand(raw_ostream &OS,
                                                      int OpIndex) {
-  if (!shouldNegate())
-    OS << "!";
   OS << "MI" << (isByRef() ? "." : "->") << "getOperand(" << OpIndex
-     << ").getReg().isValid()";
+     << ").getReg() " << (shouldNegate() ? "!= " : "== ") << "0";
 }
 
 void PredicateExpander::expandCheckSameRegOperand(raw_ostream &OS, int First,
@@ -141,7 +139,7 @@ void PredicateExpander::expandCheckOpcode(raw_ostream &OS, const Record *Inst) {
 }
 
 void PredicateExpander::expandCheckOpcode(raw_ostream &OS,
-                                          ArrayRef<const Record *> Opcodes) {
+                                          const RecVec &Opcodes) {
   assert(!Opcodes.empty() && "Expected at least one opcode to check!");
   bool First = true;
 
@@ -153,9 +151,10 @@ void PredicateExpander::expandCheckOpcode(raw_ostream &OS,
   }
 
   OS << '(';
-  ++Indent;
+  increaseIndentLevel();
   for (const Record *Rec : Opcodes) {
-    OS << '\n' << Indent;
+    OS << '\n';
+    OS.indent(getIndentLevel() * 2);
     if (!First)
       OS << (shouldNegate() ? "&& " : "|| ");
 
@@ -163,20 +162,23 @@ void PredicateExpander::expandCheckOpcode(raw_ostream &OS,
     First = false;
   }
 
-  --Indent;
-  OS << '\n' << Indent << ')';
+  OS << '\n';
+  decreaseIndentLevel();
+  OS.indent(getIndentLevel() * 2);
+  OS << ')';
 }
 
 void PredicateExpander::expandCheckPseudo(raw_ostream &OS,
-                                          ArrayRef<const Record *> Opcodes) {
+                                          const RecVec &Opcodes) {
   if (shouldExpandForMC())
     expandFalse(OS);
   else
     expandCheckOpcode(OS, Opcodes);
 }
 
-void PredicateExpander::expandPredicateSequence(
-    raw_ostream &OS, ArrayRef<const Record *> Sequence, bool IsCheckAll) {
+void PredicateExpander::expandPredicateSequence(raw_ostream &OS,
+                                                const RecVec &Sequence,
+                                                bool IsCheckAll) {
   assert(!Sequence.empty() && "Found an invalid empty predicate set!");
   if (Sequence.size() == 1)
     return expandPredicate(OS, Sequence[0]);
@@ -184,19 +186,22 @@ void PredicateExpander::expandPredicateSequence(
   // Okay, there is more than one predicate in the set.
   bool First = true;
   OS << (shouldNegate() ? "!(" : "(");
-  ++Indent;
+  increaseIndentLevel();
 
   bool OldValue = shouldNegate();
   setNegatePredicate(false);
   for (const Record *Rec : Sequence) {
-    OS << '\n' << Indent;
+    OS << '\n';
+    OS.indent(getIndentLevel() * 2);
     if (!First)
       OS << (IsCheckAll ? "&& " : "|| ");
     expandPredicate(OS, Rec);
     First = false;
   }
-  --Indent;
-  OS << '\n' << Indent << ')';
+  OS << '\n';
+  decreaseIndentLevel();
+  OS.indent(getIndentLevel() * 2);
+  OS << ')';
   setNegatePredicate(OldValue);
 }
 
@@ -262,19 +267,22 @@ void PredicateExpander::expandReturnStatement(raw_ostream &OS,
 
 void PredicateExpander::expandOpcodeSwitchCase(raw_ostream &OS,
                                                const Record *Rec) {
-  for (const Record *Opcode : Rec->getValueAsListOfDefs("Opcodes")) {
-    OS << Indent << "case " << Opcode->getValueAsString("Namespace")
+  const RecVec &Opcodes = Rec->getValueAsListOfDefs("Opcodes");
+  for (const Record *Opcode : Opcodes) {
+    OS.indent(getIndentLevel() * 2);
+    OS << "case " << Opcode->getValueAsString("Namespace")
        << "::" << Opcode->getName() << ":\n";
   }
 
-  ++Indent;
-  OS << Indent;
+  increaseIndentLevel();
+  OS.indent(getIndentLevel() * 2);
   expandStatement(OS, Rec->getValueAsDef("CaseStmt"));
-  --Indent;
+  decreaseIndentLevel();
 }
 
-void PredicateExpander::expandOpcodeSwitchStatement(
-    raw_ostream &OS, ArrayRef<const Record *> Cases, const Record *Default) {
+void PredicateExpander::expandOpcodeSwitchStatement(raw_ostream &OS,
+                                                    const RecVec &Cases,
+                                                    const Record *Default) {
   std::string Buffer;
   raw_string_ostream SS(Buffer);
 
@@ -285,12 +293,17 @@ void PredicateExpander::expandOpcodeSwitchStatement(
   }
 
   // Expand the default case.
-  SS << Indent << "default:\n";
+  SS.indent(getIndentLevel() * 2);
+  SS << "default:\n";
 
-  ++Indent;
-  SS << Indent;
+  increaseIndentLevel();
+  SS.indent(getIndentLevel() * 2);
   expandStatement(SS, Default);
-  SS << '\n' << Indent << "} // end of switch-stmt";
+  decreaseIndentLevel();
+  SS << '\n';
+
+  SS.indent(getIndentLevel() * 2);
+  SS << "} // end of switch-stmt";
   OS << Buffer;
 }
 
@@ -424,7 +437,8 @@ void STIPredicateExpander::expandHeader(raw_ostream &OS,
   const Record *Rec = Fn.getDeclaration();
   StringRef FunctionName = Rec->getValueAsString("Name");
 
-  OS << Indent << "bool ";
+  OS.indent(getIndentLevel() * 2);
+  OS << "bool ";
   if (shouldExpandDefinition())
     OS << getClassPrefix() << "::";
   OS << FunctionName << "(";
@@ -447,25 +461,29 @@ void STIPredicateExpander::expandHeader(raw_ostream &OS,
 
 void STIPredicateExpander::expandPrologue(raw_ostream &OS,
                                           const STIPredicateFunction &Fn) {
+  RecVec Delegates = Fn.getDeclaration()->getValueAsListOfDefs("Delegates");
   bool UpdatesOpcodeMask =
       Fn.getDeclaration()->getValueAsBit("UpdatesOpcodeMask");
 
-  ++Indent;
-  for (const Record *Delegate :
-       Fn.getDeclaration()->getValueAsListOfDefs("Delegates")) {
-    OS << Indent << "if (" << Delegate->getValueAsString("Name") << "(MI";
+  increaseIndentLevel();
+  unsigned IndentLevel = getIndentLevel();
+  for (const Record *Delegate : Delegates) {
+    OS.indent(IndentLevel * 2);
+    OS << "if (" << Delegate->getValueAsString("Name") << "(MI";
     if (UpdatesOpcodeMask)
       OS << ", Mask";
     if (shouldExpandForMC())
       OS << ", ProcessorID";
     OS << "))\n";
-    OS << Indent + 1 << "return true;\n\n";
+    OS.indent((1 + IndentLevel) * 2);
+    OS << "return true;\n\n";
   }
 
   if (shouldExpandForMC())
     return;
 
-  OS << Indent << "unsigned ProcessorID = getSchedModel().getProcessorID();\n";
+  OS.indent(IndentLevel * 2);
+  OS << "unsigned ProcessorID = getSchedModel().getProcessorID();\n";
 }
 
 void STIPredicateExpander::expandOpcodeGroup(raw_ostream &OS,
@@ -480,7 +498,8 @@ void STIPredicateExpander::expandOpcodeGroup(raw_ostream &OS,
         continue;
 
       if (FirstProcID) {
-        OS << Indent << "if (ProcessorID == " << I;
+        OS.indent(getIndentLevel() * 2);
+        OS << "if (ProcessorID == " << I;
       } else {
         OS << " || ProcessorID == " << I;
       }
@@ -489,20 +508,21 @@ void STIPredicateExpander::expandOpcodeGroup(raw_ostream &OS,
 
     OS << ") {\n";
 
-    ++Indent;
-    OS << Indent;
+    increaseIndentLevel();
+    OS.indent(getIndentLevel() * 2);
     if (ShouldUpdateOpcodeMask) {
       if (PI.OperandMask.isZero())
         OS << "Mask.clearAllBits();\n";
       else
         OS << "Mask = " << PI.OperandMask << ";\n";
-      OS << Indent;
+      OS.indent(getIndentLevel() * 2);
     }
     OS << "return ";
     expandPredicate(OS, PI.Predicate);
     OS << ";\n";
-    --Indent;
-    OS << Indent << "}\n";
+    decreaseIndentLevel();
+    OS.indent(getIndentLevel() * 2);
+    OS << "}\n";
   }
 }
 
@@ -511,38 +531,46 @@ void STIPredicateExpander::expandBody(raw_ostream &OS,
   bool UpdatesOpcodeMask =
       Fn.getDeclaration()->getValueAsBit("UpdatesOpcodeMask");
 
-  OS << Indent << "switch(MI" << (isByRef() ? "." : "->") << "getOpcode()) {\n";
-  OS << Indent << "default:\n";
-  OS << Indent << "  break;";
+  unsigned IndentLevel = getIndentLevel();
+  OS.indent(IndentLevel * 2);
+  OS << "switch(MI" << (isByRef() ? "." : "->") << "getOpcode()) {\n";
+  OS.indent(IndentLevel * 2);
+  OS << "default:\n";
+  OS.indent(IndentLevel * 2);
+  OS << "  break;";
 
   for (const OpcodeGroup &Group : Fn.getGroups()) {
     for (const Record *Opcode : Group.getOpcodes()) {
-      OS << '\n'
-         << Indent << "case " << getTargetName() << "::" << Opcode->getName()
-         << ":";
+      OS << '\n';
+      OS.indent(IndentLevel * 2);
+      OS << "case " << getTargetName() << "::" << Opcode->getName() << ":";
     }
 
     OS << '\n';
-    ++Indent;
+    increaseIndentLevel();
     expandOpcodeGroup(OS, Group, UpdatesOpcodeMask);
 
-    OS << Indent << "break;\n";
-    --Indent;
+    OS.indent(getIndentLevel() * 2);
+    OS << "break;\n";
+    decreaseIndentLevel();
   }
 
-  OS << Indent << "}\n";
+  OS.indent(IndentLevel * 2);
+  OS << "}\n";
 }
 
 void STIPredicateExpander::expandEpilogue(raw_ostream &OS,
                                           const STIPredicateFunction &Fn) {
-  OS << '\n' << Indent;
+  OS << '\n';
+  OS.indent(getIndentLevel() * 2);
   OS << "return ";
   expandPredicate(OS, Fn.getDefaultReturnPredicate());
   OS << ";\n";
 
-  --Indent;
+  decreaseIndentLevel();
+  OS.indent(getIndentLevel() * 2);
   StringRef FunctionName = Fn.getDeclaration()->getValueAsString("Name");
-  OS << Indent << "} // " << ClassPrefix << "::" << FunctionName << "\n\n";
+  OS << "} // " << ClassPrefix << "::" << FunctionName << "\n\n";
 }
 
 void STIPredicateExpander::expandSTIPredicate(raw_ostream &OS,

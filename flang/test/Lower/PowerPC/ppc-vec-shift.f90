@@ -1,5 +1,4 @@
-! RUN: %flang_fc1 -flang-experimental-hlfir -triple powerpc64le-unknown-unknown -emit-llvm %s -o - | FileCheck --check-prefixes="LLVMIR" %s
-! RUN: %flang_fc1 -flang-experimental-hlfir -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck --check-prefixes="LLVMIR" %s
+! RUN: %flang_fc1 -flang-experimental-hlfir -emit-llvm %s -o - | FileCheck --check-prefixes="LLVMIR" %s
 ! REQUIRES: target=powerpc{{.*}}
 
 !----------------------
@@ -14,7 +13,7 @@ subroutine vec_sl_i1(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], splat (i8 8)
+! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], <i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8>
 ! LLVMIR: %7 = shl <16 x i8> %[[arg1]], %[[msk]]
 end subroutine vec_sl_i1
 
@@ -26,7 +25,7 @@ subroutine vec_sl_i2(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], splat (i16 16)
+! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], <i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16>
 ! LLVMIR: %7 = shl <8 x i16> %[[arg1]], %[[msk]]
 end subroutine vec_sl_i2
 
@@ -38,7 +37,7 @@ subroutine vec_sl_i4(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], splat (i32 32)
+! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], <i32 32, i32 32, i32 32, i32 32>
 ! LLVMIR: %7 = shl <4 x i32> %[[arg1]], %[[msk]]
 end subroutine vec_sl_i4
 
@@ -50,7 +49,7 @@ subroutine vec_sl_i8(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], splat (i64 64)
+! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], <i64 64, i64 64>
 ! LLVMIR: %7 = shl <2 x i64> %[[arg1]], %[[msk]]
 end subroutine vec_sl_i8
 
@@ -62,7 +61,7 @@ subroutine vec_sl_u1(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], splat (i8 8)
+! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], <i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8>
 ! LLVMIR: %7 = shl <16 x i8> %[[arg1]], %[[msk]]
 end subroutine vec_sl_u1
 
@@ -74,7 +73,7 @@ subroutine vec_sl_u2(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], splat (i16 16)
+! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], <i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16>
 ! LLVMIR: %7 = shl <8 x i16> %[[arg1]], %[[msk]]
 end subroutine vec_sl_u2
 
@@ -86,7 +85,7 @@ subroutine vec_sl_u4(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], splat (i32 32)
+! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], <i32 32, i32 32, i32 32, i32 32>
 ! LLVMIR: %7 = shl <4 x i32> %[[arg1]], %[[msk]]
 end subroutine vec_sl_u4
 
@@ -98,7 +97,7 @@ subroutine vec_sl_u8(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], splat (i64 64)
+! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], <i64 64, i64 64>
 ! LLVMIR: %{{[0-9]+}} = shl <2 x i64> %[[arg1]], %[[msk]]
 end subroutine vec_sl_u8
 
@@ -543,7 +542,7 @@ subroutine vec_sr_i1(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], splat (i8 8)
+! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], <i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8>
 ! LLVMIR: %7 = lshr <16 x i8> %[[arg1]], %[[msk]]
 end subroutine vec_sr_i1
 
@@ -555,7 +554,7 @@ subroutine vec_sr_i2(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], splat (i16 16)
+! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], <i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16>
 ! LLVMIR: %7 = lshr <8 x i16> %[[arg1]], %[[msk]]
 end subroutine vec_sr_i2
 
@@ -567,7 +566,7 @@ subroutine vec_sr_i4(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], splat (i32 32)
+! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], <i32 32, i32 32, i32 32, i32 32>
 ! LLVMIR: %7 = lshr <4 x i32> %[[arg1]], %[[msk]]
 end subroutine vec_sr_i4
 
@@ -579,7 +578,7 @@ subroutine vec_sr_i8(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], splat (i64 64)
+! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], <i64 64, i64 64>
 ! LLVMIR: %7 = lshr <2 x i64> %[[arg1]], %[[msk]]
 end subroutine vec_sr_i8
 
@@ -591,7 +590,7 @@ subroutine vec_sr_u1(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <16 x i8>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], splat (i8 8)
+! LLVMIR: %[[msk:.*]] = urem <16 x i8> %[[arg2]], <i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8, i8 8>
 ! LLVMIR: %7 = lshr <16 x i8> %[[arg1]], %[[msk]]
 end subroutine vec_sr_u1
 
@@ -603,7 +602,7 @@ subroutine vec_sr_u2(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <8 x i16>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], splat (i16 16)
+! LLVMIR: %[[msk:.*]] = urem <8 x i16> %[[arg2]], <i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16, i16 16>
 ! LLVMIR: %7 = lshr <8 x i16> %[[arg1]], %[[msk]]
 end subroutine vec_sr_u2
 
@@ -615,7 +614,7 @@ subroutine vec_sr_u4(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <4 x i32>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], splat (i32 32)
+! LLVMIR: %[[msk:.*]] = urem <4 x i32> %[[arg2]], <i32 32, i32 32, i32 32, i32 32>
 ! LLVMIR: %7 = lshr <4 x i32> %[[arg1]], %[[msk]]
 end subroutine vec_sr_u4
 
@@ -627,7 +626,7 @@ subroutine vec_sr_u8(arg1, arg2)
 
 ! LLVMIR: %[[arg1:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
 ! LLVMIR: %[[arg2:.*]] = load <2 x i64>, ptr %{{.*}}, align 16
-! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], splat (i64 64)
+! LLVMIR: %[[msk:.*]] = urem <2 x i64> %[[arg2]], <i64 64, i64 64>
 ! LLVMIR: %7 = lshr <2 x i64> %[[arg1]], %[[msk]]
 end subroutine vec_sr_u8
 

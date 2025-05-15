@@ -504,9 +504,8 @@ public:
   InlineResult analyze();
 
   std::optional<Constant *> getSimplifiedValue(Instruction *I) {
-    auto It = SimplifiedValues.find(I);
-    if (It != SimplifiedValues.end())
-      return It->second;
+    if (SimplifiedValues.contains(I))
+      return SimplifiedValues[I];
     return std::nullopt;
   }
 
@@ -1130,9 +1129,8 @@ public:
   void print(raw_ostream &OS);
 
   std::optional<InstructionCostDetail> getCostDetails(const Instruction *I) {
-    auto It = InstructionCostDetailMap.find(I);
-    if (It != InstructionCostDetailMap.end())
-      return It->second;
+    if (InstructionCostDetailMap.contains(I))
+      return InstructionCostDetailMap[I];
     return std::nullopt;
   }
 
@@ -1943,7 +1941,7 @@ void InlineCostCallAnalyzer::updateThreshold(CallBase &Call, Function &Callee) {
   // and the callsite.
   int SingleBBBonusPercent = 50;
   int VectorBonusPercent = TTI.getInlinerVectorBonusPercent();
-  int LastCallToStaticBonus = TTI.getInliningLastCallToStaticBonus();
+  int LastCallToStaticBonus = InlineConstants::LastCallToStaticBonus;
 
   // Lambda to set all the above bonus and bonus percentages to 0.
   auto DisallowAllBonuses = [&]() {
@@ -3248,7 +3246,8 @@ InlineCostAnnotationPrinterPass::run(Function &F,
   };
   Module *M = F.getParent();
   ProfileSummaryInfo PSI(*M);
-  TargetTransformInfo TTI(M->getDataLayout());
+  DataLayout DL(M);
+  TargetTransformInfo TTI(DL);
   // FIXME: Redesign the usage of InlineParams to expand the scope of this pass.
   // In the current implementation, the type of InlineParams doesn't matter as
   // the pass serves only for verification of inliner's decisions.
@@ -3257,16 +3256,16 @@ InlineCostAnnotationPrinterPass::run(Function &F,
   const InlineParams Params = llvm::getInlineParams();
   for (BasicBlock &BB : F) {
     for (Instruction &I : BB) {
-      if (auto *CB = dyn_cast<CallBase>(&I)) {
-        Function *CalledFunction = CB->getCalledFunction();
+      if (CallInst *CI = dyn_cast<CallInst>(&I)) {
+        Function *CalledFunction = CI->getCalledFunction();
         if (!CalledFunction || CalledFunction->isDeclaration())
           continue;
         OptimizationRemarkEmitter ORE(CalledFunction);
-        InlineCostCallAnalyzer ICCA(*CalledFunction, *CB, Params, TTI,
+        InlineCostCallAnalyzer ICCA(*CalledFunction, *CI, Params, TTI,
                                     GetAssumptionCache, nullptr, &PSI, &ORE);
         ICCA.analyze();
         OS << "      Analyzing call of " << CalledFunction->getName()
-           << "... (caller:" << CB->getCaller()->getName() << ")\n";
+           << "... (caller:" << CI->getCaller()->getName() << ")\n";
         ICCA.print(OS);
         OS << "\n";
       }

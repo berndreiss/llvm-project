@@ -12,6 +12,7 @@
 
 #include "llvm/Transforms/Scalar/JumpThreading.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -68,6 +69,7 @@
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/SSAUpdater.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <iterator>
@@ -294,8 +296,8 @@ bool JumpThreadingPass::runImpl(Function &F_, FunctionAnalysisManager *FAM_,
   DTU = std::move(DTU_);
   BFI = BFI_;
   BPI = BPI_;
-  auto *GuardDecl = Intrinsic::getDeclarationIfExists(
-      F->getParent(), Intrinsic::experimental_guard);
+  auto *GuardDecl = F->getParent()->getFunction(
+      Intrinsic::getName(Intrinsic::experimental_guard));
   HasGuards = GuardDecl && !GuardDecl->use_empty();
 
   // Reduce the number of instructions duplicated when optimizing strictly for

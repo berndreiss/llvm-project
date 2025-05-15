@@ -297,7 +297,11 @@ LaneBitmask HexagonExpandCondsets::getLaneMask(Register Reg, unsigned Sub) {
 void HexagonExpandCondsets::addRefToMap(RegisterRef RR, ReferenceMap &Map,
       unsigned Exec) {
   unsigned Mask = getMaskForSub(RR.Sub) | Exec;
-  Map[RR.Reg] |= Mask;
+  ReferenceMap::iterator F = Map.find(RR.Reg);
+  if (F == Map.end())
+    Map.insert(std::make_pair(RR.Reg, Mask));
+  else
+    F->second |= Mask;
 }
 
 bool HexagonExpandCondsets::isRefInMap(RegisterRef RR, ReferenceMap &Map,
@@ -568,7 +572,7 @@ void HexagonExpandCondsets::updateLiveness(const std::set<Register> &RegSet,
     // after that.
     if (UpdateKills)
       updateKillFlags(R);
-    assert(LIS->getInterval(R).verify());
+    LIS->getInterval(R).verify();
   }
 }
 
@@ -1197,7 +1201,7 @@ bool HexagonExpandCondsets::coalesceRegisters(RegisterRef R1, RegisterRef R2) {
 
   updateKillFlags(R1.Reg);
   LLVM_DEBUG(dbgs() << "coalesced: " << L1 << "\n");
-  assert(L1.verify());
+  L1.verify();
 
   return true;
 }

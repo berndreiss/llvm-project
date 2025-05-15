@@ -177,9 +177,9 @@ typedef __fp16 __fp16v2 __attribute__((ext_vector_type(2)));
 
 // CHECK-LABEL: nvvm_ldg_native_half_types
 __device__ void nvvm_ldg_native_half_types(const void *p) {
-  // CHECK: load half, ptr addrspace(1) {{.*}}, align 2, !invariant.load
+  // CHECK: call half @llvm.nvvm.ldg.global.f.f16.p0
   __nvvm_ldg_h((const __fp16 *)p);
-  // CHECK: load <2 x half>, ptr addrspace(1) {{.*}}, align 4, !invariant.load
+  // CHECK: call <2 x half> @llvm.nvvm.ldg.global.f.v2f16.p0
   __nvvm_ldg_h2((const __fp16v2 *)p);
 }
 

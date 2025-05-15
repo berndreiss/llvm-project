@@ -48,8 +48,6 @@ public:
   ///
   /// This is used to emit bytes in \p Data as sequence of .byte directives.
   void emitRawBytes(StringRef Data) override;
-  /// Makes sure that labels are mangled the same way as the actual symbols.
-  void emitValue(const MCExpr *Value) override;
 };
 
 class NVPTXAsmTargetStreamer : public NVPTXTargetStreamer {

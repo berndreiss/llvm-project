@@ -183,13 +183,6 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
-  pipe2
-  ALIAS
-  DEPENDS
-    .${LIBC_TARGET_OS}.pipe2
-)
-
-add_entrypoint_object(
   pread
   ALIAS
   DEPENDS
@@ -348,5 +341,5 @@ add_entrypoint_object(
   HDRS
     gettid.h
   DEPENDS
-    libc.src.__support.threads.identifier
+    libc.src.__support.threads.tid
 )

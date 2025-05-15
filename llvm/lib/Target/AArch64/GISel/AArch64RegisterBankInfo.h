@@ -150,7 +150,7 @@ public:
                     TypeSize Size) const override;
 
   const RegisterBank &getRegBankFromRegClass(const TargetRegisterClass &RC,
-                                             LLT Ty) const override;
+                                             LLT) const override;
 
   InstructionMappings
   getInstrAlternativeMappings(const MachineInstr &MI) const override;

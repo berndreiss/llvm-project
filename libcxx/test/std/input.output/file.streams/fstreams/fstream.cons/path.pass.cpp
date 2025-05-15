@@ -27,7 +27,6 @@
 #include "test_macros.h"
 #include "test_iterators.h"
 #include "platform_support.h"
-#include "operator_hijacker.h"
 
 namespace fs = std::filesystem;
 
@@ -73,17 +72,6 @@ int main(int, char**) {
   }
   std::remove(p.string().c_str());
 
-  {
-    std::basic_fstream<char, operator_hijacker_char_traits<char> > fs(
-        p, std::ios_base::in | std::ios_base::out | std::ios_base::trunc);
-    std::basic_string<char, operator_hijacker_char_traits<char> > x;
-    fs << "3.25";
-    fs.seekg(0);
-    fs >> x;
-    assert(x == "3.25");
-  }
-  std::remove(p.string().c_str());
-
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
   {
     std::wfstream fs(p, std::ios_base::in | std::ios_base::out |
@@ -95,18 +83,6 @@ int main(int, char**) {
     assert(x == 3.25);
   }
   std::remove(p.string().c_str());
-
-  {
-    std::basic_fstream<wchar_t, operator_hijacker_char_traits<wchar_t> > fs(
-        p, std::ios_base::in | std::ios_base::out | std::ios_base::trunc);
-    std::basic_string<wchar_t, operator_hijacker_char_traits<wchar_t> > x;
-    fs << L"3.25";
-    fs.seekg(0);
-    fs >> x;
-    assert(x == L"3.25");
-  }
-  std::remove(p.string().c_str());
-
 #endif
 
   return 0;

@@ -242,13 +242,13 @@ opt<std::string> FallbackStyle{
     init(clang::format::DefaultFallbackStyle),
 };
 
-opt<int> EnableFunctionArgSnippets{
+opt<bool> EnableFunctionArgSnippets{
     "function-arg-placeholders",
     cat(Features),
-    desc("When disabled (0), completions contain only parentheses for "
-         "function calls. When enabled (1), completions also contain "
+    desc("When disabled, completions contain only parentheses for "
+         "function calls. When enabled, completions also contain "
          "placeholders for method parameters"),
-    init(-1),
+    init(CodeCompleteOptions().EnableFunctionArgSnippets),
 };
 
 opt<CodeCompleteOptions::IncludeInsertion> HeaderInsertion{
@@ -650,7 +650,6 @@ public:
     std::optional<Config::CDBSearchSpec> CDBSearch;
     std::optional<Config::ExternalIndexSpec> IndexSpec;
     std::optional<Config::BackgroundPolicy> BGPolicy;
-    std::optional<Config::ArgumentListsPolicy> ArgumentLists;
 
     // If --compile-commands-dir arg was invoked, check value and override
     // default path.
@@ -695,12 +694,6 @@ public:
       BGPolicy = Config::BackgroundPolicy::Skip;
     }
 
-    if (EnableFunctionArgSnippets >= 0) {
-      ArgumentLists = EnableFunctionArgSnippets
-                          ? Config::ArgumentListsPolicy::FullPlaceholders
-                          : Config::ArgumentListsPolicy::Delimiters;
-    }
-
     Frag = [=](const config::Params &, Config &C) {
       if (CDBSearch)
         C.CompileFlags.CDBSearch = *CDBSearch;
@@ -708,8 +701,6 @@ public:
         C.Index.External = *IndexSpec;
       if (BGPolicy)
         C.Index.Background = *BGPolicy;
-      if (ArgumentLists)
-        C.Completion.ArgumentLists = *ArgumentLists;
       if (AllScopesCompletion.getNumOccurrences())
         C.Completion.AllScopes = AllScopesCompletion;
 
@@ -925,11 +916,9 @@ clangd accepts flags on the commandline, and in the CLANGD_FLAGS environment var
     Opts.CodeComplete.IncludeIndicator.Insert.clear();
     Opts.CodeComplete.IncludeIndicator.NoInsert.clear();
   }
+  Opts.CodeComplete.EnableFunctionArgSnippets = EnableFunctionArgSnippets;
   Opts.CodeComplete.RunParser = CodeCompletionParse;
   Opts.CodeComplete.RankingModel = RankingModel;
-  // FIXME: If we're using C++20 modules, force the lookup process to load
-  // external decls, since currently the index doesn't support C++20 modules.
-  Opts.CodeComplete.ForceLoadPreamble = ExperimentalModulesSupport;
 
   RealThreadsafeFS TFS;
   std::vector<std::unique_ptr<config::Provider>> ProviderStack;

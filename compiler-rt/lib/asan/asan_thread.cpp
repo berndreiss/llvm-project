@@ -21,7 +21,6 @@
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_placement_new.h"
 #include "sanitizer_common/sanitizer_stackdepot.h"
-#include "sanitizer_common/sanitizer_thread_history.h"
 #include "sanitizer_common/sanitizer_tls_get_addr.h"
 
 namespace __asan {
@@ -29,7 +28,10 @@ namespace __asan {
 // AsanThreadContext implementation.
 
 void AsanThreadContext::OnCreated(void *arg) {
-  thread = static_cast<AsanThread *>(arg);
+  CreateThreadContextArgs *args = static_cast<CreateThreadContextArgs *>(arg);
+  if (args->stack)
+    stack_id = StackDepotPut(*args->stack);
+  thread = args->thread;
   thread->set_context(this);
 }
 
@@ -104,8 +106,8 @@ AsanThread *AsanThread::Create(const void *start_data, uptr data_size,
     CHECK_LE(data_size, availible_size);
     internal_memcpy(thread->start_data_, start_data, data_size);
   }
-  asanThreadRegistry().CreateThread(0, detached, parent_tid,
-                                    stack ? StackDepotPut(*stack) : 0, thread);
+  AsanThreadContext::CreateThreadContextArgs args = {thread, stack};
+  asanThreadRegistry().CreateThread(0, detached, parent_tid, &args);
 
   return thread;
 }
@@ -304,10 +306,13 @@ AsanThread *CreateMainThread() {
 // OS-specific implementations that need more information passed through.
 void AsanThread::SetThreadStackAndTls(const InitOptions *options) {
   DCHECK_EQ(options, nullptr);
-  GetThreadStackAndTls(tid() == kMainTid, &stack_bottom_, &stack_top_,
-                       &tls_begin_, &tls_end_);
-  stack_top_ = RoundDownTo(stack_top_, ASAN_SHADOW_GRANULARITY);
+  uptr tls_size = 0;
+  uptr stack_size = 0;
+  GetThreadStackAndTls(tid() == kMainTid, &stack_bottom_, &stack_size,
+                       &tls_begin_, &tls_size);
+  stack_top_ = RoundDownTo(stack_bottom_ + stack_size, ASAN_SHADOW_GRANULARITY);
   stack_bottom_ = RoundDownTo(stack_bottom_, ASAN_SHADOW_GRANULARITY);
+  tls_end_ = tls_begin_ + tls_size;
   dtls_ = DTLS_Get();
 
   if (stack_top_ != stack_bottom_) {
@@ -554,12 +559,6 @@ void GetRunningThreadsLocked(InternalMmapVector<tid_t> *threads) {
               tctx->os_id);
       },
       threads);
-}
-
-void PrintThreads() {
-  InternalScopedString out;
-  PrintThreadHistory(__asan::asanThreadRegistry(), out);
-  Report("%s\n", out.data());
 }
 
 }  // namespace __lsan

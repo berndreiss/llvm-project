@@ -91,7 +91,7 @@ bool ForRangeCopyCheck::handleConstValueCopy(const VarDecl &LoopVar,
       << utils::fixit::changeVarDeclToReference(LoopVar, Context);
   if (!LoopVar.getType().isConstQualified()) {
     if (std::optional<FixItHint> Fix = utils::fixit::addQualifierToVarDecl(
-            LoopVar, Context, Qualifiers::Const))
+            LoopVar, Context, DeclSpec::TQ::TQ_const))
       Diagnostic << *Fix;
   }
   return true;
@@ -129,7 +129,7 @@ bool ForRangeCopyCheck::handleCopyIsOnlyConstReferenced(
         "making it a const reference");
 
     if (std::optional<FixItHint> Fix = utils::fixit::addQualifierToVarDecl(
-            LoopVar, Context, Qualifiers::Const))
+            LoopVar, Context, DeclSpec::TQ::TQ_const))
       Diag << *Fix << utils::fixit::changeVarDeclToReference(LoopVar, Context);
 
     return true;

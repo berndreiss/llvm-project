@@ -53,6 +53,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
+#include <algorithm>
 #include <cassert>
 #include <limits>
 #include <string>

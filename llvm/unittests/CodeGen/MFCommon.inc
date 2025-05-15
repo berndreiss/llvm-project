@@ -14,9 +14,7 @@ public:
                     MachineBasicBlock &MBB) const override {}
   void emitEpilogue(MachineFunction &MF,
                     MachineBasicBlock &MBB) const override {}
-
-protected:
-  bool hasFPImpl(const MachineFunction &MF) const override { return false; }
+  bool hasFP(const MachineFunction &MF) const override { return false; }
 };
 
 static TargetRegisterClass *const BogusRegisterClasses[] = {nullptr};
@@ -35,8 +33,8 @@ public:
   getCalleeSavedRegs(const MachineFunction *MF) const override {
     return nullptr;
   }
-  ArrayRef<const uint32_t *> getRegMasks() const override { return {}; }
-  ArrayRef<const char *> getRegMaskNames() const override { return {}; }
+  ArrayRef<const uint32_t *> getRegMasks() const override { return std::nullopt; }
+  ArrayRef<const char *> getRegMaskNames() const override { return std::nullopt; }
   BitVector getReservedRegs(const MachineFunction &MF) const override {
     return BitVector();
   }
@@ -137,7 +135,6 @@ std::unique_ptr<MachineFunction> createMachineFunction(LLVMContext &Ctx,
   MachineModuleInfo MMI(TM);
   const TargetSubtargetInfo &STI = *TM->getSubtargetImpl(*F);
 
-  return std::make_unique<MachineFunction>(*F, *TM, STI, MMI.getContext(),
-                                           FunctionNum);
+  return std::make_unique<MachineFunction>(*F, *TM, STI, FunctionNum, MMI);
 }
 

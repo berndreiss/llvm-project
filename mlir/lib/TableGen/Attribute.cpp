@@ -71,7 +71,7 @@ StringRef Attribute::getReturnType() const {
 // Return the type constraint corresponding to the type of this attribute, or
 // std::nullopt if this is not a TypedAttr.
 std::optional<Type> Attribute::getValueType() const {
-  if (const auto *defInit = dyn_cast<DefInit>(def->getValueInit("valueType")))
+  if (auto *defInit = dyn_cast<llvm::DefInit>(def->getValueInit("valueType")))
     return Type(defInit->getDef());
   return std::nullopt;
 }
@@ -92,7 +92,8 @@ StringRef Attribute::getConstBuilderTemplate() const {
 }
 
 Attribute Attribute::getBaseAttr() const {
-  if (const auto *defInit = dyn_cast<DefInit>(def->getValueInit("baseAttr"))) {
+  if (const auto *defInit =
+          llvm::dyn_cast<llvm::DefInit>(def->getValueInit("baseAttr"))) {
     return Attribute(defInit).getBaseAttr();
   }
   return *this;
@@ -125,13 +126,13 @@ StringRef Attribute::getDerivedCodeBody() const {
 Dialect Attribute::getDialect() const {
   const llvm::RecordVal *record = def->getValue("dialect");
   if (record && record->getValue()) {
-    if (const DefInit *init = dyn_cast<DefInit>(record->getValue()))
+    if (DefInit *init = dyn_cast<DefInit>(record->getValue()))
       return Dialect(init->getDef());
   }
   return Dialect(nullptr);
 }
 
-const Record &Attribute::getDef() const { return *def; }
+const llvm::Record &Attribute::getDef() const { return *def; }
 
 ConstantAttr::ConstantAttr(const DefInit *init) : def(init->getDef()) {
   assert(def->isSubClassOf("ConstantAttr") &&
@@ -146,12 +147,12 @@ StringRef ConstantAttr::getConstantValue() const {
   return def->getValueAsString("value");
 }
 
-EnumAttrCase::EnumAttrCase(const Record *record) : Attribute(record) {
+EnumAttrCase::EnumAttrCase(const llvm::Record *record) : Attribute(record) {
   assert(isSubClassOf("EnumAttrCaseInfo") &&
          "must be subclass of TableGen 'EnumAttrInfo' class");
 }
 
-EnumAttrCase::EnumAttrCase(const DefInit *init)
+EnumAttrCase::EnumAttrCase(const llvm::DefInit *init)
     : EnumAttrCase(init->getDef()) {}
 
 StringRef EnumAttrCase::getSymbol() const {
@@ -162,16 +163,16 @@ StringRef EnumAttrCase::getStr() const { return def->getValueAsString("str"); }
 
 int64_t EnumAttrCase::getValue() const { return def->getValueAsInt("value"); }
 
-const Record &EnumAttrCase::getDef() const { return *def; }
+const llvm::Record &EnumAttrCase::getDef() const { return *def; }
 
-EnumAttr::EnumAttr(const Record *record) : Attribute(record) {
+EnumAttr::EnumAttr(const llvm::Record *record) : Attribute(record) {
   assert(isSubClassOf("EnumAttrInfo") &&
          "must be subclass of TableGen 'EnumAttr' class");
 }
 
-EnumAttr::EnumAttr(const Record &record) : Attribute(&record) {}
+EnumAttr::EnumAttr(const llvm::Record &record) : Attribute(&record) {}
 
-EnumAttr::EnumAttr(const DefInit *init) : EnumAttr(init->getDef()) {}
+EnumAttr::EnumAttr(const llvm::DefInit *init) : EnumAttr(init->getDef()) {}
 
 bool EnumAttr::classof(const Attribute *attr) {
   return attr->isSubClassOf("EnumAttrInfo");
@@ -217,8 +218,8 @@ std::vector<EnumAttrCase> EnumAttr::getAllCases() const {
   std::vector<EnumAttrCase> cases;
   cases.reserve(inits->size());
 
-  for (const Init *init : *inits) {
-    cases.emplace_back(cast<DefInit>(init));
+  for (const llvm::Init *init : *inits) {
+    cases.emplace_back(cast<llvm::DefInit>(init));
   }
 
   return cases;
@@ -228,7 +229,7 @@ bool EnumAttr::genSpecializedAttr() const {
   return def->getValueAsBit("genSpecializedAttr");
 }
 
-const Record *EnumAttr::getBaseAttrClass() const {
+llvm::Record *EnumAttr::getBaseAttrClass() const {
   return def->getValueAsDef("baseAttrClass");
 }
 

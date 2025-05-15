@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 # ====-- Object class for libc function headers ---------------*- python -*--==#
 #
 # Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.

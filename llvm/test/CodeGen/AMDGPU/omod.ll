@@ -8,7 +8,7 @@
 define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspace(1) %out, ptr addrspace(1) %aptr) #4 {
 ; SI-LABEL: v_omod_div2_f32_enable_ieee_signed_zeros:
 ; SI:       ; %bb.0:
-; SI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x9
+; SI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x9
 ; SI-NEXT:    s_mov_b32 s7, 0xf000
 ; SI-NEXT:    s_mov_b32 s6, 0
 ; SI-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -25,7 +25,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspac
 ;
 ; VI-LABEL: v_omod_div2_f32_enable_ieee_signed_zeros:
 ; VI:       ; %bb.0:
-; VI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; VI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x24
 ; VI-NEXT:    v_lshlrev_b32_e32 v2, 2, v0
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    v_mov_b32_e32 v1, s3
@@ -43,7 +43,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspac
 ;
 ; GFX11-LABEL: v_omod_div2_f32_enable_ieee_signed_zeros:
 ; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX11-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX11-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX11-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -53,11 +53,13 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspac
 ; GFX11-NEXT:    v_add_f32_e32 v1, 1.0, v1
 ; GFX11-NEXT:    v_mul_f32_e32 v1, 0.5, v1
 ; GFX11-NEXT:    global_store_b32 v0, v1, s[0:1]
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f32_enable_ieee_signed_zeros:
 ; GFX12:       ; %bb.0:
-; GFX12-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX12-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX12-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX12-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -67,6 +69,8 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspac
 ; GFX12-NEXT:    v_add_f32_e32 v1, 1.0, v1
 ; GFX12-NEXT:    v_mul_f32_e32 v1, 0.5, v1
 ; GFX12-NEXT:    global_store_b32 v0, v1, s[0:1]
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %gep0 = getelementptr float, ptr addrspace(1) %aptr, i32 %tid
@@ -82,7 +86,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_signed_zeros(ptr addrspac
 define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspace(1) %out, ptr addrspace(1) %aptr) #4 {
 ; SI-LABEL: v_omod_div2_f64_enable_ieee_signed_zeros:
 ; SI:       ; %bb.0:
-; SI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x9
+; SI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x9
 ; SI-NEXT:    s_mov_b32 s7, 0xf000
 ; SI-NEXT:    s_mov_b32 s6, 0
 ; SI-NEXT:    v_lshlrev_b32_e32 v0, 3, v0
@@ -99,7 +103,7 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspac
 ;
 ; VI-LABEL: v_omod_div2_f64_enable_ieee_signed_zeros:
 ; VI:       ; %bb.0:
-; VI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; VI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x24
 ; VI-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    v_mov_b32_e32 v1, s3
@@ -117,7 +121,7 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspac
 ;
 ; GFX11-LABEL: v_omod_div2_f64_enable_ieee_signed_zeros:
 ; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX11-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX11-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX11-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
@@ -127,11 +131,13 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspac
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], 1.0
 ; GFX11-NEXT:    v_mul_f64 v[0:1], v[0:1], 0.5
 ; GFX11-NEXT:    global_store_b64 v2, v[0:1], s[0:1]
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f64_enable_ieee_signed_zeros:
 ; GFX12:       ; %bb.0:
-; GFX12-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX12-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX12-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX12-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
@@ -141,6 +147,8 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspac
 ; GFX12-NEXT:    v_add_f64_e32 v[0:1], 1.0, v[0:1]
 ; GFX12-NEXT:    v_mul_f64_e32 v[0:1], 0.5, v[0:1]
 ; GFX12-NEXT:    global_store_b64 v2, v[0:1], s[0:1]
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %gep0 = getelementptr double, ptr addrspace(1) %aptr, i32 %tid
@@ -156,7 +164,7 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_signed_zeros(ptr addrspac
 define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out, ptr addrspace(1) %aptr) #0 {
 ; SI-LABEL: v_omod_div2_f32_enable_ieee_nsz:
 ; SI:       ; %bb.0:
-; SI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x9
+; SI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x9
 ; SI-NEXT:    s_mov_b32 s7, 0xf000
 ; SI-NEXT:    s_mov_b32 s6, 0
 ; SI-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -173,7 +181,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out
 ;
 ; VI-LABEL: v_omod_div2_f32_enable_ieee_nsz:
 ; VI:       ; %bb.0:
-; VI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; VI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x24
 ; VI-NEXT:    v_lshlrev_b32_e32 v2, 2, v0
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    v_mov_b32_e32 v1, s3
@@ -191,7 +199,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out
 ;
 ; GFX11-LABEL: v_omod_div2_f32_enable_ieee_nsz:
 ; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX11-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX11-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX11-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -201,11 +209,13 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out
 ; GFX11-NEXT:    v_add_f32_e32 v1, 1.0, v1
 ; GFX11-NEXT:    v_mul_f32_e32 v1, 0.5, v1
 ; GFX11-NEXT:    global_store_b32 v0, v1, s[0:1]
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f32_enable_ieee_nsz:
 ; GFX12:       ; %bb.0:
-; GFX12-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX12-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX12-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX12-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
@@ -215,6 +225,8 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out
 ; GFX12-NEXT:    v_add_f32_e32 v1, 1.0, v1
 ; GFX12-NEXT:    v_mul_f32_e32 v1, 0.5, v1
 ; GFX12-NEXT:    global_store_b32 v0, v1, s[0:1]
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %gep0 = getelementptr float, ptr addrspace(1) %aptr, i32 %tid
@@ -230,7 +242,7 @@ define amdgpu_kernel void @v_omod_div2_f32_enable_ieee_nsz(ptr addrspace(1) %out
 define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_nsz(ptr addrspace(1) %out, ptr addrspace(1) %aptr) #5 {
 ; SI-LABEL: v_omod_div2_f64_enable_ieee_nsz:
 ; SI:       ; %bb.0:
-; SI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x9
+; SI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x9
 ; SI-NEXT:    s_mov_b32 s7, 0xf000
 ; SI-NEXT:    s_mov_b32 s6, 0
 ; SI-NEXT:    v_lshlrev_b32_e32 v0, 3, v0
@@ -247,7 +259,7 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_nsz(ptr addrspace(1) %out
 ;
 ; VI-LABEL: v_omod_div2_f64_enable_ieee_nsz:
 ; VI:       ; %bb.0:
-; VI-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; VI-NEXT:    s_load_dwordx4 s[0:3], s[2:3], 0x24
 ; VI-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    v_mov_b32_e32 v1, s3
@@ -265,7 +277,7 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_nsz(ptr addrspace(1) %out
 ;
 ; GFX11-LABEL: v_omod_div2_f64_enable_ieee_nsz:
 ; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX11-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX11-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX11-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
@@ -275,11 +287,13 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_nsz(ptr addrspace(1) %out
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], 1.0
 ; GFX11-NEXT:    v_mul_f64 v[0:1], v[0:1], 0.5
 ; GFX11-NEXT:    global_store_b64 v2, v[0:1], s[0:1]
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f64_enable_ieee_nsz:
 ; GFX12:       ; %bb.0:
-; GFX12-NEXT:    s_load_b128 s[0:3], s[4:5], 0x24
+; GFX12-NEXT:    s_load_b128 s[0:3], s[2:3], 0x24
 ; GFX12-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(VALU_DEP_1)
 ; GFX12-NEXT:    v_lshlrev_b32_e32 v2, 3, v0
@@ -289,6 +303,8 @@ define amdgpu_kernel void @v_omod_div2_f64_enable_ieee_nsz(ptr addrspace(1) %out
 ; GFX12-NEXT:    v_add_f64_e32 v[0:1], 1.0, v[0:1]
 ; GFX12-NEXT:    v_mul_f64_e32 v[0:1], 0.5, v[0:1]
 ; GFX12-NEXT:    global_store_b64 v2, v[0:1], s[0:1]
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %gep0 = getelementptr double, ptr addrspace(1) %aptr, i32 %tid
@@ -324,6 +340,8 @@ define amdgpu_ps void @v_omod_div2_f32_signed_zeros(float %a) #4 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f32_e32 v0, 0.5, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 0.5
@@ -355,6 +373,8 @@ define amdgpu_ps void @v_omod_div2_f64_signed_zeros(double %a) #4 {
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11-NEXT:    v_mul_f64 v[0:1], v[0:1], 0.5
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f64_signed_zeros:
@@ -363,6 +383,8 @@ define amdgpu_ps void @v_omod_div2_f64_signed_zeros(double %a) #4 {
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-NEXT:    v_mul_f64_e32 v[0:1], 0.5, v[0:1]
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd double %a, 1.0
   %div2 = fmul double %add, 0.5
@@ -389,6 +411,8 @@ define amdgpu_ps void @v_omod_div2_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, 1.0 div:2
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 0.5
@@ -415,12 +439,16 @@ define amdgpu_ps void @v_omod_div2_f64(double %a) #5 {
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], 1.0 div:2
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f64:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    v_add_f64_e64 v[0:1], v[0:1], 1.0 div:2
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd nsz double %a, 1.0
   %div2 = fmul nsz double %add, 0.5
@@ -447,6 +475,8 @@ define amdgpu_ps void @v_omod_mul2_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, 1.0 mul:2
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 2.0
@@ -473,12 +503,16 @@ define amdgpu_ps void @v_omod_mul2_med3(float %x, float %y, float %z) #0 {
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    v_med3_f32 v0, v0, v1, v2 mul:2
 ; GFX11-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_mul2_med3:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    v_med3_num_f32 v0, v0, v1, v2 mul:2
 ; GFX12-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %fmed3 = call float @llvm.amdgcn.fmed3.f32(float %x, float %y, float %z)
   %div2 = fmul float %fmed3, 2.0
@@ -505,12 +539,16 @@ define amdgpu_ps void @v_omod_mul2_f64(double %a) #5 {
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], 1.0 mul:2
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_mul2_f64:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    v_add_f64_e64 v[0:1], v[0:1], 1.0 mul:2
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd nsz double %a, 1.0
   %div2 = fmul nsz double %add, 2.0
@@ -537,6 +575,8 @@ define amdgpu_ps void @v_omod_mul4_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, 1.0 mul:4
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 4.0
@@ -563,12 +603,16 @@ define amdgpu_ps void @v_omod_mul4_f64(double %a) #5 {
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], 1.0 mul:4
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_mul4_f64:
 ; GFX12:       ; %bb.0:
 ; GFX12-NEXT:    v_add_f64_e64 v[0:1], v[0:1], 1.0 mul:4
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd nsz double %a, 1.0
   %div2 = fmul nsz double %add, 4.0
@@ -606,6 +650,8 @@ define amdgpu_ps void @v_omod_mul4_multi_use_f32(float %a) #0 {
 ; GFX11-NEXT:    global_store_b32 v[0:1], v1, off
 ; GFX11-NEXT:    global_store_b32 v[0:1], v0, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_mul4_multi_use_f32:
@@ -617,6 +663,8 @@ define amdgpu_ps void @v_omod_mul4_multi_use_f32(float %a) #0 {
 ; GFX12-NEXT:    s_wait_storecnt 0x0
 ; GFX12-NEXT:    global_store_b32 v[0:1], v0, off scope:SCOPE_SYS
 ; GFX12-NEXT:    s_wait_storecnt 0x0
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 4.0
@@ -644,6 +692,8 @@ define amdgpu_ps void @v_omod_mul4_dbg_use_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, 1.0 mul:4
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   call void @llvm.dbg.value(metadata float %add, i64 0, metadata !4, metadata !9), !dbg !10
@@ -672,6 +722,8 @@ define amdgpu_ps void @v_clamp_omod_div2_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, 1.0 clamp div:2
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 0.5
@@ -706,6 +758,8 @@ define amdgpu_ps void @v_omod_div2_clamp_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f32_e32 v0, 0.5, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %max = call float @llvm.maxnum.f32(float %add, float 0.0)
@@ -738,6 +792,8 @@ define amdgpu_ps void @v_omod_div2_abs_src_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f32_e64 v0, |v0|, 0.5
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %abs.add = call float @llvm.fabs.f32(float %add)
@@ -765,6 +821,8 @@ define amdgpu_ps void @v_omod_add_self_clamp_f32(float %a) #0 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, v0 clamp
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, %a
   %max = call float @llvm.maxnum.f32(float %add, float 0.0)
@@ -796,6 +854,8 @@ define amdgpu_ps void @v_omod_add_clamp_self_f32(float %a) #0 {
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11-NEXT:    v_add_f32_e32 v0, v0, v0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_add_clamp_self_f32:
@@ -804,6 +864,8 @@ define amdgpu_ps void @v_omod_add_clamp_self_f32(float %a) #0 {
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-NEXT:    v_add_f32_e32 v0, v0, v0
 ; GFX12-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %max = call float @llvm.maxnum.f32(float %a, float 0.0)
   %clamp = call float @llvm.minnum.f32(float %max, float 1.0)
@@ -835,6 +897,8 @@ define amdgpu_ps void @v_omod_add_abs_self_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, |v0|, |v0|
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %x = fadd float %a, 1.0
   %abs.x = call float @llvm.fabs.f32(float %x)
@@ -866,6 +930,8 @@ define amdgpu_ps void @v_omod_add_abs_x_x_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, |v0|, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %x = fadd float %a, 1.0
   %abs.x = call float @llvm.fabs.f32(float %x)
@@ -897,6 +963,8 @@ define amdgpu_ps void @v_omod_add_x_abs_x_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v0, v0, |v0|
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %x = fadd float %a, 1.0
   %abs.x = call float @llvm.fabs.f32(float %x)
@@ -929,6 +997,8 @@ define amdgpu_ps void @v_omod_div2_omod_div2_f32(float %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f32_e32 v0, 0.5, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2.0 = fmul float %add, 0.5
@@ -961,6 +1031,8 @@ define amdgpu_ps void @v_omod_div2_f32_denormals(float %a) #2 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f32_e32 v0, 0.5, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %div2 = fmul float %add, 0.5
@@ -992,6 +1064,8 @@ define amdgpu_ps void @v_omod_div2_f64_denormals(double %a) #6 {
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11-NEXT:    v_mul_f64 v[0:1], v[0:1], 0.5
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_div2_f64_denormals:
@@ -1000,6 +1074,8 @@ define amdgpu_ps void @v_omod_div2_f64_denormals(double %a) #6 {
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-NEXT:    v_mul_f64_e32 v[0:1], 0.5, v[0:1]
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd double %a, 1.0
   %div2 = fmul double %add, 0.5
@@ -1031,6 +1107,8 @@ define amdgpu_ps void @v_omod_mul2_f32_denormals(float %a) #2 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_add_f32_e32 v0, v0, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd float %a, 1.0
   %mul2 = fadd float %add, %add
@@ -1062,6 +1140,8 @@ define amdgpu_ps void @v_omod_mul2_f64_denormals(double %a) #2 {
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11-NEXT:    v_add_f64 v[0:1], v[0:1], v[0:1]
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: v_omod_mul2_f64_denormals:
@@ -1070,6 +1150,8 @@ define amdgpu_ps void @v_omod_mul2_f64_denormals(double %a) #2 {
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-NEXT:    v_add_f64_e32 v[0:1], v[0:1], v[0:1]
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[0:1], off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %add = fadd double %a, 1.0
   %mul2 = fadd double %add, %add
@@ -1103,6 +1185,8 @@ define amdgpu_ps void @v_omod_div2_f16_denormals(half %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_mul_f16_e32 v0, 0.5, v0
 ; GFX11PLUS-NEXT:    global_store_b16 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd half %a, 1.0
   %div2 = fmul half %add, 0.5
@@ -1136,6 +1220,8 @@ define amdgpu_ps void @v_omod_mul2_f16_denormals(half %a) #0 {
 ; GFX11PLUS-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX11PLUS-NEXT:    v_add_f16_e32 v0, v0, v0
 ; GFX11PLUS-NEXT:    global_store_b16 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd half %a, 1.0
   %mul2 = fadd half %add, %add
@@ -1165,6 +1251,8 @@ define amdgpu_ps void @v_omod_div2_f16_no_denormals(half %a) #3 {
 ; GFX11PLUS:       ; %bb.0:
 ; GFX11PLUS-NEXT:    v_add_f16_e64 v0, v0, 1.0 div:2
 ; GFX11PLUS-NEXT:    global_store_b16 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %add = fadd half %a, 1.0
   %div2 = fmul half %add, 0.5
@@ -1196,6 +1284,8 @@ define amdgpu_ps void @v_omod_mac_to_mad(float %b, float %a) #0 {
 ; GFX11PLUS-NEXT:    v_add_f32_e64 v1, v1, v0 mul:2
 ; GFX11PLUS-NEXT:    v_mul_f32_e32 v0, v1, v0
 ; GFX11PLUS-NEXT:    global_store_b32 v[0:1], v0, off
+; GFX11PLUS-NEXT:    s_nop 0
+; GFX11PLUS-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11PLUS-NEXT:    s_endpgm
   %mul = fmul float %a, %a
   %add = fadd float %mul, %b

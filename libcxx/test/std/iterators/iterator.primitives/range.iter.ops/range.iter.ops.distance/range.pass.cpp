@@ -51,14 +51,9 @@ constexpr bool test() {
     using R = std::ranges::subrange<It, Sent, std::ranges::subrange_kind::unsized>;
 
     int a[] = {1, 2, 3};
-    {
-      auto r = R(It(a), Sent(It(a + 3)));
-      assert(std::ranges::distance(r) == 3);
-    }
-    {
-      auto r = R(It(a), Sent(It(a + 3)));
-      assert(std::ranges::distance(static_cast<R&&>(r)) == 3);
-    }
+    auto r = R(It(a), Sent(It(a + 3)));
+    assert(std::ranges::distance(r) == 3);
+    assert(std::ranges::distance(static_cast<R&&>(r)) == 3);
     static_assert(!std::is_invocable_v<decltype(std::ranges::distance), const R&>);
     static_assert(!std::is_invocable_v<decltype(std::ranges::distance), const R&&>);
   }
@@ -69,14 +64,9 @@ constexpr bool test() {
     using R = std::ranges::subrange<It, Sent, std::ranges::subrange_kind::sized>;
 
     int a[] = {1, 2, 3};
-    {
-      auto r = R(It(a), Sent(It(a + 3)), 3);
-      assert(std::ranges::distance(r) == 3);
-    }
-    {
-      auto r = R(It(a), Sent(It(a + 3)), 3);
-      assert(std::ranges::distance(static_cast<R&&>(r)) == 3);
-    }
+    auto r = R(It(a), Sent(It(a + 3)), 3);
+    assert(std::ranges::distance(r) == 3);
+    assert(std::ranges::distance(static_cast<R&&>(r)) == 3);
     static_assert(!std::is_invocable_v<decltype(std::ranges::distance), const R&>);
     static_assert(!std::is_invocable_v<decltype(std::ranges::distance), const R&&>);
   }

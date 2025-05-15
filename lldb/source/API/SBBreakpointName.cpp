@@ -347,7 +347,7 @@ bool SBBreakpointName::GetAutoContinue() {
   return bp_name->GetOptions().IsAutoContinue();
 }
 
-void SBBreakpointName::SetThreadID(lldb::tid_t tid) {
+void SBBreakpointName::SetThreadID(tid_t tid) {
   LLDB_INSTRUMENT_VA(this, tid);
 
   BreakpointName *bp_name = GetBreakpointName();
@@ -361,7 +361,7 @@ void SBBreakpointName::SetThreadID(lldb::tid_t tid) {
   UpdateName(*bp_name);
 }
 
-lldb::tid_t SBBreakpointName::GetThreadID() {
+tid_t SBBreakpointName::GetThreadID() {
   LLDB_INSTRUMENT_VA(this);
 
   BreakpointName *bp_name = GetBreakpointName();
@@ -562,7 +562,7 @@ SBError SBBreakpointName::SetScriptCallbackFunction(
   SBError sb_error;
   BreakpointName *bp_name = GetBreakpointName();
   if (!bp_name) {
-    sb_error = Status::FromErrorString("unrecognized breakpoint name");
+    sb_error.SetErrorString("unrecognized breakpoint name");
     return sb_error;
   }
 
@@ -570,13 +570,14 @@ SBError SBBreakpointName::SetScriptCallbackFunction(
         m_impl_up->GetTarget()->GetAPIMutex());
 
   BreakpointOptions &bp_options = bp_name->GetOptions();
-  Status error = m_impl_up->GetTarget()
-                     ->GetDebugger()
-                     .GetScriptInterpreter()
-                     ->SetBreakpointCommandCallbackFunction(
-                         bp_options, callback_function_name,
-                         extra_args.m_impl_up->GetObjectSP());
-  sb_error.SetError(std::move(error));
+  Status error;
+  error = m_impl_up->GetTarget()
+              ->GetDebugger()
+              .GetScriptInterpreter()
+              ->SetBreakpointCommandCallbackFunction(
+                  bp_options, callback_function_name,
+                  extra_args.m_impl_up->GetObjectSP());
+  sb_error.SetError(error);
   UpdateName(*bp_name);
   return sb_error;
 }
@@ -599,7 +600,7 @@ SBBreakpointName::SetScriptCallbackBody(const char *callback_body_text) {
                      .GetScriptInterpreter()
                      ->SetBreakpointCommandCallback(
                          bp_options, callback_body_text, /*is_callback=*/false);
-  sb_error.SetError(std::move(error));
+  sb_error.SetError(error);
   if (!sb_error.Fail())
     UpdateName(*bp_name);
 

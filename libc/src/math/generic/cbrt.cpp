@@ -151,10 +151,9 @@ LLVM_LIBC_FUNCTION(double, cbrt, (double x)) {
 
   if (LIBC_UNLIKELY(x_abs < FPBits::min_normal().uintval() ||
                     x_abs >= FPBits::inf().uintval())) {
-    if (x == 0.0 || x_abs >= FPBits::inf().uintval())
+    if (x_abs == 0 || x_abs >= FPBits::inf().uintval())
       // x is 0, Inf, or NaN.
-      // Make sure it works for FTZ/DAZ modes.
-      return static_cast<double>(x + x);
+      return x;
 
     // x is non-zero denormal number.
     // Normalize x.
@@ -236,10 +235,10 @@ LLVM_LIBC_FUNCTION(double, cbrt, (double x)) {
 
   // Lambda function to update the exponent of the result.
   auto update_exponent = [=](double r) -> double {
-    uint64_t r_m = FPBits(r).uintval() - 0x3FF0'0000'0000'0000;
+    uint64_t r_m = FPBits(r).uintval() & 0x800F'FFFF'FFFF'FFFF;
     // Adjust exponent and sign.
     uint64_t r_bits =
-        r_m + (static_cast<uint64_t>(out_e) << FPBits::FRACTION_LEN);
+        r_m | (static_cast<uint64_t>(out_e) << FPBits::FRACTION_LEN);
     return FPBits(r_bits).get_val();
   };
 

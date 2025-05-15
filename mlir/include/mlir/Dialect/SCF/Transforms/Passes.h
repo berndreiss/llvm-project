@@ -20,6 +20,9 @@ namespace mlir {
 #define GEN_PASS_DECL
 #include "mlir/Dialect/SCF/Transforms/Passes.h.inc"
 
+/// Creates a pass that bufferizes the SCF dialect.
+std::unique_ptr<Pass> createSCFBufferizePass();
+
 /// Creates a pass that specializes for loop for unrolling and
 /// vectorization.
 std::unique_ptr<Pass> createForLoopSpecializationPass();

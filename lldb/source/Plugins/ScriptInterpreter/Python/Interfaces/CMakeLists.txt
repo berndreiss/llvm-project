@@ -19,15 +19,13 @@ if (LLDB_ENABLE_LIBEDIT)
   list(APPEND LLDB_LIBEDIT_LIBS LibEdit::LibEdit)
 endif()
 
-add_lldb_library(lldbPluginScriptInterpreterPythonInterfaces PLUGIN
+add_lldb_library(lldbPluginScriptInterpreterPythonInterfaces
   OperatingSystemPythonInterface.cpp
-  ScriptInterpreterPythonInterfaces.cpp
-  ScriptedPlatformPythonInterface.cpp
-  ScriptedProcessPythonInterface.cpp
   ScriptedPythonInterface.cpp
-  ScriptedStopHookPythonInterface.cpp
-  ScriptedThreadPlanPythonInterface.cpp
+  ScriptedProcessPythonInterface.cpp
   ScriptedThreadPythonInterface.cpp
+  ScriptedThreadPlanPythonInterface.cpp
+  ScriptedPlatformPythonInterface.cpp
 
   LINK_LIBS
     lldbCore
@@ -40,5 +38,3 @@ add_lldb_library(lldbPluginScriptInterpreterPythonInterfaces PLUGIN
   LINK_COMPONENTS
     Support
   )
-
-

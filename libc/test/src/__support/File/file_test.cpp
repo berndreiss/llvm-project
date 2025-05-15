@@ -12,7 +12,8 @@
 #include "test/UnitTest/MemoryMatcher.h"
 #include "test/UnitTest/Test.h"
 
-#include "hdr/types/size_t.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 using ModeFlags = LIBC_NAMESPACE::File::ModeFlags;
 using MemoryView = LIBC_NAMESPACE::testing::MemoryView;

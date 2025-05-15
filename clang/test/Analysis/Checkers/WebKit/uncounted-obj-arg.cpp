@@ -6,7 +6,6 @@
 void WTFBreakpointTrap();
 void WTFCrashWithInfo(int, const char*, const char*, int);
 void WTFReportAssertionFailure(const char* file, int line, const char* function, const char* assertion);
-void WTFReportBacktrace(void);
 
 void WTFCrash(void);
 void WTFCrashWithSecurityImplication(void);
@@ -224,22 +223,6 @@ private:
   Number n;
 };
 
-class BaseType {
-public:
-  BaseType() : n(0) { }
-  BaseType(int v) : n(v) { }
-  BaseType(const char*);
-private:
-  Number n;
-};
-
-class SomeType : public BaseType {
-public:
-  using BaseType::BaseType;
-};
-
-void __libcpp_verbose_abort(const char *__format, ...);
-
 class RefCounted {
 public:
   void ref() const;
@@ -260,15 +243,6 @@ public:
 
   void mutuallyRecursive8() { mutuallyRecursive9(); someFunction(); }
   void mutuallyRecursive9() { mutuallyRecursive8(); }
-
-  int recursiveCost() {
-    unsigned totalCost = 0;
-    for (unsigned i = 0; i < sizeof(children)/sizeof(*children); ++i) {
-      if (auto* child = children[i])
-        totalCost += child->recursiveCost();
-    }
-    return totalCost;
-  }
 
   int trivial1() { return 123; }
   float trivial2() { return 0.3; }
@@ -360,20 +334,8 @@ public:
   }
   unsigned trivial60() { return ObjectWithNonTrivialDestructor { 5 }.value(); }
   unsigned trivial61() { return DerivedNumber('7').value(); }
-  void trivial62() { WTFReportBacktrace(); }
-  SomeType trivial63() { return SomeType(0); }
-  SomeType trivial64() { return SomeType(); }
-  void trivial65() {
-    __libcpp_verbose_abort("%s", "aborting");
-  }
 
   static RefCounted& singleton() {
-    static RefCounted s_RefCounted;
-    s_RefCounted.ref();
-    return s_RefCounted;
-  }
-
-  static RefCounted& otherSingleton() {
     static RefCounted s_RefCounted;
     s_RefCounted.ref();
     return s_RefCounted;
@@ -455,14 +417,12 @@ public:
   unsigned nonTrivial21() { return Number("123").value(); }
   unsigned nonTrivial22() { return ComplexNumber(123, "456").real().value(); }
   unsigned nonTrivial23() { return DerivedNumber("123").value(); }
-  SomeType nonTrivial24() { return SomeType("123"); }
 
   static unsigned s_v;
   unsigned v { 0 };
   Number* number { nullptr };
   ComplexNumber complex;
   Enum enumValue { Enum::Value1 };
-  RefCounted* children[4];
 };
 
 unsigned RefCounted::s_v = 0;
@@ -546,15 +506,9 @@ public:
     getFieldTrivial().trivial59(); // no-warning
     getFieldTrivial().trivial60(); // no-warning
     getFieldTrivial().trivial61(); // no-warning
-    getFieldTrivial().trivial62(); // no-warning
-    getFieldTrivial().trivial63(); // no-warning
-    getFieldTrivial().trivial64(); // no-warning
-    getFieldTrivial().trivial65(); // no-warning
 
     RefCounted::singleton().trivial18(); // no-warning
     RefCounted::singleton().someFunction(); // no-warning
-    RefCounted::otherSingleton().trivial18(); // no-warning
-    RefCounted::otherSingleton().someFunction(); // no-warning
 
     getFieldTrivial().recursiveTrivialFunction(7); // no-warning
     getFieldTrivial().recursiveComplexFunction(9);
@@ -573,8 +527,6 @@ public:
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
     getFieldTrivial().mutuallyRecursive9();
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
-
-    getFieldTrivial().recursiveCost(); // no-warning
 
     getFieldTrivial().someFunction();
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
@@ -624,11 +576,7 @@ public:
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
     getFieldTrivial().nonTrivial23();
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
-    getFieldTrivial().nonTrivial24();
-    // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
   }
-
-  void setField(RefCounted*);
 };
 
 class UnrelatedClass2 {
@@ -639,24 +587,11 @@ public:
   RefCounted &getFieldTrivialRecursively() { return getFieldTrivial().getFieldTrivial(); }
   RefCounted *getFieldTrivialTernary() { return Field ? Field->getFieldTernary() : nullptr; }
 
-  template<typename T, typename ... AdditionalArgs>
-  void callSetField(T&& item, AdditionalArgs&&... args)
-  {
-    item.setField(std::forward<AdditionalArgs>(args)...);
-  }
-
-  template<typename T, typename ... AdditionalArgs>
-  void callSetField2(T&& item, AdditionalArgs&&... args)
-  {
-    item.setField(std::move<AdditionalArgs>(args)...);
-  }
-
   void test() {
     getFieldTrivialRecursively().trivial1(); // no-warning
     getFieldTrivialTernary()->trivial2(); // no-warning
     getFieldTrivialRecursively().someFunction();
     // expected-warning@-1{{Call argument for 'this' parameter is uncounted and unsafe}}
-    callSetField(getFieldTrivial(), refCountedObj()); // no-warning
   }
 };
 

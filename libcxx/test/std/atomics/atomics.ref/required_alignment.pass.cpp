@@ -12,7 +12,6 @@
 #include <atomic>
 #include <cassert>
 #include <concepts>
-#include <cstddef>
 
 template <typename T>
 constexpr void check_required_alignment() {

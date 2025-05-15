@@ -71,7 +71,7 @@ public:
   /// contains - Return true if the specified register is included in this
   /// register class.  This does not include virtual registers.
   bool contains(MCRegister Reg) const {
-    unsigned RegNo = Reg.id();
+    unsigned RegNo = unsigned(Reg);
     unsigned InByte = RegNo % 8;
     unsigned Byte = RegNo / 8;
     if (Byte >= RegSetSize)
@@ -188,7 +188,7 @@ private:
   DenseMap<MCRegister, int> L2CVRegs;         // LLVM to CV regs mapping
 
   mutable std::vector<std::vector<MCPhysReg>> RegAliasesCache;
-  ArrayRef<MCPhysReg> getCachedAliasesOf(MCRegister R) const;
+  ArrayRef<MCPhysReg> getCachedAliasesOf(MCPhysReg R) const;
 
   /// Iterator class that can traverse the differentially encoded values in
   /// DiffLists. Don't use this class directly, use one of the adaptors below.
@@ -267,8 +267,6 @@ public:
   friend class MCRegUnitMaskIterator;
   friend class MCRegUnitRootIterator;
   friend class MCRegAliasIterator;
-
-  virtual ~MCRegisterInfo() {}
 
   /// Initialize MCRegisterInfo, called by TableGen
   /// auto-generated routines. *DO NOT USE*.
@@ -360,16 +358,16 @@ public:
     return PCReg;
   }
 
-  const MCRegisterDesc &operator[](MCRegister Reg) const {
-    assert(Reg.id() < NumRegs &&
+  const MCRegisterDesc &operator[](MCRegister RegNo) const {
+    assert(RegNo < NumRegs &&
            "Attempting to access record for invalid register number!");
-    return Desc[Reg.id()];
+    return Desc[RegNo];
   }
 
   /// Provide a get method, equivalent to [], but more useful with a
   /// pointer to this object.
-  const MCRegisterDesc &get(MCRegister Reg) const {
-    return operator[](Reg);
+  const MCRegisterDesc &get(MCRegister RegNo) const {
+    return operator[](RegNo);
   }
 
   /// Returns the physical register number of sub-register "Index"
@@ -420,15 +418,15 @@ public:
   /// number.  Returns -1 if there is no equivalent value.  The second
   /// parameter allows targets to use different numberings for EH info and
   /// debugging info.
-  virtual int64_t getDwarfRegNum(MCRegister RegNum, bool isEH) const;
+  int getDwarfRegNum(MCRegister RegNum, bool isEH) const;
 
-  /// Map a dwarf register back to a target register. Returns std::nullopt if
+  /// Map a dwarf register back to a target register. Returns std::nullopt is
   /// there is no mapping.
-  std::optional<MCRegister> getLLVMRegNum(uint64_t RegNum, bool isEH) const;
+  std::optional<unsigned> getLLVMRegNum(unsigned RegNum, bool isEH) const;
 
   /// Map a target EH register number to an equivalent DWARF register
   /// number.
-  int64_t getDwarfRegNumFromDwarfEHRegNum(uint64_t RegNum) const;
+  int getDwarfRegNumFromDwarfEHRegNum(unsigned RegNum) const;
 
   /// Map a target register to an equivalent SEH register
   /// number.  Returns LLVM register number if there is no equivalent value.
@@ -459,11 +457,11 @@ public:
     return RegClassStrings + Class->NameIdx;
   }
 
-   /// Returns the encoding for Reg
-  uint16_t getEncodingValue(MCRegister Reg) const {
-    assert(Reg.id() < NumRegs &&
+   /// Returns the encoding for RegNo
+  uint16_t getEncodingValue(MCRegister RegNo) const {
+    assert(RegNo < NumRegs &&
            "Attempting to get encoding for invalid register number!");
-    return RegEncodingTable[Reg.id()];
+    return RegEncodingTable[RegNo];
   }
 
   /// Returns true if RegB is a sub-register of RegA.

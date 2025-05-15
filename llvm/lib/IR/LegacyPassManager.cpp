@@ -104,13 +104,15 @@ void PMDataManager::emitInstrCountChangedRemark(
       [&FunctionToInstrCount](Function &MaybeChangedFn) {
         // Update the total module count.
         unsigned FnSize = MaybeChangedFn.getInstructionCount();
+        auto It = FunctionToInstrCount.find(MaybeChangedFn.getName());
 
         // If we created a new function, then we need to add it to the map and
         // say that it changed from 0 instructions to FnSize.
-        auto [It, Inserted] = FunctionToInstrCount.try_emplace(
-            MaybeChangedFn.getName(), 0, FnSize);
-        if (Inserted)
+        if (It == FunctionToInstrCount.end()) {
+          FunctionToInstrCount[MaybeChangedFn.getName()] =
+              std::pair<unsigned, unsigned>(0, FnSize);
           return;
+        }
         // Insert the new function size into the second member of the pair. This
         // tells us whether or not this function changed in size.
         It->second.second = FnSize;
@@ -805,6 +807,13 @@ void PMTopLevelManager::addImmutablePass(ImmutablePass *P) {
   // doing lookups.
   AnalysisID AID = P->getPassID();
   ImmutablePassMap[AID] = P;
+
+  // Also add any interfaces implemented by the immutable pass to the map for
+  // fast lookup.
+  const PassInfo *PassInf = findAnalysisPassInfo(AID);
+  assert(PassInf && "Expected all immutable passes to be initialized");
+  for (const PassInfo *ImmPI : PassInf->getInterfacesImplemented())
+    ImmutablePassMap[ImmPI->getTypeInfo()] = P;
 }
 
 // Print passes managed by this top level manager.
@@ -834,7 +843,8 @@ void PMTopLevelManager::dumpArguments() const {
   for (ImmutablePass *P : ImmutablePasses)
     if (const PassInfo *PI = findAnalysisPassInfo(P->getPassID())) {
       assert(PI && "Expected all immutable passes to be initialized");
-      dbgs() << " -" << PI->getPassArgument();
+      if (!PI->isAnalysisGroup())
+        dbgs() << " -" << PI->getPassArgument();
     }
   for (PMDataManager *PM : PassManagers)
     PM->dumpPassArguments();
@@ -867,6 +877,15 @@ void PMDataManager::recordAvailableAnalysis(Pass *P) {
   AnalysisID PI = P->getPassID();
 
   AvailableAnalysis[PI] = P;
+
+  assert(!AvailableAnalysis.empty());
+
+  // This pass is the current implementation of all of the interfaces it
+  // implements as well.
+  const PassInfo *PInf = TPM->findAnalysisPassInfo(PI);
+  if (!PInf) return;
+  for (const PassInfo *PI : PInf->getInterfacesImplemented())
+    AvailableAnalysis[PI->getTypeInfo()] = P;
 }
 
 // Return true if P preserves high level analysis used by other
@@ -984,8 +1003,20 @@ void PMDataManager::freePass(Pass *P, StringRef Msg,
     P->releaseMemory();
   }
 
-  // Remove the pass itself (if it is not already removed).
-  AvailableAnalysis.erase(P->getPassID());
+  AnalysisID PI = P->getPassID();
+  if (const PassInfo *PInf = TPM->findAnalysisPassInfo(PI)) {
+    // Remove the pass itself (if it is not already removed).
+    AvailableAnalysis.erase(PI);
+
+    // Remove all interfaces this pass implements, for which it is also
+    // listed as the available implementation.
+    for (const PassInfo *PI : PInf->getInterfacesImplemented()) {
+      DenseMap<AnalysisID, Pass *>::iterator Pos =
+          AvailableAnalysis.find(PI->getTypeInfo());
+      if (Pos != AvailableAnalysis.end() && Pos->second == P)
+        AvailableAnalysis.erase(Pos);
+    }
+  }
 }
 
 /// Add pass P into the PassVector. Update
@@ -1141,8 +1172,11 @@ void PMDataManager::dumpPassArguments() const {
   for (Pass *P : PassVector) {
     if (PMDataManager *PMD = P->getAsPMDataManager())
       PMD->dumpPassArguments();
-    else if (const PassInfo *PI = TPM->findAnalysisPassInfo(P->getPassID()))
-      dbgs() << " -" << PI->getPassArgument();
+    else
+      if (const PassInfo *PI =
+            TPM->findAnalysisPassInfo(P->getPassID()))
+        if (!PI->isAnalysisGroup())
+          dbgs() << " -" << PI->getPassArgument();
   }
 }
 

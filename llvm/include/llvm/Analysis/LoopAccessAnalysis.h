@@ -15,7 +15,8 @@
 #define LLVM_ANALYSIS_LOOPACCESSANALYSIS_H
 
 #include "llvm/ADT/EquivalenceClasses.h"
-#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include <optional>
 #include <variant>
@@ -25,8 +26,11 @@ namespace llvm {
 class AAResults;
 class DataLayout;
 class Loop;
+class LoopAccessInfo;
 class raw_ostream;
-class TargetTransformInfo;
+class SCEV;
+class SCEVUnionPredicate;
+class Value;
 
 /// Collection of parameters shared beetween the Loop Vectorizer and the
 /// Loop Access Analysis.
@@ -334,9 +338,6 @@ private:
            std::pair<const SCEV *, const SCEV *>>
       PointerBounds;
 
-  /// Cache for the loop guards of InnermostLoop.
-  std::optional<ScalarEvolution::LoopGuards> LoopGuards;
-
   /// Check whether there is a plausible dependence between the two
   /// accesses.
   ///
@@ -398,15 +399,14 @@ class RuntimePointerChecking;
 struct RuntimeCheckingPtrGroup {
   /// Create a new pointer checking group containing a single
   /// pointer, with index \p Index in RtCheck.
-  RuntimeCheckingPtrGroup(unsigned Index,
-                          const RuntimePointerChecking &RtCheck);
+  RuntimeCheckingPtrGroup(unsigned Index, RuntimePointerChecking &RtCheck);
 
   /// Tries to add the pointer recorded in RtCheck at index
   /// \p Index to this pointer checking group. We can only add a pointer
   /// to a checking group if we will still be able to get
   /// the upper and lower bounds of the check. Returns true in case
   /// of success, false otherwise.
-  bool addPointer(unsigned Index, const RuntimePointerChecking &RtCheck);
+  bool addPointer(unsigned Index, RuntimePointerChecking &RtCheck);
   bool addPointer(unsigned Index, const SCEV *Start, const SCEV *End,
                   unsigned AS, bool NeedsFreeze, ScalarEvolution &SE);
 
@@ -483,10 +483,8 @@ public:
   /// Reset the state of the pointer runtime information.
   void reset() {
     Need = false;
-    CanUseDiffCheck = true;
     Pointers.clear();
     Checks.clear();
-    DiffChecks.clear();
   }
 
   /// Insert a pointer and calculate the start and end SCEVs.
@@ -714,8 +712,8 @@ public:
 private:
   /// Analyze the loop. Returns true if all memory access in the loop can be
   /// vectorized.
-  bool analyzeLoop(AAResults *AA, const LoopInfo *LI,
-                   const TargetLibraryInfo *TLI, DominatorTree *DT);
+  bool analyzeLoop(AAResults *AA, LoopInfo *LI, const TargetLibraryInfo *TLI,
+                   DominatorTree *DT);
 
   /// Check if the structure of the loop allows it to be analyzed by this
   /// pass.
@@ -726,8 +724,8 @@ private:
   /// LAA does not directly emits the remarks.  Instead it stores it which the
   /// client can retrieve and presents as its own analysis
   /// (e.g. -Rpass-analysis=loop-vectorize).
-  OptimizationRemarkAnalysis &
-  recordAnalysis(StringRef RemarkName, const Instruction *Instr = nullptr);
+  OptimizationRemarkAnalysis &recordAnalysis(StringRef RemarkName,
+                                             Instruction *Instr = nullptr);
 
   /// Collect memory access with loop invariant strides.
   ///

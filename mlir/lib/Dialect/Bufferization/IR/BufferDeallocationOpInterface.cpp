@@ -197,10 +197,8 @@ LogicalResult DeallocationState::getMemrefsAndConditionsToDeallocate(
     // that we can call extract_strided_metadata on it.
     if (auto unrankedMemRefTy = dyn_cast<UnrankedMemRefType>(memref.getType()))
       memref = builder.create<memref::ReinterpretCastOp>(
-          loc, memref,
-          /*offset=*/builder.getIndexAttr(0),
-          /*sizes=*/ArrayRef<OpFoldResult>{},
-          /*strides=*/ArrayRef<OpFoldResult>{});
+          loc, MemRefType::get({}, unrankedMemRefTy.getElementType()), memref,
+          0, SmallVector<int64_t>{}, SmallVector<int64_t>{});
 
     // Use the `memref.extract_strided_metadata` operation to get the base
     // memref. This is needed because the same MemRef that was produced by the

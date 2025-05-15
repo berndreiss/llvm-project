@@ -100,7 +100,7 @@ protected:
       : symbolKind(k), isExternal(true), isCOMDAT(false),
         writtenToSymtab(false), isUsedInRegularObj(false),
         pendingArchiveLoad(false), isGCRoot(false), isRuntimePseudoReloc(false),
-        deferUndefined(false), canInline(true), isWeak(false), isAntiDep(false),
+        deferUndefined(false), canInline(true), isWeak(false),
         nameSize(n.size()), nameData(n.empty() ? nullptr : n.data()) {
     assert((!n.empty() || k <= LastDefinedCOFFKind) &&
            "If the name is empty, the Symbol must be a DefinedCOFF.");
@@ -144,9 +144,6 @@ public:
   // This information isn't written to the output; rather, it's used for
   // managing weak symbol overrides.
   unsigned isWeak : 1;
-
-  // True if the symbol is an anti-dependency.
-  unsigned isAntiDep : 1;
 
 protected:
   // Symbol name length. Assume symbol lengths fit in a 32-bit integer.
@@ -343,22 +340,7 @@ public:
   // If this symbol is external weak, try to resolve it to a defined
   // symbol by searching the chain of fallback symbols. Returns the symbol if
   // successful, otherwise returns null.
-  Symbol *getWeakAlias();
-  Defined *getDefinedWeakAlias() {
-    return dyn_cast_or_null<Defined>(getWeakAlias());
-  }
-
-  void setWeakAlias(Symbol *sym, bool antiDep = false) {
-    weakAlias = sym;
-    isAntiDep = antiDep;
-  }
-
-  bool isECAlias(MachineTypes machine) const {
-    return weakAlias && isAntiDep && isArm64EC(machine);
-  }
-
-  // If this symbol is external weak, replace this object with aliased symbol.
-  bool resolveWeakAlias();
+  Defined *getWeakAlias();
 };
 
 // Windows-specific classes.
@@ -369,23 +351,23 @@ public:
 // table in an output. The former has "__imp_" prefix.
 class DefinedImportData : public Defined {
 public:
-  DefinedImportData(StringRef n, ImportFile *file, Chunk *&location)
-      : Defined(DefinedImportDataKind, n), file(file), location(location) {}
+  DefinedImportData(StringRef n, ImportFile *f)
+      : Defined(DefinedImportDataKind, n), file(f) {
+  }
 
   static bool classof(const Symbol *s) {
     return s->kind() == DefinedImportDataKind;
   }
 
-  uint64_t getRVA() { return getChunk()->getRVA(); }
-  Chunk *getChunk() { return location; }
-  void setLocation(Chunk *addressTable) { location = addressTable; }
+  uint64_t getRVA() { return file->location->getRVA(); }
+  Chunk *getChunk() { return file->location; }
+  void setLocation(Chunk *addressTable) { file->location = addressTable; }
 
   StringRef getDLLName() { return file->dllName; }
   StringRef getExternalName() { return file->externalName; }
   uint16_t getOrdinal() { return file->hdr->OrdinalHint; }
 
   ImportFile *file;
-  Chunk *&location;
 
   // This is a pointer to the synthetic symbol associated with the load thunk
   // for this symbol that will be called if the DLL is delay-loaded. This is
@@ -403,19 +385,19 @@ public:
 class DefinedImportThunk : public Defined {
 public:
   DefinedImportThunk(COFFLinkerContext &ctx, StringRef name,
-                     DefinedImportData *s, ImportThunkChunk *chunk);
+                     DefinedImportData *s, uint16_t machine);
 
   static bool classof(const Symbol *s) {
     return s->kind() == DefinedImportThunkKind;
   }
 
   uint64_t getRVA() { return data->getRVA(); }
-  ImportThunkChunk *getChunk() const { return data; }
+  Chunk *getChunk() { return data; }
 
   DefinedImportData *wrappedSym;
 
 private:
-  ImportThunkChunk *data;
+  Chunk *data;
 };
 
 // If you have a symbol "foo" in your object file, a symbol name

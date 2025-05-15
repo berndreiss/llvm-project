@@ -662,9 +662,9 @@ namespace llvm {
     ///
     /// Note that this is a no-op when asserts are disabled.
 #ifdef NDEBUG
-    [[nodiscard]] bool verify() const { return true; }
+    void verify() const {}
 #else
-    [[nodiscard]] bool verify() const;
+    void verify() const;
 #endif
 
   protected:
@@ -893,11 +893,9 @@ namespace llvm {
     ///
     /// Note that this is a no-op when asserts are disabled.
 #ifdef NDEBUG
-    [[nodiscard]] bool verify(const MachineRegisterInfo *MRI = nullptr) const {
-      return true;
-    }
+    void verify(const MachineRegisterInfo *MRI = nullptr) const {}
 #else
-    [[nodiscard]] bool verify(const MachineRegisterInfo *MRI = nullptr) const;
+    void verify(const MachineRegisterInfo *MRI = nullptr) const;
 #endif
 
   private:

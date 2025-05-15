@@ -101,9 +101,6 @@ their semantics via a special [TableGen backend][TableGenBackend]:
 *   The `AttrConstraint` class hierarchy: They are used to specify the
     constraints over attributes. A notable subclass hierarchy is `Attr`, which
     stands for constraints for attributes whose values are of common types.
-*   The `Property` class hierarchy: They are used to specify non-attribute-backed
-    properties that are inherent to operations. This will be expanded to a
-    `PropertyConstraint` class or something similar in the future.
 
 An operation is defined by specializing the `Op` class with concrete contents
 for all the fields it requires. For example, `tf.AvgPool` is defined as
@@ -175,9 +172,9 @@ understanding the operation.
 
 ### Operation arguments
 
-There are three kinds of arguments: operands, attributes, and properties.
-Operands are runtime values produced by other ops; while attributes and properties
-are compile-time known constant values, including two categories:
+There are two kinds of arguments: operands and attributes. Operands are runtime
+values produced by other ops; while attributes are compile-time known constant
+values, including two categories:
 
 1.  Natural attributes: these attributes affect the behavior of the operations
     (e.g., padding for convolution);
@@ -190,11 +187,8 @@ are compile-time known constant values, including two categories:
     even though they are not materialized, it should be possible to store as an
     attribute.
 
-Properties are similar to attributes, except that they are not stored within
-the MLIR context but are stored inline with the operation.
-
-Operands, attributes, and properties are specified inside the `dag`-typed
-`arguments`, led by `ins`:
+Both operands and attributes are specified inside the `dag`-typed `arguments`,
+led by `ins`:
 
 ```tablegen
 let arguments = (ins
@@ -202,15 +196,13 @@ let arguments = (ins
   ...
   <attr-constraint>:$<attr-name>,
   ...
-  <property-constraint>:$<property-name>,
 );
 ```
 
 Here `<type-constraint>` is a TableGen `def` from the `TypeConstraint` class
 hierarchy. Similarly, `<attr-constraint>` is a TableGen `def` from the
-`AttrConstraint` class hierarchy and `<property-constraint>` is a subclass
-of `Property` (though a `PropertyConstraint` hierarchy is planned).
-See [Constraints](#constraints) for more information.
+`AttrConstraint` class hierarchy. See [Constraints](#constraints) for more
+information.
 
 There is no requirements on the relative order of operands and attributes; they
 can mix freely. The relative order of operands themselves matters. From each
@@ -332,18 +324,6 @@ Right now, the following primitive constraints are supported:
 
 TODO: Design and implement more primitive constraints
 
-#### Optional and default-valued properties
-
-To declare a property with a default value, use `DefaultValuedProperty<..., "...">`.
-If the property's storage data type is different from its interface type,
-for example, in the case of array properties (which are stored as `SmallVector`s
-but use `ArrayRef` as an interface type), add the storage-type equivalent
-of the default value as the third argument.
-
-To declare an optional property, use `OptionalProperty<...>`.
-This wraps the underlying property in an `std::optional` and gives it a
-default value of `std::nullopt`.
-
 #### Combining constraints
 
 `AllAttrOf` is provided to allow combination of multiple constraints which
@@ -449,8 +429,6 @@ def MyOp : ... {
     I32Attr:$i32_attr,
     F32Attr:$f32_attr,
     ...
-    I32Property:$i32_prop,
-    ...
   );
 
   let results = (outs
@@ -475,8 +453,7 @@ static void build(OpBuilder &odsBuilder, OperationState &odsState,
 static void build(OpBuilder &odsBuilder, OperationState &odsState,
                   Type i32_result, Type f32_result, ...,
                   Value i32_operand, Value f32_operand, ...,
-                  IntegerAttr i32_attr, FloatAttr f32_attr, ...,
-                  int32_t i32_prop);
+                  IntegerAttr i32_attr, FloatAttr f32_attr, ...);
 
 // Each result-type/operand/attribute has a separate parameter. The parameters
 // for attributes are raw values unwrapped with mlir::Attribute instances.
@@ -485,15 +462,13 @@ static void build(OpBuilder &odsBuilder, OperationState &odsState,
 static void build(OpBuilder &odsBuilder, OperationState &odsState,
                   Type i32_result, Type f32_result, ...,
                   Value i32_operand, Value f32_operand, ...,
-                  APInt i32_attr, StringRef f32_attr, ...,
-                  int32_t i32_prop, ...);
+                  APInt i32_attr, StringRef f32_attr, ...);
 
 // Each operand/attribute has a separate parameter but result type is aggregate.
 static void build(OpBuilder &odsBuilder, OperationState &odsState,
                   TypeRange resultTypes,
                   Value i32_operand, Value f32_operand, ...,
-                  IntegerAttr i32_attr, FloatAttr f32_attr, ...,
-                  int32_t i32_prop, ...);
+                  IntegerAttr i32_attr, FloatAttr f32_attr, ...);
 
 // All operands/attributes have aggregate parameters.
 // Generated if return type can be inferred.
@@ -756,7 +731,7 @@ The available directives are as follows:
 
 *   `ref ( input )`
 
-    -   Represents a reference to a variable or directive, that must have
+    -   Represents a reference to the a variable or directive, that must have
         already been resolved, that may be used as a parameter to a `custom`
         directive.
     -   Used to pass previously parsed entities to custom directives.
@@ -946,10 +921,8 @@ optional-group: `(` then-elements `)` (`:` `(` else-elements `)`)? `?`
 The elements of an optional group have the following requirements:
 
 *   The first element of `then-elements` must either be a attribute, literal,
-    operand, property, or region.
+    operand, or region.
     -   This is because the first element must be optionally parsable.
-    -   If a property is used, it must have an `optionalParser` defined and have a
-        default value.
 *   Exactly one argument variable or type directive within either
     `then-elements` or `else-elements` must be marked as the anchor of the
     group.
@@ -1011,8 +984,6 @@ foo.op is_read_only
 foo.op
 ```
 
-The same logic applies to a `UnitProperty`.
-
 ##### Optional "else" Group
 
 Optional groups also have support for an "else" group of elements. These are
@@ -1055,8 +1026,6 @@ to:
 1.  All operand and result types must appear within the format using the various
     `type` directives, either individually or with the `operands` or `results`
     directives.
-1.  Unless all non-attribute properties appear in the format, the `prop-dict`
-    directive must be present.
 1.  The `attr-dict` directive must always be present.
 1.  Must not contain overlapping information; e.g. multiple instances of
     'attr-dict', types, operands, etc.

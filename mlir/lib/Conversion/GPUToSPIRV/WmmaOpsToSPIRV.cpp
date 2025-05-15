@@ -293,7 +293,7 @@ struct WmmaMmaOpToSPIRVLowering final
 } // namespace mlir
 
 void mlir::populateGpuWMMAToSPIRVCoopMatrixKHRConversionPatterns(
-    const SPIRVTypeConverter &converter, RewritePatternSet &patterns) {
+    SPIRVTypeConverter &converter, RewritePatternSet &patterns) {
   using namespace mlir;
   MLIRContext *context = patterns.getContext();
   patterns.add<khr::WmmaLoadOpToSPIRVLowering, khr::WmmaMmaOpToSPIRVLowering,

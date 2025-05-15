@@ -595,17 +595,10 @@ OpFoldResult arith::DivUIOp::fold(FoldAdaptor adaptor) {
   return div0 ? Attribute() : result;
 }
 
-/// Returns whether an unsigned division by `divisor` is speculatable.
-static Speculation::Speculatability getDivUISpeculatability(Value divisor) {
-  // X / 0 => UB
-  if (matchPattern(divisor, m_IntRangeWithoutZeroU()))
-    return Speculation::Speculatable;
-
-  return Speculation::NotSpeculatable;
-}
-
 Speculation::Speculatability arith::DivUIOp::getSpeculatability() {
-  return getDivUISpeculatability(getRhs());
+  // X / 0 => UB
+  return matchPattern(getRhs(), m_NonZero()) ? Speculation::Speculatable
+                                             : Speculation::NotSpeculatable;
 }
 
 //===----------------------------------------------------------------------===//
@@ -631,21 +624,16 @@ OpFoldResult arith::DivSIOp::fold(FoldAdaptor adaptor) {
   return overflowOrDiv0 ? Attribute() : result;
 }
 
-/// Returns whether a signed division by `divisor` is speculatable. This
-/// function conservatively assumes that all signed division by -1 are not
-/// speculatable.
-static Speculation::Speculatability getDivSISpeculatability(Value divisor) {
+Speculation::Speculatability arith::DivSIOp::getSpeculatability() {
+  bool mayHaveUB = true;
+
+  APInt constRHS;
   // X / 0 => UB
   // INT_MIN / -1 => UB
-  if (matchPattern(divisor, m_IntRangeWithoutZeroS()) &&
-      matchPattern(divisor, m_IntRangeWithoutNegOneS()))
-    return Speculation::Speculatable;
+  if (matchPattern(getRhs(), m_ConstantInt(&constRHS)))
+    mayHaveUB = constRHS.isAllOnes() || constRHS.isZero();
 
-  return Speculation::NotSpeculatable;
-}
-
-Speculation::Speculatability arith::DivSIOp::getSpeculatability() {
-  return getDivSISpeculatability(getRhs());
+  return mayHaveUB ? Speculation::NotSpeculatable : Speculation::Speculatable;
 }
 
 //===----------------------------------------------------------------------===//
@@ -687,7 +675,9 @@ OpFoldResult arith::CeilDivUIOp::fold(FoldAdaptor adaptor) {
 }
 
 Speculation::Speculatability arith::CeilDivUIOp::getSpeculatability() {
-  return getDivUISpeculatability(getRhs());
+  // X / 0 => UB
+  return matchPattern(getRhs(), m_NonZero()) ? Speculation::Speculatable
+                                             : Speculation::NotSpeculatable;
 }
 
 //===----------------------------------------------------------------------===//
@@ -756,7 +746,15 @@ OpFoldResult arith::CeilDivSIOp::fold(FoldAdaptor adaptor) {
 }
 
 Speculation::Speculatability arith::CeilDivSIOp::getSpeculatability() {
-  return getDivSISpeculatability(getRhs());
+  bool mayHaveUB = true;
+
+  APInt constRHS;
+  // X / 0 => UB
+  // INT_MIN / -1 => UB
+  if (matchPattern(getRhs(), m_ConstantInt(&constRHS)))
+    mayHaveUB = constRHS.isAllOnes() || constRHS.isZero();
+
+  return mayHaveUB ? Speculation::NotSpeculatable : Speculation::Speculatable;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1741,8 +1739,6 @@ OpFoldResult arith::BitcastOp::fold(FoldAdaptor adaptor) {
   APInt bits = llvm::isa<FloatAttr>(operand)
                    ? llvm::cast<FloatAttr>(operand).getValue().bitcastToAPInt()
                    : llvm::cast<IntegerAttr>(operand).getValue();
-  assert(resType.getIntOrFloatBitWidth() == bits.getBitWidth() &&
-         "trying to fold on broken IR: operands have incompatible types");
 
   if (auto resFloatType = llvm::dyn_cast<FloatType>(resType))
     return FloatAttr::get(resType,

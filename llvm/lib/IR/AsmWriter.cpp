@@ -74,6 +74,7 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include "llvm/Support/raw_ostream.h"
+#include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -572,9 +573,8 @@ void TypePrinting::print(Type *Ty, raw_ostream &OS) {
   case Type::FP128TyID:     OS << "fp128"; return;
   case Type::PPC_FP128TyID: OS << "ppc_fp128"; return;
   case Type::LabelTyID:     OS << "label"; return;
-  case Type::MetadataTyID:
-    OS << "metadata";
-    return;
+  case Type::MetadataTyID:  OS << "metadata"; return;
+  case Type::X86_MMXTyID:   OS << "x86_mmx"; return;
   case Type::X86_AMXTyID:   OS << "x86_amx"; return;
   case Type::TokenTyID:     OS << "token"; return;
   case Type::IntegerTyID:
@@ -1337,8 +1337,12 @@ void SlotTracker::CreateMetadataSlot(const MDNode *N) {
 void SlotTracker::CreateAttributeSetSlot(AttributeSet AS) {
   assert(AS.hasAttributes() && "Doesn't need a slot!");
 
-  if (asMap.try_emplace(AS, asNext).second)
-    ++asNext;
+  as_iterator I = asMap.find(AS);
+  if (I != asMap.end())
+    return;
+
+  unsigned DestSlot = asNext++;
+  asMap[AS] = DestSlot;
 }
 
 /// Create a new slot for the specified Module
@@ -1432,9 +1436,6 @@ static void WriteOptimizationInfo(raw_ostream &Out, const User *U) {
       Out << " nuw";
     if (TI->hasNoSignedWrap())
       Out << " nsw";
-  } else if (const auto *ICmp = dyn_cast<ICmpInst>(U)) {
-    if (ICmp->hasSameSign())
-      Out << " samesign";
   }
 }
 
@@ -1689,23 +1690,6 @@ static void WriteConstantInternal(raw_ostream &Out, const Constant *CV,
   if (isa<ConstantVector>(CV) || isa<ConstantDataVector>(CV)) {
     auto *CVVTy = cast<FixedVectorType>(CV->getType());
     Type *ETy = CVVTy->getElementType();
-
-    // Use the same shorthand for splat vector (i.e. "splat(Ty val)") as is
-    // permitted on IR input to reduce the output changes when enabling
-    // UseConstant{Int,FP}ForFixedLengthSplat.
-    // TODO: Remove this block when the UseConstant{Int,FP}ForFixedLengthSplat
-    // options are removed.
-    if (auto *SplatVal = CV->getSplatValue()) {
-      if (isa<ConstantInt>(SplatVal) || isa<ConstantFP>(SplatVal)) {
-        Out << "splat (";
-        WriterCtx.TypePrinter->print(ETy, Out);
-        Out << ' ';
-        WriteAsOperandInternal(Out, SplatVal, WriterCtx);
-        Out << ')';
-        return;
-      }
-    }
-
     Out << '<';
     WriterCtx.TypePrinter->print(ETy, Out);
     Out << ' ';
@@ -2148,7 +2132,6 @@ static void writeDIBasicType(raw_ostream &Out, const DIBasicType *N,
   Printer.printInt("align", N->getAlignInBits());
   Printer.printDwarfEnum("encoding", N->getEncoding(),
                          dwarf::AttributeEncodingString);
-  Printer.printInt("num_extra_inhabitants", N->getNumExtraInhabitants());
   Printer.printDIFlags("flags", N->getFlags());
   Out << ")";
 }
@@ -2217,7 +2200,6 @@ static void writeDICompositeType(raw_ostream &Out, const DICompositeType *N,
   Printer.printInt("size", N->getSizeInBits());
   Printer.printInt("align", N->getAlignInBits());
   Printer.printInt("offset", N->getOffsetInBits());
-  Printer.printInt("num_extra_inhabitants", N->getNumExtraInhabitants());
   Printer.printDIFlags("flags", N->getFlags());
   Printer.printMetadata("elements", N->getRawElements());
   Printer.printDwarfEnum("runtimeLang", N->getRuntimeLang(),
@@ -3505,9 +3487,9 @@ void AssemblyWriter::printTypeIdInfo(
         continue;
       }
       // Print all type id that correspond to this GUID.
-      for (const auto &[GUID, TypeIdPair] : make_range(TidIter)) {
+      for (auto It = TidIter.first; It != TidIter.second; ++It) {
         Out << FS;
-        auto Slot = Machine.getTypeIdSlot(TypeIdPair.first);
+        auto Slot = Machine.getTypeIdSlot(It->second.first);
         assert(Slot != -1);
         Out << "^" << Slot;
       }
@@ -3546,10 +3528,10 @@ void AssemblyWriter::printVFuncId(const FunctionSummary::VFuncId VFId) {
   }
   // Print all type id that correspond to this GUID.
   FieldSeparator FS;
-  for (const auto &[GUID, TypeIdPair] : make_range(TidIter)) {
+  for (auto It = TidIter.first; It != TidIter.second; ++It) {
     Out << FS;
     Out << "vFuncId: (";
-    auto Slot = Machine.getTypeIdSlot(TypeIdPair.first);
+    auto Slot = Machine.getTypeIdSlot(It->second.first);
     assert(Slot != -1);
     Out << "^" << Slot;
     Out << ", offset: " << VFId.Offset;
@@ -3630,7 +3612,7 @@ void AssemblyWriter::printSummary(const GlobalValueSummary &Summary) {
 
 void AssemblyWriter::printSummaryInfo(unsigned Slot, const ValueInfo &VI) {
   Out << "^" << Slot << " = gv: (";
-  if (VI.hasName() && !VI.name().empty())
+  if (!VI.name().empty())
     Out << "name: \"" << VI.name() << "\"";
   else
     Out << "guid: " << VI.getGUID();
@@ -3644,7 +3626,7 @@ void AssemblyWriter::printSummaryInfo(unsigned Slot, const ValueInfo &VI) {
     Out << ")";
   }
   Out << ")";
-  if (VI.hasName() && !VI.name().empty())
+  if (!VI.name().empty())
     Out << " ; guid = " << VI.getGUID();
   Out << "\n";
 }

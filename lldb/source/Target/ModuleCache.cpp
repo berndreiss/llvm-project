@@ -139,7 +139,7 @@ Status CreateHostSysRootModuleLink(const FileSpec &root_dir_spec,
     DecrementRefExistingModule(root_dir_spec, sysroot_module_path_spec);
   }
 
-  Status error = MakeDirectory(
+  const auto error = MakeDirectory(
       FileSpec(sysroot_module_path_spec.GetDirectory().AsCString()));
   if (error.Fail())
     return error;
@@ -166,15 +166,15 @@ ModuleLock::ModuleLock(const FileSpec &root_dir_spec, const UUID &uuid,
     m_file_up = std::move(file.get());
   else {
     m_file_up.reset();
-    error = Status::FromError(file.takeError());
+    error = Status(file.takeError());
     return;
   }
 
   m_lock = std::make_unique<lldb_private::LockFile>(m_file_up->GetDescriptor());
   error = m_lock->WriteLock(0, 1);
   if (error.Fail())
-    error =
-        Status::FromErrorStringWithFormatv("Failed to lock file: {0}", error);
+    error.SetErrorStringWithFormat("Failed to lock file: %s",
+                                   error.AsCString());
 }
 
 void ModuleLock::Delete() {
@@ -200,16 +200,15 @@ Status ModuleCache::Put(const FileSpec &root_dir_spec, const char *hostname,
   const auto err_code =
       llvm::sys::fs::rename(tmp_file_path, module_file_path.GetPath());
   if (err_code)
-    return Status::FromErrorStringWithFormat(
-        "Failed to rename file %s to %s: %s", tmp_file_path.c_str(),
-        module_file_path.GetPath().c_str(), err_code.message().c_str());
+    return Status("Failed to rename file %s to %s: %s", tmp_file_path.c_str(),
+                  module_file_path.GetPath().c_str(),
+                  err_code.message().c_str());
 
   const auto error = CreateHostSysRootModuleLink(
       root_dir_spec, hostname, target_file, module_file_path, true);
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to create link to %s: %s",
-                                             module_file_path.GetPath().c_str(),
-                                             error.AsCString());
+    return Status("Failed to create link to %s: %s",
+                  module_file_path.GetPath().c_str(), error.AsCString());
   return Status();
 }
 
@@ -231,12 +230,11 @@ Status ModuleCache::Get(const FileSpec &root_dir_spec, const char *hostname,
       module_spec_dir, module_spec.GetFileSpec().GetFilename().AsCString());
 
   if (!FileSystem::Instance().Exists(module_file_path))
-    return Status::FromErrorStringWithFormat(
-        "Module %s not found", module_file_path.GetPath().c_str());
+    return Status("Module %s not found", module_file_path.GetPath().c_str());
   if (FileSystem::Instance().GetByteSize(module_file_path) !=
       module_spec.GetObjectSize())
-    return Status::FromErrorStringWithFormat(
-        "Module %s has invalid file size", module_file_path.GetPath().c_str());
+    return Status("Module %s has invalid file size",
+                  module_file_path.GetPath().c_str());
 
   // We may have already cached module but downloaded from an another host - in
   // this case let's create a link to it.
@@ -244,9 +242,8 @@ Status ModuleCache::Get(const FileSpec &root_dir_spec, const char *hostname,
                                            module_spec.GetFileSpec(),
                                            module_file_path, false);
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to create link to %s: %s",
-                                             module_file_path.GetPath().c_str(),
-                                             error.AsCString());
+    return Status("Failed to create link to %s: %s",
+                  module_file_path.GetPath().c_str(), error.AsCString());
 
   auto cached_module_spec(module_spec);
   cached_module_spec.GetUUID().Clear(); // Clear UUID since it may contain md5
@@ -284,9 +281,9 @@ Status ModuleCache::GetAndPut(const FileSpec &root_dir_spec,
 
   ModuleLock lock(root_dir_spec, module_spec.GetUUID(), error);
   if (error.Fail())
-    return Status::FromErrorStringWithFormat(
-        "Failed to lock module %s: %s",
-        module_spec.GetUUID().GetAsString().c_str(), error.AsCString());
+    return Status("Failed to lock module %s: %s",
+                  module_spec.GetUUID().GetAsString().c_str(),
+                  error.AsCString());
 
   const auto escaped_hostname(GetEscapedHostname(hostname));
   // Check local cache for a module.
@@ -299,15 +296,13 @@ Status ModuleCache::GetAndPut(const FileSpec &root_dir_spec,
   error = module_downloader(module_spec, tmp_download_file_spec);
   llvm::FileRemover tmp_file_remover(tmp_download_file_spec.GetPath());
   if (error.Fail())
-    return Status::FromErrorStringWithFormat("Failed to download module: %s",
-                                             error.AsCString());
+    return Status("Failed to download module: %s", error.AsCString());
 
   // Put downloaded file into local module cache.
   error = Put(root_dir_spec, escaped_hostname.c_str(), module_spec,
               tmp_download_file_spec, module_spec.GetFileSpec());
   if (error.Fail())
-    return Status::FromErrorStringWithFormat(
-        "Failed to put module into cache: %s", error.AsCString());
+    return Status("Failed to put module into cache: %s", error.AsCString());
 
   tmp_file_remover.releaseFile();
   error = Get(root_dir_spec, escaped_hostname.c_str(), module_spec,
@@ -330,8 +325,8 @@ Status ModuleCache::GetAndPut(const FileSpec &root_dir_spec,
               tmp_download_sym_file_spec,
               GetSymbolFileSpec(module_spec.GetFileSpec()));
   if (error.Fail())
-    return Status::FromErrorStringWithFormat(
-        "Failed to put symbol file into cache: %s", error.AsCString());
+    return Status("Failed to put symbol file into cache: %s",
+                  error.AsCString());
 
   tmp_symfile_remover.releaseFile();
 

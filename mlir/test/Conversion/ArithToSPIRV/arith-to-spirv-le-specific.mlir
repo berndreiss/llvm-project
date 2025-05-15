@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: target={{(s390x|sparc.*)-.*}}
+// XFAIL: target=s390x-{{.*}}
 
 module attributes {
   spirv.target_env = #spirv.target_env<

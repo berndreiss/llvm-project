@@ -32,10 +32,6 @@ public:
                    ArrayRef<Register> VRegs,
                    FunctionLoweringInfo &FLI) const override;
 
-  bool canLowerReturn(MachineFunction &MF, CallingConv::ID CallConv,
-                      SmallVectorImpl<BaseArgInfo> &Outs,
-                      bool IsVarArg) const override;
-
   bool lowerFormalArguments(MachineIRBuilder &MIRBuilder, const Function &F,
                             ArrayRef<ArrayRef<Register>> VRegs,
                             FunctionLoweringInfo &FLI) const override;
@@ -44,6 +40,9 @@ public:
                  CallLoweringInfo &Info) const override;
 
 private:
+  bool lowerReturnVal(MachineIRBuilder &MIRBuilder, const Value *Val,
+                      ArrayRef<Register> VRegs, MachineInstrBuilder &Ret) const;
+
   void saveVarArgRegisters(MachineIRBuilder &MIRBuilder,
                            CallLowering::IncomingValueHandler &Handler,
                            IncomingValueAssigner &Assigner,

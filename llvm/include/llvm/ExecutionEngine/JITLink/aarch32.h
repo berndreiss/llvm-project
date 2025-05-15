@@ -394,7 +394,7 @@ private:
   using StubMapEntry = std::tuple<Symbol *, Symbol *>;
 
   Symbol *&getStubSymbolSlot(StringRef Name, bool Thumb) {
-    StubMapEntry &Stubs = StubMap[Name];
+    StubMapEntry &Stubs = StubMap.try_emplace(Name).first->second;
     if (Thumb)
       return std::get<1>(Stubs);
     return std::get<0>(Stubs);

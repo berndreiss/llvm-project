@@ -520,7 +520,7 @@ void mlir::arith::registerConvertArithToLLVMInterface(
 //===----------------------------------------------------------------------===//
 
 void mlir::arith::populateArithToLLVMConversionPatterns(
-    const LLVMTypeConverter &converter, RewritePatternSet &patterns) {
+    LLVMTypeConverter &converter, RewritePatternSet &patterns) {
   // clang-format off
   patterns.add<
     AddFOpLowering,

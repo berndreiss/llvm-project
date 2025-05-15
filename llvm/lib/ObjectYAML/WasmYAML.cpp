@@ -342,6 +342,7 @@ void ScalarEnumerationTraits<WasmYAML::FeaturePolicyPrefix>::enumeration(
     IO &IO, WasmYAML::FeaturePolicyPrefix &Kind) {
 #define ECase(X) IO.enumCase(Kind, #X, wasm::WASM_FEATURE_PREFIX_##X);
   ECase(USED);
+  ECase(REQUIRED);
   ECase(DISALLOWED);
 #undef ECase
 }

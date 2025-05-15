@@ -8,7 +8,6 @@ add_lldb_library(lldbPluginInstrumentationRuntimeUBSan PLUGIN
     lldbInterpreter
     lldbSymbol
     lldbTarget
-    lldbValueObject
   LINK_COMPONENTS
     Support
   )

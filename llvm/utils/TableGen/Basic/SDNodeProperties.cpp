@@ -13,9 +13,9 @@
 
 using namespace llvm;
 
-unsigned llvm::parseSDPatternOperatorProperties(const Record *R) {
+unsigned llvm::parseSDPatternOperatorProperties(Record *R) {
   unsigned Properties = 0;
-  for (const Record *Property : R->getValueAsListOfDefs("Properties")) {
+  for (Record *Property : R->getValueAsListOfDefs("Properties")) {
     auto Offset = StringSwitch<unsigned>(Property->getName())
                       .Case("SDNPCommutative", SDNPCommutative)
                       .Case("SDNPAssociative", SDNPAssociative)

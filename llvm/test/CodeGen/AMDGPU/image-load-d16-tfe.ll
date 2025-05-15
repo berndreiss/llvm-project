@@ -63,6 +63,8 @@ define amdgpu_ps void @load_1d_f16_tfe_dmask0(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v2, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_f16_tfe_dmask0:
@@ -151,6 +153,8 @@ define amdgpu_ps void @load_1d_f16_tfe_dmask1(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v2, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_f16_tfe_dmask1:
@@ -239,6 +243,8 @@ define amdgpu_ps void @load_1d_v2f16_tfe_dmask0(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v2, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_v2f16_tfe_dmask0:
@@ -327,6 +333,8 @@ define amdgpu_ps void @load_1d_v2f16_tfe_dmask1(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v2, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_v2f16_tfe_dmask1:
@@ -415,6 +423,8 @@ define amdgpu_ps void @load_1d_v2f16_tfe_dmask3(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v2, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_v2f16_tfe_dmask3:
@@ -515,6 +525,8 @@ define amdgpu_ps void @load_1d_v3f16_tfe_dmask7(<8 x i32> inreg %rsrc, i32 %s) {
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v3, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_v3f16_tfe_dmask7:
@@ -612,6 +624,8 @@ define amdgpu_ps void @load_1d_v4f16_tfe_dmask15(<8 x i32> inreg %rsrc, i32 %s) 
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    global_store_b32 v[0:1], v3, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX8-UNPACKED-LABEL: load_1d_v4f16_tfe_dmask15:

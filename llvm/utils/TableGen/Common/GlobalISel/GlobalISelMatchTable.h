@@ -13,8 +13,8 @@
 ///
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_UTILS_TABLEGEN_COMMON_GLOBALISEL_GLOBALISELMATCHTABLE_H
-#define LLVM_UTILS_TABLEGEN_COMMON_GLOBALISEL_GLOBALISELMATCHTABLE_H
+#ifndef LLVM_UTILS_TABLEGEN_GLOBALISELMATCHTABLE_H
+#define LLVM_UTILS_TABLEGEN_GLOBALISELMATCHTABLE_H
 
 #include "Common/CodeGenDAGPatterns.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -55,14 +55,14 @@ enum {
   GISF_IgnoreCopies = 0x1,
 };
 
-using GISelFlags = std::uint32_t;
+using GISelFlags = std::uint16_t;
 
 //===- Helper functions ---------------------------------------------------===//
 
 void emitEncodingMacrosDef(raw_ostream &OS);
 void emitEncodingMacrosUndef(raw_ostream &OS);
 
-std::string getNameForFeatureBitset(ArrayRef<const Record *> FeatureBitset,
+std::string getNameForFeatureBitset(const std::vector<Record *> &FeatureBitset,
                                     int HwModeIdx);
 
 /// Takes a sequence of \p Rules and group them based on the predicates
@@ -494,7 +494,7 @@ protected:
 
   /// A map of anonymous physical register operands defined by the matchers that
   /// may be referenced by the renderers.
-  DenseMap<const Record *, OperandMatcher *> PhysRegOperands;
+  DenseMap<Record *, OperandMatcher *> PhysRegOperands;
 
   /// ID for the next instruction variable defined with
   /// implicitlyDefineInsnVar()
@@ -516,14 +516,14 @@ protected:
   GISelFlags Flags = 0;
 
   std::vector<std::string> RequiredSimplePredicates;
-  std::vector<const Record *> RequiredFeatures;
+  std::vector<Record *> RequiredFeatures;
   std::vector<std::unique_ptr<PredicateMatcher>> EpilogueMatchers;
 
   DenseSet<unsigned> ErasedInsnIDs;
 
   ArrayRef<SMLoc> SrcLoc;
 
-  typedef std::tuple<const Record *, unsigned, unsigned>
+  typedef std::tuple<Record *, unsigned, unsigned>
       DefinedComplexPatternSubOperand;
   typedef StringMap<DefinedComplexPatternSubOperand>
       DefinedComplexPatternSubOperandMap;
@@ -553,12 +553,8 @@ public:
   uint64_t getRuleID() const { return RuleID; }
 
   InstructionMatcher &addInstructionMatcher(StringRef SymbolicName);
-  void addRequiredFeature(const Record *Feature) {
-    RequiredFeatures.push_back(Feature);
-  }
-  ArrayRef<const Record *> getRequiredFeatures() const {
-    return RequiredFeatures;
-  }
+  void addRequiredFeature(Record *Feature);
+  const std::vector<Record *> &getRequiredFeatures() const;
 
   void addHwModeIdx(unsigned Idx) { HwModeIdx = Idx; }
   int getHwModeIdx() const { return HwModeIdx; }
@@ -645,16 +641,11 @@ public:
     return make_range(actions_begin(), actions_end());
   }
 
-  bool hasOperand(StringRef SymbolicName) const {
-    return DefinedOperands.contains(SymbolicName);
-  }
-
   void defineOperand(StringRef SymbolicName, OperandMatcher &OM);
 
-  void definePhysRegOperand(const Record *Reg, OperandMatcher &OM);
+  void definePhysRegOperand(Record *Reg, OperandMatcher &OM);
 
-  Error defineComplexSubOperand(StringRef SymbolicName,
-                                const Record *ComplexPattern,
+  Error defineComplexSubOperand(StringRef SymbolicName, Record *ComplexPattern,
                                 unsigned RendererID, unsigned SubOperandID,
                                 StringRef ParentSymbolicName);
 
@@ -669,7 +660,7 @@ public:
   InstructionMatcher &getInstructionMatcher(StringRef SymbolicName) const;
   OperandMatcher &getOperandMatcher(StringRef Name);
   const OperandMatcher &getOperandMatcher(StringRef Name) const;
-  const OperandMatcher &getPhysRegOperandMatcher(const Record *) const;
+  const OperandMatcher &getPhysRegOperandMatcher(Record *) const;
 
   void optimize() override;
   void emit(MatchTable &Table) override;
@@ -687,6 +678,7 @@ public:
   const PredicateMatcher &getFirstCondition() const override;
   LLTCodeGen getFirstConditionAsRootType();
   bool hasFirstCondition() const override;
+  unsigned getNumOperands() const;
   StringRef getOpcode() const;
 
   // FIXME: Remove this as soon as possible
@@ -1263,16 +1255,12 @@ protected:
 
   TempTypeIdx TTIdx = 0;
 
-  // TODO: has many implications, figure them all out
-  bool IsVariadic = false;
-
 public:
   OperandMatcher(InstructionMatcher &Insn, unsigned OpIdx,
                  const std::string &SymbolicName,
-                 unsigned AllocatedTemporariesBaseID, bool IsVariadic = false)
+                 unsigned AllocatedTemporariesBaseID)
       : Insn(Insn), OpIdx(OpIdx), SymbolicName(SymbolicName),
-        AllocatedTemporariesBaseID(AllocatedTemporariesBaseID),
-        IsVariadic(IsVariadic) {}
+        AllocatedTemporariesBaseID(AllocatedTemporariesBaseID) {}
 
   bool hasSymbolicName() const { return !SymbolicName.empty(); }
   StringRef getSymbolicName() const { return SymbolicName; }
@@ -1284,8 +1272,7 @@ public:
   /// Construct a new operand predicate and add it to the matcher.
   template <class Kind, class... Args>
   std::optional<Kind *> addPredicate(Args &&...args) {
-    // TODO: Should variadic ops support predicates?
-    if (isSameAsAnotherOperand() || IsVariadic)
+    if (isSameAsAnotherOperand())
       return std::nullopt;
     Predicates.emplace_back(std::make_unique<Kind>(
         getInsnVarID(), getOpIdx(), std::forward<Args>(args)...));
@@ -1294,8 +1281,6 @@ public:
 
   unsigned getOpIdx() const { return OpIdx; }
   unsigned getInsnVarID() const;
-
-  bool isVariadic() const { return IsVariadic; }
 
   /// If this OperandMatcher has not been assigned a TempTypeIdx yet, assigns it
   /// one and adds a `RecordRegisterType` predicate to this matcher. If one has
@@ -1378,7 +1363,8 @@ public:
 
   InstructionOpcodeMatcher(unsigned InsnVarID,
                            ArrayRef<const CodeGenInstruction *> I)
-      : InstructionPredicateMatcher(IPM_Opcode, InsnVarID), Insts(I) {
+      : InstructionPredicateMatcher(IPM_Opcode, InsnVarID),
+        Insts(I.begin(), I.end()) {
     assert((Insts.size() == 1 || Insts.size() == 2) &&
            "unexpected number of opcode alternatives");
   }
@@ -1419,28 +1405,20 @@ public:
 };
 
 class InstructionNumOperandsMatcher final : public InstructionPredicateMatcher {
-public:
-  enum class CheckKind { Eq, LE, GE };
-
-private:
   unsigned NumOperands = 0;
-  CheckKind CK;
 
 public:
-  InstructionNumOperandsMatcher(unsigned InsnVarID, unsigned NumOperands,
-                                CheckKind CK = CheckKind::Eq)
+  InstructionNumOperandsMatcher(unsigned InsnVarID, unsigned NumOperands)
       : InstructionPredicateMatcher(IPM_NumOperands, InsnVarID),
-        NumOperands(NumOperands), CK(CK) {}
+        NumOperands(NumOperands) {}
 
   static bool classof(const PredicateMatcher *P) {
     return P->getKind() == IPM_NumOperands;
   }
 
   bool isIdentical(const PredicateMatcher &B) const override {
-    if (!InstructionPredicateMatcher::isIdentical(B))
-      return false;
-    const auto &Other = *cast<InstructionNumOperandsMatcher>(&B);
-    return NumOperands == Other.NumOperands && CK == Other.CK;
+    return InstructionPredicateMatcher::isIdentical(B) &&
+           NumOperands == cast<InstructionNumOperandsMatcher>(&B)->NumOperands;
   }
 
   void emitPredicateOpcodes(MatchTable &Table,
@@ -1557,7 +1535,7 @@ public:
   MemoryAddressSpacePredicateMatcher(unsigned InsnVarID, unsigned MMOIdx,
                                      ArrayRef<unsigned> AddrSpaces)
       : InstructionPredicateMatcher(IPM_MemoryAddressSpace, InsnVarID),
-        MMOIdx(MMOIdx), AddrSpaces(AddrSpaces) {}
+        MMOIdx(MMOIdx), AddrSpaces(AddrSpaces.begin(), AddrSpaces.end()) {}
 
   static bool classof(const PredicateMatcher *P) {
     return P->getKind() == IPM_MemoryAddressSpace;
@@ -1751,32 +1729,20 @@ protected:
   /// The operands to match. All rendered operands must be present even if the
   /// condition is always true.
   OperandVec Operands;
+  bool NumOperandsCheck = true;
 
   std::string SymbolicName;
   unsigned InsnVarID;
-  bool AllowNumOpsCheck;
 
   /// PhysRegInputs - List list has an entry for each explicitly specified
   /// physreg input to the pattern.  The first elt is the Register node, the
   /// second is the recorded slot number the input pattern match saved it in.
-  SmallVector<std::pair<const Record *, unsigned>, 2> PhysRegInputs;
-
-  bool canAddNumOperandsCheck() const {
-    // Add if it's allowed, and:
-    //    - We don't have a variadic operand
-    //    - We don't already have such a check.
-    return AllowNumOpsCheck && !hasVariadicMatcher() &&
-           none_of(Predicates, [&](const auto &P) {
-             return P->getKind() ==
-                    InstructionPredicateMatcher::IPM_NumOperands;
-           });
-  }
+  SmallVector<std::pair<Record *, unsigned>, 2> PhysRegInputs;
 
 public:
   InstructionMatcher(RuleMatcher &Rule, StringRef SymbolicName,
-                     bool AllowNumOpsCheck = true)
-      : Rule(Rule), SymbolicName(SymbolicName),
-        AllowNumOpsCheck(AllowNumOpsCheck) {
+                     bool NumOpsCheck = true)
+      : Rule(Rule), NumOperandsCheck(NumOpsCheck), SymbolicName(SymbolicName) {
     // We create a new instruction matcher.
     // Get a new ID for that instruction.
     InsnVarID = Rule.implicitlyDefineInsnVar(*this);
@@ -1796,23 +1762,17 @@ public:
 
   /// Add an operand to the matcher.
   OperandMatcher &addOperand(unsigned OpIdx, const std::string &SymbolicName,
-                             unsigned AllocatedTemporariesBaseID,
-                             bool IsVariadic = false);
+                             unsigned AllocatedTemporariesBaseID);
   OperandMatcher &getOperand(unsigned OpIdx);
-  OperandMatcher &addPhysRegInput(const Record *Reg, unsigned OpIdx,
+  OperandMatcher &addPhysRegInput(Record *Reg, unsigned OpIdx,
                                   unsigned TempOpIdx);
 
-  ArrayRef<std::pair<const Record *, unsigned>> getPhysRegInputs() const {
+  ArrayRef<std::pair<Record *, unsigned>> getPhysRegInputs() const {
     return PhysRegInputs;
   }
 
   StringRef getSymbolicName() const { return SymbolicName; }
-
-  unsigned getNumOperandMatchers() const { return Operands.size(); }
-  bool hasVariadicMatcher() const {
-    return !Operands.empty() && Operands.back()->isVariadic();
-  }
-
+  unsigned getNumOperands() const { return Operands.size(); }
   OperandVec::iterator operands_begin() { return Operands.begin(); }
   OperandVec::iterator operands_end() { return Operands.end(); }
   iterator_range<OperandVec::iterator> operands() {
@@ -1874,10 +1834,9 @@ protected:
 public:
   InstructionOperandMatcher(unsigned InsnVarID, unsigned OpIdx,
                             RuleMatcher &Rule, StringRef SymbolicName,
-                            bool AllowNumOpsCheck = true)
+                            bool NumOpsCheck = true)
       : OperandPredicateMatcher(OPM_Instruction, InsnVarID, OpIdx),
-        InsnMatcher(
-            new InstructionMatcher(Rule, SymbolicName, AllowNumOpsCheck)),
+        InsnMatcher(new InstructionMatcher(Rule, SymbolicName, NumOpsCheck)),
         Flags(Rule.getGISelFlags()) {}
 
   static bool classof(const PredicateMatcher *P) {
@@ -1958,8 +1917,7 @@ public:
 
   static void emitRenderOpcodes(MatchTable &Table, RuleMatcher &Rule,
                                 unsigned NewInsnID, unsigned OldInsnID,
-                                unsigned OpIdx, StringRef Name,
-                                bool ForVariadic = false);
+                                unsigned OpIdx, StringRef Name);
 
   void emitRenderOpcodes(MatchTable &Table, RuleMatcher &Rule) const override;
 };
@@ -1969,10 +1927,10 @@ public:
 class CopyPhysRegRenderer : public OperandRenderer {
 protected:
   unsigned NewInsnID;
-  const Record *PhysReg;
+  Record *PhysReg;
 
 public:
-  CopyPhysRegRenderer(unsigned NewInsnID, const Record *Reg)
+  CopyPhysRegRenderer(unsigned NewInsnID, Record *Reg)
       : OperandRenderer(OR_CopyPhysReg), NewInsnID(NewInsnID), PhysReg(Reg) {
     assert(PhysReg);
   }
@@ -1981,7 +1939,7 @@ public:
     return R->getKind() == OR_CopyPhysReg;
   }
 
-  const Record *getPhysReg() const { return PhysReg; }
+  Record *getPhysReg() const { return PhysReg; }
 
   void emitRenderOpcodes(MatchTable &Table, RuleMatcher &Rule) const override;
 };
@@ -1998,7 +1956,7 @@ protected:
 
 public:
   CopyOrAddZeroRegRenderer(unsigned NewInsnID, StringRef SymbolicName,
-                           const Record *ZeroRegisterDef)
+                           Record *ZeroRegisterDef)
       : OperandRenderer(OR_CopyOrAddZeroReg), NewInsnID(NewInsnID),
         SymbolicName(SymbolicName), ZeroRegisterDef(ZeroRegisterDef) {
     assert(!SymbolicName.empty() && "Cannot copy from an unspecified source");
@@ -2341,7 +2299,7 @@ private:
   const CodeGenInstruction *I;
   InstructionMatcher *Matched;
   std::vector<std::unique_ptr<OperandRenderer>> OperandRenderers;
-  SmallPtrSet<const Record *, 4> DeadImplicitDefs;
+  SmallPtrSet<Record *, 4> DeadImplicitDefs;
 
   std::vector<const InstructionMatcher *> CopiedFlags;
   std::vector<StringRef> SetFlags;
@@ -2369,7 +2327,7 @@ public:
 
   void chooseInsnToMutate(RuleMatcher &Rule);
 
-  void setDeadImplicitDef(const Record *R) { DeadImplicitDefs.insert(R); }
+  void setDeadImplicitDef(Record *R) { DeadImplicitDefs.insert(R); }
 
   template <class Kind, class... Args> Kind &addRenderer(Args &&...args) {
     OperandRenderers.emplace_back(
@@ -2509,4 +2467,4 @@ public:
 } // namespace gi
 } // namespace llvm
 
-#endif // LLVM_UTILS_TABLEGEN_COMMON_GLOBALISEL_GLOBALISELMATCHTABLE_H
+#endif

@@ -119,7 +119,7 @@ def P600WriteCMOV : SchedWriteRes<[SiFiveP600Branch, SiFiveP600CMOV]> {
 }
 def : InstRW<[P600WriteCMOV], (instrs PseudoCCMOVGPRNoX0)>;
 
-let Latency = 2 in {
+let Latency = 3 in {
 // Integer multiplication
 def : WriteRes<WriteIMul, [SiFiveP600MulI2F]>;
 def : WriteRes<WriteIMul32, [SiFiveP600MulI2F]>;
@@ -403,9 +403,6 @@ foreach mx = SchedMxList in {
     defm "" : LMULWriteResMX<"WriteVICALUV",  [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVICALUX",  [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVICALUI",  [SiFiveP600VectorArith], mx, IsWorstCase>;
-    defm "" : LMULWriteResMX<"WriteVICALUMV", [SiFiveP600VectorArith], mx, IsWorstCase>;
-    defm "" : LMULWriteResMX<"WriteVICALUMX", [SiFiveP600VectorArith], mx, IsWorstCase>;
-    defm "" : LMULWriteResMX<"WriteVICALUMI", [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVICmpV",   [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVICmpX",   [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVICmpI",   [SiFiveP600VectorArith], mx, IsWorstCase>;
@@ -443,16 +440,12 @@ foreach mx = SchedMxListW in {
   }
 }
 
-// Worst case needs 51/45/42/72 * lmul cycles for i8/16/32/64.
+// Worst case needs 64 cycles if SEW is equal to 64.
 foreach mx = SchedMxList in {
   foreach sew = SchedSEWSet<mx>.val in {
     defvar LMulLat = SiFiveP600GetLMulCycles<mx>.c;
     defvar IsWorstCase = SiFiveP600IsWorstCaseMXSEW<mx, sew, SchedMxList>.c;
-    defvar DivMicroOpLat =
-      !cond(!eq(sew, 8): 51, !eq(sew, 16): 45, !eq(sew, 32): 42,
-      /* SEW=64 */ true: 72);
-    defvar DivLatency = !mul(DivMicroOpLat, LMulLat);
-    let Latency = DivLatency, ReleaseAtCycles = [LMulLat, DivLatency] in {
+    let Latency = 64, ReleaseAtCycles = [LMulLat, !mul(63, LMulLat)] in {
       defm "" : LMULSEWWriteResMXSEW<"WriteVIDivV", [SiFiveP600VEXQ1, SiFiveP600VDiv], mx, sew, IsWorstCase>;
       defm "" : LMULSEWWriteResMXSEW<"WriteVIDivX", [SiFiveP600VEXQ1, SiFiveP600VDiv], mx, sew, IsWorstCase>;
     }
@@ -587,15 +580,12 @@ foreach mx = SchedMxListFW in {
   }
 }
 
-// Worst case needs around 29/25/37 * LMUL cycles for f16/32/64.
+// Worst case needs 76 cycles if SEW is equal to 64.
 foreach mx = SchedMxListF in {
   foreach sew = SchedSEWSet<mx, 1>.val in {
     defvar LMulLat = SiFiveP600GetLMulCycles<mx>.c;
     defvar IsWorstCase = SiFiveP600IsWorstCaseMXSEW<mx, sew, SchedMxListF, 1>.c;
-    defvar DivMicroOpLat =
-      !cond(!eq(sew, 16): 29, !eq(sew, 32): 25, /* SEW=64 */ true: 37);
-    defvar DivLatency = !mul(DivMicroOpLat, LMulLat);
-    let Latency = DivLatency, ReleaseAtCycles = [LMulLat, DivLatency] in {
+    let Latency = 76, ReleaseAtCycles = [LMulLat, !mul(76, LMulLat)] in {
       defm "" : LMULSEWWriteResMXSEW<"WriteVFDivV",  [SiFiveP600VEXQ1, SiFiveP600VFloatDiv], mx, sew, IsWorstCase>;
       defm "" : LMULSEWWriteResMXSEW<"WriteVFDivF",  [SiFiveP600VEXQ1, SiFiveP600VFloatDiv], mx, sew, IsWorstCase>;
       defm "" : LMULSEWWriteResMXSEW<"WriteVFSqrtV", [SiFiveP600VEXQ1, SiFiveP600VFloatDiv], mx, sew, IsWorstCase>;
@@ -798,8 +788,7 @@ foreach mx = SchedMxList in {
   let Latency = 3, ReleaseAtCycles = [LMulLat] in {
     defm "" : LMULWriteResMX<"WriteVSHA2CHV", [SiFiveP600VectorArith], mx, IsWorstCase>;
     defm "" : LMULWriteResMX<"WriteVSHA2CLV", [SiFiveP600VectorArith], mx, IsWorstCase>;
-    foreach sew = !listremove(SchedSEWSet<mx>.val, [8, 16]) in
-    defm "" : LMULSEWWriteResMXSEW<"WriteVSHA2MSV", [SiFiveP600VectorArith], mx, sew, IsWorstCase>;
+    defm "" : LMULWriteResMX<"WriteVSHA2MSV", [SiFiveP600VectorArith], mx, IsWorstCase>;
   }
   // Zvkned
   let Latency = 2, ReleaseAtCycles = [LMulLat] in {
@@ -1097,11 +1086,11 @@ def : ReadAdvance<ReadVMov8V, 0>;
 
 // Others
 def : ReadAdvance<ReadVMask, 0>;
-def : ReadAdvance<ReadVPassthru_WorstCase, 0>;
+def : ReadAdvance<ReadVMergeOp_WorstCase, 0>;
 foreach mx = SchedMxList in {
-  def : ReadAdvance<!cast<SchedRead>("ReadVPassthru_" # mx), 0>;
+  def : ReadAdvance<!cast<SchedRead>("ReadVMergeOp_" # mx), 0>;
   foreach sew = SchedSEWSet<mx>.val in
-    def : ReadAdvance<!cast<SchedRead>("ReadVPassthru_" # mx  # "_E" # sew), 0>;
+    def : ReadAdvance<!cast<SchedRead>("ReadVMergeOp_" # mx  # "_E" # sew), 0>;
 }
 
 // Vector Crypto Extensions
@@ -1127,7 +1116,7 @@ defm "" : LMULReadAdvance<"ReadVGMULV", 0>;
 // Zvknha or Zvknhb
 defm "" : LMULReadAdvance<"ReadVSHA2CHV", 0>;
 defm "" : LMULReadAdvance<"ReadVSHA2CLV", 0>;
-defm "" : LMULSEWReadAdvance<"ReadVSHA2MSV", 0>;
+defm "" : LMULReadAdvance<"ReadVSHA2MSV", 0>;
 // Zvkned
 defm "" : LMULReadAdvance<"ReadVAESMVV", 0>;
 defm "" : LMULReadAdvance<"ReadVAESKF1V", 0>;

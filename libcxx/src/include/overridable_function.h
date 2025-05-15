@@ -96,8 +96,7 @@ _LIBCPP_HIDE_FROM_ABI bool __is_function_overridden(_Ret (*__fptr)(_Args...)) no
 }
 _LIBCPP_END_NAMESPACE_STD
 
-// The NVPTX linker cannot create '__start/__stop' sections.
-#elif defined(_LIBCPP_OBJECT_FORMAT_ELF) && !defined(__NVPTX__)
+#elif defined(_LIBCPP_OBJECT_FORMAT_ELF)
 
 #  define _LIBCPP_CAN_DETECT_OVERRIDDEN_FUNCTION 1
 #  define _LIBCPP_MAKE_OVERRIDABLE_FUNCTION_DETECTABLE __attribute__((__section__("__lcxx_override")))
@@ -115,11 +114,6 @@ _LIBCPP_HIDE_FROM_ABI bool __is_function_overridden(_Ret (*__fptr)(_Args...)) no
   uintptr_t __start = reinterpret_cast<uintptr_t>(&__start___lcxx_override);
   uintptr_t __end   = reinterpret_cast<uintptr_t>(&__stop___lcxx_override);
   uintptr_t __ptr   = reinterpret_cast<uintptr_t>(__fptr);
-
-#  if __has_feature(ptrauth_calls)
-  // We must pass a void* to ptrauth_strip since it only accepts a pointer type. See full explanation above.
-  __ptr = reinterpret_cast<uintptr_t>(ptrauth_strip(reinterpret_cast<void*>(__ptr), ptrauth_key_function_pointer));
-#  endif
 
   return __ptr < __start || __ptr > __end;
 }

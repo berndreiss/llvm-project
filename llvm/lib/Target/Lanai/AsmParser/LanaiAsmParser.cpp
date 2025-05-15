@@ -62,14 +62,14 @@ class LanaiAsmParser : public MCTargetAsmParser {
 
   bool parsePrePost(StringRef Type, int *OffsetValue);
 
-  bool parseInstruction(ParseInstructionInfo &Info, StringRef Name,
+  bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
   bool parseRegister(MCRegister &Reg, SMLoc &StartLoc, SMLoc &EndLoc) override;
   ParseStatus tryParseRegister(MCRegister &Reg, SMLoc &StartLoc,
                                SMLoc &EndLoc) override;
 
-  bool matchAndEmitInstruction(SMLoc IdLoc, unsigned &Opcode,
+  bool MatchAndEmitInstruction(SMLoc IdLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
@@ -118,7 +118,7 @@ struct LanaiOperand : public MCParsedAsmOperand {
   };
 
   struct RegOp {
-    MCRegister RegNum;
+    unsigned RegNum;
   };
 
   struct ImmOp {
@@ -126,8 +126,8 @@ struct LanaiOperand : public MCParsedAsmOperand {
   };
 
   struct MemOp {
-    MCRegister BaseReg;
-    MCRegister OffsetReg;
+    unsigned BaseReg;
+    unsigned OffsetReg;
     unsigned AluOp;
     const MCExpr *Offset;
   };
@@ -166,12 +166,12 @@ public:
     return StringRef(Tok.Data, Tok.Length);
   }
 
-  MCRegister getMemBaseReg() const {
+  unsigned getMemBaseReg() const {
     assert(isMem() && "Invalid type access!");
     return Mem.BaseReg;
   }
 
-  MCRegister getMemOffsetReg() const {
+  unsigned getMemOffsetReg() const {
     assert(isMem() && "Invalid type access!");
     return Mem.OffsetReg;
   }
@@ -439,7 +439,7 @@ public:
   void addMemRegRegOperands(MCInst &Inst, unsigned N) const {
     assert(N == 3 && "Invalid number of operands!");
     Inst.addOperand(MCOperand::createReg(getMemBaseReg()));
-    assert(getMemOffsetReg() && "Invalid offset");
+    assert(getMemOffsetReg() != 0 && "Invalid offset");
     Inst.addOperand(MCOperand::createReg(getMemOffsetReg()));
     Inst.addOperand(MCOperand::createImm(getMemOp()));
   }
@@ -589,10 +589,10 @@ public:
     return Op;
   }
 
-  static std::unique_ptr<LanaiOperand> createReg(MCRegister Reg, SMLoc Start,
+  static std::unique_ptr<LanaiOperand> createReg(unsigned RegNum, SMLoc Start,
                                                  SMLoc End) {
     auto Op = std::make_unique<LanaiOperand>(REGISTER);
-    Op->Reg.RegNum = Reg;
+    Op->Reg.RegNum = RegNum;
     Op->StartLoc = Start;
     Op->EndLoc = End;
     return Op;
@@ -611,7 +611,7 @@ public:
   MorphToMemImm(std::unique_ptr<LanaiOperand> Op) {
     const MCExpr *Imm = Op->getImm();
     Op->Kind = MEMORY_IMM;
-    Op->Mem.BaseReg = MCRegister();
+    Op->Mem.BaseReg = 0;
     Op->Mem.AluOp = LPAC::ADD;
     Op->Mem.OffsetReg = 0;
     Op->Mem.Offset = Imm;
@@ -619,9 +619,9 @@ public:
   }
 
   static std::unique_ptr<LanaiOperand>
-  MorphToMemRegReg(MCRegister BaseReg, std::unique_ptr<LanaiOperand> Op,
+  MorphToMemRegReg(unsigned BaseReg, std::unique_ptr<LanaiOperand> Op,
                    unsigned AluOp) {
-    MCRegister OffsetReg = Op->getReg();
+    unsigned OffsetReg = Op->getReg();
     Op->Kind = MEMORY_REG_REG;
     Op->Mem.BaseReg = BaseReg;
     Op->Mem.AluOp = AluOp;
@@ -631,7 +631,7 @@ public:
   }
 
   static std::unique_ptr<LanaiOperand>
-  MorphToMemRegImm(MCRegister BaseReg, std::unique_ptr<LanaiOperand> Op,
+  MorphToMemRegImm(unsigned BaseReg, std::unique_ptr<LanaiOperand> Op,
                    unsigned AluOp) {
     const MCExpr *Imm = Op->getImm();
     Op->Kind = MEMORY_REG_IMM;
@@ -645,7 +645,7 @@ public:
 
 } // end anonymous namespace
 
-bool LanaiAsmParser::matchAndEmitInstruction(SMLoc IdLoc, unsigned &Opcode,
+bool LanaiAsmParser::MatchAndEmitInstruction(SMLoc IdLoc, unsigned &Opcode,
                                              OperandVector &Operands,
                                              MCStreamer &Out,
                                              uint64_t &ErrorInfo,
@@ -691,21 +691,21 @@ LanaiAsmParser::parseRegister(bool RestoreOnFailure) {
   SMLoc End = SMLoc::getFromPointer(Parser.getTok().getLoc().getPointer() - 1);
   std::optional<AsmToken> PercentTok;
 
-  MCRegister Reg;
+  unsigned RegNum;
   // Eat the '%'.
   if (Lexer.getKind() == AsmToken::Percent) {
     PercentTok = Parser.getTok();
     Parser.Lex();
   }
   if (Lexer.getKind() == AsmToken::Identifier) {
-    Reg = MatchRegisterName(Lexer.getTok().getIdentifier());
-    if (!Reg) {
+    RegNum = MatchRegisterName(Lexer.getTok().getIdentifier());
+    if (RegNum == 0) {
       if (PercentTok && RestoreOnFailure)
         Lexer.UnLex(*PercentTok);
       return nullptr;
     }
     Parser.Lex(); // Eat identifier token
-    return LanaiOperand::createReg(Reg, Start, End);
+    return LanaiOperand::createReg(RegNum, Start, End);
   }
   if (PercentTok && RestoreOnFailure)
     Lexer.UnLex(*PercentTok);
@@ -900,7 +900,7 @@ ParseStatus LanaiAsmParser::parseMemoryOperand(OperandVector &Operands) {
 
   // Use 0 if no offset given
   int OffsetValue = 0;
-  MCRegister BaseReg;
+  unsigned BaseReg = 0;
   unsigned AluOp = LPAC::ADD;
   bool PostOp = false, PreOp = false;
 
@@ -1161,7 +1161,7 @@ static bool MaybePredicatedInst(const OperandVector &Operands) {
       .Default(false);
 }
 
-bool LanaiAsmParser::parseInstruction(ParseInstructionInfo & /*Info*/,
+bool LanaiAsmParser::ParseInstruction(ParseInstructionInfo & /*Info*/,
                                       StringRef Name, SMLoc NameLoc,
                                       OperandVector &Operands) {
   // First operand is token for instruction

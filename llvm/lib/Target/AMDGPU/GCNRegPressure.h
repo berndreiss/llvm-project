@@ -19,7 +19,6 @@
 
 #include "GCNSubtarget.h"
 #include "llvm/CodeGen/LiveIntervals.h"
-#include "llvm/CodeGen/RegisterPressure.h"
 #include <algorithm>
 
 namespace llvm {
@@ -47,10 +46,7 @@ struct GCNRegPressure {
 
   void clear() { std::fill(&Value[0], &Value[TOTAL_KINDS], 0); }
 
-  /// \returns the SGPR32 pressure
   unsigned getSGPRNum() const { return Value[SGPR32]; }
-  /// \returns the aggregated ArchVGPR32, AccVGPR32 pressure dependent upon \p
-  /// UnifiedVGPRFile
   unsigned getVGPRNum(bool UnifiedVGPRFile) const {
     if (UnifiedVGPRFile) {
       return Value[AGPR32] ? alignTo(Value[VGPR32], 4) + Value[AGPR32]
@@ -58,9 +54,6 @@ struct GCNRegPressure {
     }
     return std::max(Value[VGPR32], Value[AGPR32]);
   }
-  /// \returns the ArchVGPR32 pressure
-  unsigned getArchVGPRNum() const { return Value[VGPR32]; }
-  /// \returns the AccVGPR32 pressure
   unsigned getAGPRNum() const { return Value[AGPR32]; }
 
   unsigned getVGPRTuplesWeight() const { return std::max(Value[VGPR_TUPLE],
@@ -150,9 +143,6 @@ inline GCNRegPressure operator-(const GCNRegPressure &P1,
   return Diff;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// GCNRPTracker
-
 class GCNRPTracker {
 public:
   using LiveRegSet = DenseMap<unsigned, LaneBitmask>;
@@ -169,14 +159,7 @@ protected:
   void reset(const MachineInstr &MI, const LiveRegSet *LiveRegsCopy,
              bool After);
 
-  /// Mostly copy/paste from CodeGen/RegisterPressure.cpp
-  void bumpDeadDefs(ArrayRef<RegisterMaskPair> DeadDefs);
-
-  LaneBitmask getLastUsedLanes(Register RegUnit, SlotIndex Pos) const;
-
 public:
-  // reset tracker and set live register set to the specified value.
-  void reset(const MachineRegisterInfo &MRI_, const LiveRegSet &LiveRegs_);
   // live regs for the current state
   const decltype(LiveRegs) &getLiveRegs() const { return LiveRegs; }
   const MachineInstr *getLastTrackedMI() const { return LastTrackedMI; }
@@ -193,38 +176,34 @@ public:
 GCNRPTracker::LiveRegSet getLiveRegs(SlotIndex SI, const LiveIntervals &LIS,
                                      const MachineRegisterInfo &MRI);
 
-////////////////////////////////////////////////////////////////////////////////
-// GCNUpwardRPTracker
-
 class GCNUpwardRPTracker : public GCNRPTracker {
 public:
   GCNUpwardRPTracker(const LiveIntervals &LIS_) : GCNRPTracker(LIS_) {}
 
-  using GCNRPTracker::reset;
+  // reset tracker and set live register set to the specified value.
+  void reset(const MachineRegisterInfo &MRI_, const LiveRegSet &LiveRegs_);
 
-  /// reset tracker at the specified slot index \p SI.
+  // reset tracker at the specified slot index.
   void reset(const MachineRegisterInfo &MRI, SlotIndex SI) {
-    GCNRPTracker::reset(MRI, llvm::getLiveRegs(SI, LIS, MRI));
+    reset(MRI, llvm::getLiveRegs(SI, LIS, MRI));
   }
 
-  /// reset tracker to the end of the \p MBB.
+  // reset tracker to the end of the MBB.
   void reset(const MachineBasicBlock &MBB) {
     reset(MBB.getParent()->getRegInfo(),
           LIS.getSlotIndexes()->getMBBEndIdx(&MBB));
   }
 
-  /// reset tracker to the point just after \p MI (in program order).
+  // reset tracker to the point just after MI (in program order).
   void reset(const MachineInstr &MI) {
     reset(MI.getMF()->getRegInfo(), LIS.getInstructionIndex(MI).getDeadSlot());
   }
 
-  /// Move to the state of RP just before the \p MI . If \p UseInternalIterator
-  /// is set, also update the internal iterators. Setting \p UseInternalIterator
-  /// to false allows for an externally managed iterator / program order.
+  // move to the state just before the MI (in program order).
   void recede(const MachineInstr &MI);
 
-  /// \p returns whether the tracker's state after receding MI corresponds
-  /// to reported by LIS.
+  // checks whether the tracker's state after receding MI corresponds
+  // to reported by LIS.
   bool isValid() const;
 
   const GCNRegPressure &getMaxPressure() const { return MaxPressure; }
@@ -238,9 +217,6 @@ public:
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// GCNDownwardRPTracker
-
 class GCNDownwardRPTracker : public GCNRPTracker {
   // Last position of reset or advanceBeforeNext
   MachineBasicBlock::const_iterator NextMI;
@@ -250,79 +226,46 @@ class GCNDownwardRPTracker : public GCNRPTracker {
 public:
   GCNDownwardRPTracker(const LiveIntervals &LIS_) : GCNRPTracker(LIS_) {}
 
-  using GCNRPTracker::reset;
-
   MachineBasicBlock::const_iterator getNext() const { return NextMI; }
 
-  /// \p return MaxPressure and clear it.
+  // Return MaxPressure and clear it.
   GCNRegPressure moveMaxPressure() {
     auto Res = MaxPressure;
     MaxPressure.clear();
     return Res;
   }
 
-  /// Reset tracker to the point before the \p MI
-  /// filling \p LiveRegs upon this point using LIS.
-  /// \p returns false if block is empty except debug values.
+  // Reset tracker to the point before the MI
+  // filling live regs upon this point using LIS.
+  // Returns false if block is empty except debug values.
   bool reset(const MachineInstr &MI, const LiveRegSet *LiveRegs = nullptr);
 
-  /// Move to the state right before the next MI or after the end of MBB.
-  /// \p returns false if reached end of the block.
-  /// If \p UseInternalIterator is true, then internal iterators are used and
-  /// set to process in program order. If \p UseInternalIterator is false, then
-  /// it is assumed that the tracker is using an externally managed iterator,
-  /// and advance* calls will not update the state of the iterator. In such
-  /// cases, the tracker will move to the state right before the provided \p MI
-  /// and use LIS for RP calculations.
-  bool advanceBeforeNext(MachineInstr *MI = nullptr,
-                         bool UseInternalIterator = true);
+  // Move to the state right before the next MI or after the end of MBB.
+  // Returns false if reached end of the block.
+  bool advanceBeforeNext();
 
-  /// Move to the state at the MI, advanceBeforeNext has to be called first.
-  /// If \p UseInternalIterator is true, then internal iterators are used and
-  /// set to process in program order. If \p UseInternalIterator is false, then
-  /// it is assumed that the tracker is using an externally managed iterator,
-  /// and advance* calls will not update the state of the iterator. In such
-  /// cases, the tracker will move to the state at the provided \p MI .
-  void advanceToNext(MachineInstr *MI = nullptr,
-                     bool UseInternalIterator = true);
+  // Move to the state at the MI, advanceBeforeNext has to be called first.
+  void advanceToNext();
 
-  /// Move to the state at the next MI. \p returns false if reached end of
-  /// block. If \p UseInternalIterator is true, then internal iterators are used
-  /// and set to process in program order. If \p UseInternalIterator is false,
-  /// then it is assumed that the tracker is using an externally managed
-  /// iterator, and advance* calls will not update the state of the iterator. In
-  /// such cases, the tracker will move to the state right before the provided
-  /// \p MI and use LIS for RP calculations.
-  bool advance(MachineInstr *MI = nullptr, bool UseInternalIterator = true);
+  // Move to the state at the next MI. Returns false if reached end of block.
+  bool advance();
 
-  /// Advance instructions until before \p End.
+  // Advance instructions until before End.
   bool advance(MachineBasicBlock::const_iterator End);
 
-  /// Reset to \p Begin and advance to \p End.
+  // Reset to Begin and advance to End.
   bool advance(MachineBasicBlock::const_iterator Begin,
                MachineBasicBlock::const_iterator End,
                const LiveRegSet *LiveRegsCopy = nullptr);
-
-  /// Mostly copy/paste from CodeGen/RegisterPressure.cpp
-  /// Calculate the impact \p MI will have on CurPressure and \return the
-  /// speculated pressure. In order to support RP Speculation, this does not
-  /// rely on the implicit program ordering in the LiveIntervals.
-  GCNRegPressure bumpDownwardPressure(const MachineInstr *MI,
-                                      const SIRegisterInfo *TRI) const;
 };
 
-/// \returns the LaneMask of live lanes of \p Reg at position \p SI. Only the
-/// active lanes of \p LaneMaskFilter will be set in the return value. This is
-/// used, for example, to limit the live lanes to a specific subreg when
-/// calculating use masks.
-LaneBitmask getLiveLaneMask(unsigned Reg, SlotIndex SI,
+LaneBitmask getLiveLaneMask(unsigned Reg,
+                            SlotIndex SI,
                             const LiveIntervals &LIS,
-                            const MachineRegisterInfo &MRI,
-                            LaneBitmask LaneMaskFilter = LaneBitmask::getAll());
+                            const MachineRegisterInfo &MRI);
 
 LaneBitmask getLiveLaneMask(const LiveInterval &LI, SlotIndex SI,
-                            const MachineRegisterInfo &MRI,
-                            LaneBitmask LaneMaskFilter = LaneBitmask::getAll());
+                            const MachineRegisterInfo &MRI);
 
 GCNRPTracker::LiveRegSet getLiveRegs(SlotIndex SI, const LiveIntervals &LIS,
                                      const MachineRegisterInfo &MRI);

@@ -409,6 +409,18 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
+  atan2
+  SRCS
+    atan2.cpp
+  HDRS
+    ../atan2.h
+  COMPILE_OPTIONS
+    ${bitcode_link_flags}
+    -O2
+  VENDOR
+)
+
+add_entrypoint_object(
   atanh
   SRCS
     atanh.cpp
@@ -438,6 +450,18 @@ add_entrypoint_object(
     erf.cpp
   HDRS
     ../erf.h
+  COMPILE_OPTIONS
+    ${bitcode_link_flags}
+    -O2
+  VENDOR
+)
+
+add_entrypoint_object(
+  pow
+  SRCS
+    pow.cpp
+  HDRS
+    ../pow.h
   COMPILE_OPTIONS
     ${bitcode_link_flags}
     -O2
@@ -510,30 +534,6 @@ add_entrypoint_object(
     tgammaf.cpp
   HDRS
     ../tgammaf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-  VENDOR
-)
-
-add_entrypoint_object(
-  lgamma
-  SRCS
-    lgamma.cpp
-  HDRS
-    ../lgamma.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-  VENDOR
-)
-
-add_entrypoint_object(
-  lgamma_r
-  SRCS
-    lgamma_r.cpp
-  HDRS
-    ../lgamma_r.h
   COMPILE_OPTIONS
     ${bitcode_link_flags}
     -O2

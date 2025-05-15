@@ -53,8 +53,7 @@ public:
   void printInst(const MCInst *MI, uint64_t Address, StringRef Annot,
                  const MCSubtargetInfo &STI, raw_ostream &O) override {}
 
-  std::pair<const char *, uint64_t>
-  getMnemonic(const MCInst &MI) const override {
+  std::pair<const char *, uint64_t> getMnemonic(const MCInst *MI) override {
     return std::make_pair<const char *, uint64_t>("", 0ull);
   }
 

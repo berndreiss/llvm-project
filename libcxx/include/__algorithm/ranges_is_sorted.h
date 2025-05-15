@@ -31,7 +31,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __is_sorted {
+namespace __is_sorted {
+struct __fn {
   template <forward_iterator _Iter,
             sentinel_for<_Iter> _Sent,
             class _Proj                                               = identity,
@@ -50,9 +51,10 @@ struct __is_sorted {
     return ranges::__is_sorted_until_impl(ranges::begin(__range), __last, __comp, __proj) == __last;
   }
 };
+} // namespace __is_sorted
 
 inline namespace __cpo {
-inline constexpr auto is_sorted = __is_sorted{};
+inline constexpr auto is_sorted = __is_sorted::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

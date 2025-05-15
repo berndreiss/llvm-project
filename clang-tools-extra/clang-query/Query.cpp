@@ -44,9 +44,7 @@ bool HelpQuery::run(llvm::raw_ostream &OS, QuerySession &QS) const {
         "  set bind-root (true|false)        "
         "Set whether to bind the root matcher to \"root\".\n"
         "  set print-matcher (true|false)    "
-        "Set whether to print the current matcher.\n"
-        "  set enable-profile (true|false)   "
-        "Set whether to enable matcher profiling.\n"
+        "Set whether to print the current matcher,\n"
         "  set traversal <kind>              "
         "Set traversal kind of clang-query session. Available kinds are:\n"
         "    AsIs                            "
@@ -84,23 +82,9 @@ namespace {
 
 struct CollectBoundNodes : MatchFinder::MatchCallback {
   std::vector<BoundNodes> &Bindings;
-  StringRef Unit;
-  CollectBoundNodes(std::vector<BoundNodes> &Bindings, StringRef Unit)
-      : Bindings(Bindings), Unit(Unit) {}
+  CollectBoundNodes(std::vector<BoundNodes> &Bindings) : Bindings(Bindings) {}
   void run(const MatchFinder::MatchResult &Result) override {
     Bindings.push_back(Result.Nodes);
-  }
-  StringRef getID() const override { return Unit; }
-};
-
-struct QueryProfiler {
-  llvm::StringMap<llvm::TimeRecord> Records;
-
-  ~QueryProfiler() {
-    llvm::TimerGroup TG("clang-query", "clang-query matcher profiling",
-                        Records);
-    TG.print(llvm::errs());
-    llvm::errs().flush();
   }
 };
 
@@ -109,19 +93,8 @@ struct QueryProfiler {
 bool MatchQuery::run(llvm::raw_ostream &OS, QuerySession &QS) const {
   unsigned MatchCount = 0;
 
-  std::optional<QueryProfiler> Profiler;
-  if (QS.EnableProfile)
-    Profiler.emplace();
-
   for (auto &AST : QS.ASTs) {
-    ast_matchers::MatchFinder::MatchFinderOptions FinderOptions;
-    std::optional<llvm::StringMap<llvm::TimeRecord>> Records;
-    if (QS.EnableProfile) {
-      Records.emplace();
-      FinderOptions.CheckProfiling.emplace(*Records);
-    }
-
-    MatchFinder Finder(FinderOptions);
+    MatchFinder Finder;
     std::vector<BoundNodes> Matches;
     DynTypedMatcher MaybeBoundMatcher = Matcher;
     if (QS.BindRoot) {
@@ -129,8 +102,7 @@ bool MatchQuery::run(llvm::raw_ostream &OS, QuerySession &QS) const {
       if (M)
         MaybeBoundMatcher = *M;
     }
-    StringRef OrigSrcName = AST->getOriginalSourceFileName();
-    CollectBoundNodes Collect(Matches, OrigSrcName);
+    CollectBoundNodes Collect(Matches);
     if (!Finder.addDynamicMatcher(MaybeBoundMatcher, &Collect)) {
       OS << "Not a valid top-level matcher.\n";
       return false;
@@ -139,8 +111,6 @@ bool MatchQuery::run(llvm::raw_ostream &OS, QuerySession &QS) const {
     ASTContext &Ctx = AST->getASTContext();
     Ctx.getParentMapContext().setTraversalKind(QS.TK);
     Finder.matchAST(Ctx);
-    if (QS.EnableProfile)
-      Profiler->Records[OrigSrcName] += (*Records)[OrigSrcName];
 
     if (QS.PrintMatcher) {
       SmallVector<StringRef, 4> Lines;
@@ -176,7 +146,7 @@ bool MatchQuery::run(llvm::raw_ostream &OS, QuerySession &QS) const {
             TD.emitDiagnostic(
                 FullSourceLoc(R.getBegin(), AST->getSourceManager()),
                 DiagnosticsEngine::Note, "\"" + BI->first + "\" binds here",
-                CharSourceRange::getTokenRange(R), {});
+                CharSourceRange::getTokenRange(R), std::nullopt);
           }
         }
         if (QS.PrintOutput) {

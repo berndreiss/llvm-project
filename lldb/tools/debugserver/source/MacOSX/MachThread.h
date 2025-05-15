@@ -108,7 +108,6 @@ public:
 
   bool IsUserReady();
   struct thread_basic_info *GetBasicInfo();
-  struct thread_extended_info *GetExtendedInfo();
   const char *GetBasicInfoAsString() const;
   const char *GetName();
 
@@ -127,8 +126,8 @@ public:
 protected:
   static bool GetBasicInfo(thread_t threadID,
                            struct thread_basic_info *basic_info);
-  static bool GetExtendedInfo(thread_t threadID,
-                              struct thread_extended_info *extended_info);
+
+  bool GetIdentifierInfo();
 
   //    const char *
   //    GetDispatchQueueName();
@@ -153,7 +152,8 @@ protected:
   const DNBRegisterSetInfo
       *m_reg_sets; // Register set information for this thread
   nub_size_t m_num_reg_sets;
-  thread_extended_info_data_t m_extended_info;
+  thread_identifier_info_data_t m_ident_info;
+  struct proc_threadinfo m_proc_threadinfo;
   std::string m_dispatch_queue_name;
   bool m_is_64_bit;
 

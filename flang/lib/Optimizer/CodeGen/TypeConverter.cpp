@@ -57,6 +57,8 @@ LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA,
       [&](fir::ClassType classTy) { return convertBoxType(classTy); });
   addConversion(
       [&](fir::CharacterType charTy) { return convertCharType(charTy); });
+  addConversion(
+      [&](fir::ComplexType cmplx) { return convertComplexType(cmplx); });
   addConversion([&](fir::FieldType field) {
     // Convert to i32 because of LLVM GEP indexing restriction.
     return mlir::IntegerType::get(field.getContext(), 32);
@@ -84,6 +86,8 @@ LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA,
       [&](fir::RecordType derived, llvm::SmallVectorImpl<mlir::Type> &results) {
         return convertRecordType(derived, results);
       });
+  addConversion(
+      [&](fir::RealType real) { return convertRealType(real.getFKind()); });
   addConversion(
       [&](fir::ReferenceType ref) { return convertPointerLike(ref); });
   addConversion([&](fir::SequenceType sequence) {
@@ -173,7 +177,7 @@ bool LLVMTypeConverter::requiresExtendedDesc(mlir::Type boxElementType) const {
 // the addendum defined in descriptor.h.
 mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box,
                                                      int rank) const {
-  // (base_addr*, elem_len, version, rank, type, attribute, extra, [dim]
+  // (base_addr*, elem_len, version, rank, type, attribute, f18Addendum, [dim]
   llvm::SmallVector<mlir::Type> dataDescFields;
   mlir::Type ele = box.getEleTy();
   // remove fir.heap/fir.ref/fir.ptr
@@ -202,9 +206,9 @@ mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box,
   // attribute
   dataDescFields.push_back(
       getDescFieldTypeModel<kAttributePosInBox>()(&getContext()));
-  // extra
+  // f18Addendum
   dataDescFields.push_back(
-      getDescFieldTypeModel<kExtraPosInBox>()(&getContext()));
+      getDescFieldTypeModel<kF18AddendumPosInBox>()(&getContext()));
   // [dims]
   if (rank == unknownRank()) {
     if (auto seqTy = mlir::dyn_cast<SequenceType>(ele))
@@ -271,6 +275,13 @@ mlir::Type LLVMTypeConverter::convertCharType(fir::CharacterType charTy) const {
   if (charTy.getLen() == fir::CharacterType::unknownLen())
     return iTy;
   return mlir::LLVM::LLVMArrayType::get(iTy, charTy.getLen());
+}
+
+// convert a front-end kind value to either a std or LLVM IR dialect type
+// fir.real<n>  -->  llvm.anyfloat  where anyfloat is a kind mapping
+mlir::Type LLVMTypeConverter::convertRealType(fir::KindTy kind) const {
+  return fir::fromRealTypeID(&getContext(), kindMapping.getRealTypeID(kind),
+                             kind);
 }
 
 // fir.array<c ... :any>  -->  llvm<"[...[c x any]]">

@@ -14,10 +14,6 @@
 
 #include "architectures.h"
 
-#if defined(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC)
-#define LIBC_TARGET_CPU_HAS_FULLFP16
-#endif
-
 #if defined(__SSE2__)
 #define LIBC_TARGET_CPU_HAS_SSE2
 #endif
@@ -51,10 +47,6 @@
     (defined(LIBC_TARGET_ARCH_IS_X86_64) &&                                    \
      defined(LIBC_TARGET_CPU_HAS_SSE4_2))
 #define LIBC_TARGET_CPU_HAS_NEAREST_INT
-#endif
-
-#if defined(LIBC_TARGET_ARCH_IS_AARCH64) || defined(LIBC_TARGET_ARCH_IS_GPU)
-#define LIBC_TARGET_CPU_HAS_FAST_FLOAT16_OPS
 #endif
 
 #endif // LLVM_LIBC_SRC___SUPPORT_MACROS_PROPERTIES_CPU_FEATURES_H

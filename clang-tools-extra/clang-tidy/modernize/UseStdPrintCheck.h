@@ -36,7 +36,6 @@ public:
   }
 
 private:
-  Preprocessor *PP;
   bool StrictMode;
   std::vector<StringRef> PrintfLikeFunctions;
   std::vector<StringRef> FprintfLikeFunctions;

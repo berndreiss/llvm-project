@@ -823,9 +823,7 @@ void TargetInstrInfo::lowerCopy(MachineInstr *MI,
   }
 
   copyPhysReg(*MI->getParent(), MI, MI->getDebugLoc(), DstMO.getReg(),
-              SrcMO.getReg(), SrcMO.isKill(),
-              DstMO.getReg().isPhysical() ? DstMO.isRenamable() : false,
-              SrcMO.getReg().isPhysical() ? SrcMO.isRenamable() : false);
+              SrcMO.getReg(), SrcMO.isKill());
 
   if (MI->getNumOperands() > 2)
     transferImplicitOperands(MI, TRI);
@@ -1811,17 +1809,15 @@ void TargetInstrInfo::mergeOutliningCandidateAttributes(
     F.addFnAttr(Attribute::NoUnwind);
 }
 
-outliner::InstrType
-TargetInstrInfo::getOutliningType(const MachineModuleInfo &MMI,
-                                  MachineBasicBlock::iterator &MIT,
-                                  unsigned Flags) const {
+outliner::InstrType TargetInstrInfo::getOutliningType(
+    MachineBasicBlock::iterator &MIT, unsigned Flags) const {
   MachineInstr &MI = *MIT;
 
   // NOTE: MI.isMetaInstruction() will match CFI_INSTRUCTION, but some targets
   // have support for outlining those. Special-case that here.
   if (MI.isCFIInstruction())
     // Just go right to the target implementation.
-    return getOutliningTypeImpl(MMI, MIT, Flags);
+    return getOutliningTypeImpl(MIT, Flags);
 
   // Be conservative about inline assembly.
   if (MI.isInlineAsm())
@@ -1887,7 +1883,7 @@ TargetInstrInfo::getOutliningType(const MachineModuleInfo &MMI,
   }
 
   // If we don't know, delegate to the target-specific hook.
-  return getOutliningTypeImpl(MMI, MIT, Flags);
+  return getOutliningTypeImpl(MIT, Flags);
 }
 
 bool TargetInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,

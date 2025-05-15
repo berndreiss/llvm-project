@@ -29,7 +29,6 @@
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/SmallVector.h"
 
-#include "Plugins/ExpressionParser/Clang/ClangASTMetadata.h"
 #include "Plugins/ExpressionParser/Clang/ClangPersistentVariables.h"
 #include "lldb/Expression/ExpressionVariable.h"
 #include "lldb/Symbol/CompilerType.h"
@@ -51,6 +50,7 @@ class ModuleMap;
 
 namespace lldb_private {
 
+class ClangASTMetadata;
 class ClangASTSource;
 class Declaration;
 
@@ -191,11 +191,11 @@ public:
   void SetMetadataAsUserID(const clang::Decl *decl, lldb::user_id_t user_id);
   void SetMetadataAsUserID(const clang::Type *type, lldb::user_id_t user_id);
 
-  void SetMetadata(const clang::Decl *object, ClangASTMetadata meta_data);
+  void SetMetadata(const clang::Decl *object, ClangASTMetadata &meta_data);
 
-  void SetMetadata(const clang::Type *object, ClangASTMetadata meta_data);
-  std::optional<ClangASTMetadata> GetMetadata(const clang::Decl *object);
-  std::optional<ClangASTMetadata> GetMetadata(const clang::Type *object);
+  void SetMetadata(const clang::Type *object, ClangASTMetadata &meta_data);
+  ClangASTMetadata *GetMetadata(const clang::Decl *object);
+  ClangASTMetadata *GetMetadata(const clang::Type *object);
 
   void SetCXXRecordDeclAccess(const clang::CXXRecordDecl *object,
                               clang::AccessSpecifier access);
@@ -325,13 +325,13 @@ public:
                                                bool is_framework = false,
                                                bool is_explicit = false);
 
-  CompilerType
-  CreateRecordType(clang::DeclContext *decl_ctx,
-                   OptionalClangModuleID owning_module,
-                   lldb::AccessType access_type, llvm::StringRef name, int kind,
-                   lldb::LanguageType language,
-                   std::optional<ClangASTMetadata> metadata = std::nullopt,
-                   bool exports_symbols = false);
+  CompilerType CreateRecordType(clang::DeclContext *decl_ctx,
+                                OptionalClangModuleID owning_module,
+                                lldb::AccessType access_type,
+                                llvm::StringRef name, int kind,
+                                lldb::LanguageType language,
+                                ClangASTMetadata *metadata = nullptr,
+                                bool exports_symbols = false);
 
   class TemplateParameterInfos {
   public:
@@ -455,10 +455,11 @@ public:
 
   bool BaseSpecifierIsEmpty(const clang::CXXBaseSpecifier *b);
 
-  CompilerType
-  CreateObjCClass(llvm::StringRef name, clang::DeclContext *decl_ctx,
-                  OptionalClangModuleID owning_module, bool isInternal,
-                  std::optional<ClangASTMetadata> metadata = std::nullopt);
+  CompilerType CreateObjCClass(llvm::StringRef name,
+                               clang::DeclContext *decl_ctx,
+                               OptionalClangModuleID owning_module,
+                               bool isForwardDecl, bool isInternal,
+                               ClangASTMetadata *metadata = nullptr);
 
   // Returns a mask containing bits from the TypeSystemClang::eTypeXXX
   // enumerations
@@ -497,8 +498,7 @@ public:
   // Array Types
 
   CompilerType CreateArrayType(const CompilerType &element_type,
-                               std::optional<size_t> element_count,
-                               bool is_vector);
+                               size_t element_count, bool is_vector);
 
   // Enumeration Types
   CompilerType CreateEnumerationType(llvm::StringRef name,
@@ -615,9 +615,8 @@ public:
   static clang::NamespaceDecl *
   DeclContextGetAsNamespaceDecl(const CompilerDeclContext &dc);
 
-  static std::optional<ClangASTMetadata>
-  DeclContextGetMetaData(const CompilerDeclContext &dc,
-                         const clang::Decl *object);
+  static ClangASTMetadata *DeclContextGetMetaData(const CompilerDeclContext &dc,
+                                                  const clang::Decl *object);
 
   static clang::ASTContext *
   DeclContextGetTypeSystemClang(const CompilerDeclContext &dc);
@@ -1004,7 +1003,7 @@ public:
                                    const char *property_setter_name,
                                    const char *property_getter_name,
                                    uint32_t property_attributes,
-                                   ClangASTMetadata metadata);
+                                   ClangASTMetadata *metadata);
 
   static clang::ObjCMethodDecl *AddMethodToObjCObjectType(
       const CompilerType &type,
@@ -1172,9 +1171,6 @@ private:
   /// Helper method that is used in \ref TypeSystemClang::TypeSystemClang
   /// on creation of a new instance.
   void LogCreation() const;
-
-  std::optional<uint64_t> GetObjCBitSize(clang::QualType qual_type,
-                                         ExecutionContextScope *exe_scope);
 
   // Classes that inherit from TypeSystemClang can see and modify these
   std::string m_target_triple;

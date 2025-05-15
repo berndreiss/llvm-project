@@ -206,11 +206,13 @@ PhiAnalyzer::PhiAnalyzer(const Loop &L, unsigned MaxIterations)
 //   G(%y) = Unknown otherwise (including phi not in header block)
 PhiAnalyzer::PeelCounter PhiAnalyzer::calculate(const Value &V) {
   // If we already know the answer, take it from the map.
-  // Otherwise, place Unknown to map to avoid infinite recursion. Such
-  // cycles can never stop on an invariant.
-  auto [I, Inserted] = IterationsToInvariance.try_emplace(&V, Unknown);
-  if (!Inserted)
+  auto I = IterationsToInvariance.find(&V);
+  if (I != IterationsToInvariance.end())
     return I->second;
+
+  // Place Unknown to map to avoid infinite recursion. Such
+  // cycles can never stop on an invariant.
+  IterationsToInvariance[&V] = Unknown;
 
   if (L.isLoopInvariant(&V))
     // Loop invariant so known at start.

@@ -14,6 +14,9 @@
 #include "lldb/Core/Module.h"
 #include "lldb/Core/PluginManager.h"
 #include "lldb/Core/Value.h"
+#include "lldb/Core/ValueObjectConstResult.h"
+#include "lldb/Core/ValueObjectMemory.h"
+#include "lldb/Core/ValueObjectRegister.h"
 #include "lldb/Symbol/UnwindPlan.h"
 #include "lldb/Target/Process.h"
 #include "lldb/Target/RegisterContext.h"
@@ -26,9 +29,6 @@
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/RegisterValue.h"
 #include "lldb/Utility/Status.h"
-#include "lldb/ValueObject/ValueObjectConstResult.h"
-#include "lldb/ValueObject/ValueObjectMemory.h"
-#include "lldb/ValueObject/ValueObjectRegister.h"
 #include <optional>
 
 using namespace lldb;
@@ -415,12 +415,16 @@ bool ABISysV_ppc::GetArgumentValues(Thread &thread, ValueList &values) const {
 Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
                                          lldb::ValueObjectSP &new_value_sp) {
   Status error;
-  if (!new_value_sp)
-    return Status::FromErrorString("Empty value object for return value.");
+  if (!new_value_sp) {
+    error.SetErrorString("Empty value object for return value.");
+    return error;
+  }
 
   CompilerType compiler_type = new_value_sp->GetCompilerType();
-  if (!compiler_type)
-    return Status::FromErrorString("Null clang type for return value.");
+  if (!compiler_type) {
+    error.SetErrorString("Null clang type for return value.");
+    return error;
+  }
 
   Thread *thread = frame_sp->GetThread().get();
 
@@ -438,10 +442,12 @@ Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
     DataExtractor data;
     Status data_error;
     size_t num_bytes = new_value_sp->GetData(data, data_error);
-    if (data_error.Fail())
-      return Status::FromErrorStringWithFormat(
+    if (data_error.Fail()) {
+      error.SetErrorStringWithFormat(
           "Couldn't convert return value to raw data: %s",
           data_error.AsCString());
+      return error;
+    }
     lldb::offset_t offset = 0;
     if (num_bytes <= 8) {
       uint64_t raw_value = data.GetMaxU64(&offset, num_bytes);
@@ -449,19 +455,18 @@ Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
       if (reg_ctx->WriteRegisterFromUnsigned(reg_info, raw_value))
         set_it_simple = true;
     } else {
-      error = Status::FromErrorString(
-          "We don't support returning longer than 64 bit "
-          "integer values at present.");
+      error.SetErrorString("We don't support returning longer than 64 bit "
+                           "integer values at present.");
     }
   } else if (compiler_type.IsFloatingPointType(count, is_complex)) {
     if (is_complex)
-      error = Status::FromErrorString(
+      error.SetErrorString(
           "We don't support returning complex values at present");
     else {
       std::optional<uint64_t> bit_width =
           compiler_type.GetBitSize(frame_sp.get());
       if (!bit_width) {
-        error = Status::FromErrorString("can't get type size");
+        error.SetErrorString("can't get type size");
         return error;
       }
       if (*bit_width <= 64) {
@@ -469,7 +474,7 @@ Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
         Status data_error;
         size_t num_bytes = new_value_sp->GetData(data, data_error);
         if (data_error.Fail()) {
-          error = Status::FromErrorStringWithFormat(
+          error.SetErrorStringWithFormat(
               "Couldn't convert return value to raw data: %s",
               data_error.AsCString());
           return error;
@@ -482,7 +487,7 @@ Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
         set_it_simple = true;
       } else {
         // FIXME - don't know how to do 80 bit long doubles yet.
-        error = Status::FromErrorString(
+        error.SetErrorString(
             "We don't support returning float values > 64 bits at present");
       }
     }
@@ -492,9 +497,8 @@ Status ABISysV_ppc::SetReturnValueObject(lldb::StackFrameSP &frame_sp,
     // Okay we've got a structure or something that doesn't fit in a simple
     // register. We should figure out where it really goes, but we don't
     // support this yet.
-    error = Status::FromErrorString(
-        "We only support setting simple integer and float "
-        "return types at present.");
+    error.SetErrorString("We only support setting simple integer and float "
+                         "return types at present.");
   }
 
   return error;

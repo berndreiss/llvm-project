@@ -21,7 +21,8 @@
  */
 
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+
+#include "../clcmacro.h"
 
 _CLC_OVERLOAD _CLC_DEF float smoothstep(float edge0, float edge1, float x) {
   float t = clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
@@ -45,7 +46,7 @@ SMOOTH_STEP_DEF(double, double, SMOOTH_STEP_IMPL_D);
 
 _CLC_TERNARY_VECTORIZE(_CLC_OVERLOAD _CLC_DEF, double, smoothstep, double, double, double);
 
-#if !defined(CLC_SPIRV)
+#if !defined(CLC_SPIRV) && !defined(CLC_SPIRV64)
 SMOOTH_STEP_DEF(float, double, SMOOTH_STEP_IMPL_D);
 SMOOTH_STEP_DEF(double, float, SMOOTH_STEP_IMPL_D);
 

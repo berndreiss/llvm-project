@@ -818,10 +818,8 @@ DWARFASTParserClang::ParseTypeModifier(const SymbolContext &sc,
                          &attrs.decl, clang_type, resolve_state, payload);
 }
 
-std::string DWARFASTParserClang::GetDIEClassTemplateParams(DWARFDIE die) {
-  if (DWARFDIE signature_die = die.GetReferencedDIE(DW_AT_signature))
-    die = signature_die;
-
+std::string
+DWARFASTParserClang::GetDIEClassTemplateParams(const DWARFDIE &die) {
   if (llvm::StringRef(die.GetName()).contains("<"))
     return {};
 
@@ -1404,20 +1402,20 @@ DWARFASTParserClang::ParseArrayType(const DWARFDIE &die,
   uint64_t array_element_bit_stride = byte_stride * 8 + bit_stride;
   CompilerType clang_type;
   if (array_info && array_info->element_orders.size() > 0) {
+    uint64_t num_elements = 0;
     auto end = array_info->element_orders.rend();
     for (auto pos = array_info->element_orders.rbegin(); pos != end; ++pos) {
-      clang_type = m_ast.CreateArrayType(
-          array_element_type, /*element_count=*/*pos, attrs.is_vector);
-
-      uint64_t num_elements = pos->value_or(0);
+      num_elements = *pos;
+      clang_type = m_ast.CreateArrayType(array_element_type, num_elements,
+                                         attrs.is_vector);
       array_element_type = clang_type;
       array_element_bit_stride = num_elements
                                      ? array_element_bit_stride * num_elements
                                      : array_element_bit_stride;
     }
   } else {
-    clang_type = m_ast.CreateArrayType(
-        array_element_type, /*element_count=*/std::nullopt, attrs.is_vector);
+    clang_type =
+        m_ast.CreateArrayType(array_element_type, 0, attrs.is_vector);
   }
   ConstString empty_name;
   TypeSP type_sp =
@@ -1812,7 +1810,7 @@ DWARFASTParserClang::ParseStructureLikeDIE(const SymbolContext &sc,
   if (!clang_type) {
     clang_type = m_ast.CreateRecordType(
         containing_decl_ctx, GetOwningClangModule(die), attrs.accessibility,
-        attrs.name.GetCString(), tag_decl_kind, attrs.class_language, metadata,
+        attrs.name.GetCString(), tag_decl_kind, attrs.class_language, &metadata,
         attrs.exports_symbols);
   }
 
@@ -1892,18 +1890,43 @@ public:
                                                 // required if you don't have an
                                                 // ivar decl
       const char *property_setter_name, const char *property_getter_name,
-      uint32_t property_attributes, ClangASTMetadata metadata)
+      uint32_t property_attributes, const ClangASTMetadata *metadata)
       : m_class_opaque_type(class_opaque_type), m_property_name(property_name),
         m_property_opaque_type(property_opaque_type),
         m_property_setter_name(property_setter_name),
         m_property_getter_name(property_getter_name),
-        m_property_attributes(property_attributes), m_metadata(metadata) {}
+        m_property_attributes(property_attributes) {
+    if (metadata != nullptr) {
+      m_metadata_up = std::make_unique<ClangASTMetadata>();
+      *m_metadata_up = *metadata;
+    }
+  }
+
+  DelayedAddObjCClassProperty(const DelayedAddObjCClassProperty &rhs) {
+    *this = rhs;
+  }
+
+  DelayedAddObjCClassProperty &
+  operator=(const DelayedAddObjCClassProperty &rhs) {
+    m_class_opaque_type = rhs.m_class_opaque_type;
+    m_property_name = rhs.m_property_name;
+    m_property_opaque_type = rhs.m_property_opaque_type;
+    m_property_setter_name = rhs.m_property_setter_name;
+    m_property_getter_name = rhs.m_property_getter_name;
+    m_property_attributes = rhs.m_property_attributes;
+
+    if (rhs.m_metadata_up) {
+      m_metadata_up = std::make_unique<ClangASTMetadata>();
+      *m_metadata_up = *rhs.m_metadata_up;
+    }
+    return *this;
+  }
 
   bool Finalize() {
     return TypeSystemClang::AddObjCClassProperty(
         m_class_opaque_type, m_property_name, m_property_opaque_type,
         /*ivar_decl=*/nullptr, m_property_setter_name, m_property_getter_name,
-        m_property_attributes, m_metadata);
+        m_property_attributes, m_metadata_up.get());
   }
 
 private:
@@ -1913,7 +1936,7 @@ private:
   const char *m_property_setter_name;
   const char *m_property_getter_name;
   uint32_t m_property_attributes;
-  ClangASTMetadata m_metadata;
+  std::unique_ptr<ClangASTMetadata> m_metadata_up;
 };
 
 bool DWARFASTParserClang::ParseTemplateDIE(
@@ -2059,7 +2082,7 @@ bool DWARFASTParserClang::ParseTemplateParameterInfos(
 
 bool DWARFASTParserClang::CompleteRecordType(const DWARFDIE &die,
                                              lldb_private::Type *type,
-                                             const CompilerType &clang_type) {
+                                             CompilerType &clang_type) {
   const dw_tag_t tag = die.Tag();
   SymbolFileDWARF *dwarf = die.GetDWARF();
 
@@ -2128,10 +2151,14 @@ bool DWARFASTParserClang::CompleteRecordType(const DWARFDIE &die,
   TypeSystemClang::BuildIndirectFields(clang_type);
   TypeSystemClang::CompleteTagDeclarationDefinition(clang_type);
 
-  layout_info.bit_size =
-      die.GetAttributeValueAsUnsigned(DW_AT_byte_size, 0) * 8;
-  layout_info.alignment =
-      die.GetAttributeValueAsUnsigned(llvm::dwarf::DW_AT_alignment, 0) * 8;
+  if (type)
+    layout_info.bit_size = type->GetByteSize(nullptr).value_or(0) * 8;
+  if (layout_info.bit_size == 0)
+    layout_info.bit_size =
+        die.GetAttributeValueAsUnsigned(DW_AT_byte_size, 0) * 8;
+  if (layout_info.alignment == 0)
+    layout_info.alignment =
+        die.GetAttributeValueAsUnsigned(llvm::dwarf::DW_AT_alignment, 0) * 8;
 
   clang::CXXRecordDecl *record_decl =
       m_ast.GetAsCXXRecordDecl(clang_type.GetOpaqueQualType());
@@ -2150,7 +2177,7 @@ bool DWARFASTParserClang::CompleteRecordType(const DWARFDIE &die,
 
 bool DWARFASTParserClang::CompleteEnumType(const DWARFDIE &die,
                                            lldb_private::Type *type,
-                                           const CompilerType &clang_type) {
+                                           CompilerType &clang_type) {
   if (TypeSystemClang::StartTagDeclarationDefinition(clang_type)) {
     if (die.HasChildren()) {
       bool is_signed = false;
@@ -2163,9 +2190,9 @@ bool DWARFASTParserClang::CompleteEnumType(const DWARFDIE &die,
   return (bool)clang_type;
 }
 
-bool DWARFASTParserClang::CompleteTypeFromDWARF(
-    const DWARFDIE &die, lldb_private::Type *type,
-    const CompilerType &clang_type) {
+bool DWARFASTParserClang::CompleteTypeFromDWARF(const DWARFDIE &die,
+                                                lldb_private::Type *type,
+                                                CompilerType &clang_type) {
   SymbolFileDWARF *dwarf = die.GetDWARF();
 
   std::lock_guard<std::recursive_mutex> guard(
@@ -2242,7 +2269,7 @@ DWARFASTParserClang::GetDeclContextContainingUIDFromDWARF(const DWARFDIE &die) {
 }
 
 size_t DWARFASTParserClang::ParseChildEnumerators(
-    const lldb_private::CompilerType &clang_type, bool is_signed,
+    lldb_private::CompilerType &clang_type, bool is_signed,
     uint32_t enumerator_byte_size, const DWARFDIE &parent_die) {
   if (!parent_die)
     return 0;
@@ -2701,10 +2728,10 @@ void DWARFASTParserClang::ParseObjCProperty(
 
   ClangASTMetadata metadata;
   metadata.SetUserID(die.GetID());
-  delayed_properties.emplace_back(
+  delayed_properties.push_back(DelayedAddObjCClassProperty(
       class_clang_type, propAttrs.prop_name,
       member_type->GetLayoutCompilerType(), propAttrs.prop_setter_name,
-      propAttrs.prop_getter_name, propAttrs.prop_attributes, metadata);
+      propAttrs.prop_getter_name, propAttrs.prop_attributes, &metadata));
 }
 
 llvm::Expected<llvm::APInt> DWARFASTParserClang::ExtractIntFromFormValue(
@@ -2854,6 +2881,7 @@ void DWARFASTParserClang::ParseSingleMember(
   }
 
   const uint64_t character_width = 8;
+  const uint64_t word_width = 32;
   CompilerType member_clang_type = member_type->GetLayoutCompilerType();
 
   const auto accessibility = attrs.accessibility == eAccessNone
@@ -2921,29 +2949,52 @@ void DWARFASTParserClang::ParseSingleMember(
       detect_unnamed_bitfields =
           die.GetCU()->Supports_unnamed_objc_bitfields();
 
-    if (detect_unnamed_bitfields)
-      AddUnnamedBitfieldToRecordTypeIfNeeded(layout_info, class_clang_type,
-                                             last_field_info, this_field_info);
+    if (detect_unnamed_bitfields) {
+      std::optional<FieldInfo> unnamed_field_info;
+      uint64_t last_field_end =
+          last_field_info.bit_offset + last_field_info.bit_size;
+
+      if (!last_field_info.IsBitfield()) {
+        // The last field was not a bit-field...
+        // but if it did take up the entire word then we need to extend
+        // last_field_end so the bit-field does not step into the last
+        // fields padding.
+        if (last_field_end != 0 && ((last_field_end % word_width) != 0))
+          last_field_end += word_width - (last_field_end % word_width);
+      }
+
+      if (ShouldCreateUnnamedBitfield(last_field_info, last_field_end,
+                                      this_field_info, layout_info)) {
+        unnamed_field_info = FieldInfo{};
+        unnamed_field_info->bit_size =
+            this_field_info.bit_offset - last_field_end;
+        unnamed_field_info->bit_offset = last_field_end;
+      }
+
+      if (unnamed_field_info) {
+        clang::FieldDecl *unnamed_bitfield_decl =
+            TypeSystemClang::AddFieldToRecordType(
+                class_clang_type, llvm::StringRef(),
+                m_ast.GetBuiltinTypeForEncodingAndBitSize(eEncodingSint,
+                                                          word_width),
+                accessibility, unnamed_field_info->bit_size);
+
+        layout_info.field_offsets.insert(std::make_pair(
+            unnamed_bitfield_decl, unnamed_field_info->bit_offset));
+      }
+    }
 
     last_field_info = this_field_info;
     last_field_info.SetIsBitfield(true);
   } else {
-    FieldInfo this_field_info;
-    this_field_info.is_bitfield = false;
-    this_field_info.bit_offset = field_bit_offset;
+    last_field_info.bit_offset = field_bit_offset;
 
-    // TODO: we shouldn't silently ignore the bit_size if we fail
-    //       to GetByteSize.
     if (std::optional<uint64_t> clang_type_size =
             member_type->GetByteSize(nullptr)) {
-      this_field_info.bit_size = *clang_type_size * character_width;
+      last_field_info.bit_size = *clang_type_size * character_width;
     }
 
-    if (this_field_info.GetFieldEnd() <= last_field_info.GetEffectiveFieldEnd())
-      this_field_info.SetEffectiveFieldEnd(
-          last_field_info.GetEffectiveFieldEnd());
-
-    last_field_info = this_field_info;
+    last_field_info.SetIsBitfield(false);
   }
 
   // Don't turn artificial members such as vtable pointers into real FieldDecls
@@ -3006,7 +3057,7 @@ void DWARFASTParserClang::ParseSingleMember(
 }
 
 bool DWARFASTParserClang::ParseChildMembers(
-    const DWARFDIE &parent_die, const CompilerType &class_clang_type,
+    const DWARFDIE &parent_die, CompilerType &class_clang_type,
     std::vector<std::unique_ptr<clang::CXXBaseSpecifier>> &base_classes,
     std::vector<DWARFDIE> &member_function_dies,
     std::vector<DWARFDIE> &contained_type_dies,
@@ -3736,46 +3787,8 @@ bool DWARFASTParserClang::ShouldCreateUnnamedBitfield(
   return true;
 }
 
-void DWARFASTParserClang::AddUnnamedBitfieldToRecordTypeIfNeeded(
-    ClangASTImporter::LayoutInfo &class_layout_info,
-    const CompilerType &class_clang_type, const FieldInfo &previous_field,
-    const FieldInfo &current_field) {
-  // TODO: get this value from target
-  const uint64_t word_width = 32;
-  uint64_t last_field_end = previous_field.GetEffectiveFieldEnd();
-
-  if (!previous_field.IsBitfield()) {
-    // The last field was not a bit-field...
-    // but if it did take up the entire word then we need to extend
-    // last_field_end so the bit-field does not step into the last
-    // fields padding.
-    if (last_field_end != 0 && ((last_field_end % word_width) != 0))
-      last_field_end += word_width - (last_field_end % word_width);
-  }
-
-  // Nothing to be done.
-  if (!ShouldCreateUnnamedBitfield(previous_field, last_field_end,
-                                   current_field, class_layout_info))
-    return;
-
-  // Place the unnamed bitfield into the gap between the previous field's end
-  // and the current field's start.
-  const uint64_t unnamed_bit_size = current_field.bit_offset - last_field_end;
-  const uint64_t unnamed_bit_offset = last_field_end;
-
-  clang::FieldDecl *unnamed_bitfield_decl =
-      TypeSystemClang::AddFieldToRecordType(
-          class_clang_type, llvm::StringRef(),
-          m_ast.GetBuiltinTypeForEncodingAndBitSize(eEncodingSint, word_width),
-          lldb::AccessType::eAccessPublic, unnamed_bit_size);
-
-  class_layout_info.field_offsets.insert(
-      std::make_pair(unnamed_bitfield_decl, unnamed_bit_offset));
-}
-
 void DWARFASTParserClang::ParseRustVariantPart(
-    DWARFDIE &die, const DWARFDIE &parent_die,
-    const CompilerType &class_clang_type,
+    DWARFDIE &die, const DWARFDIE &parent_die, CompilerType &class_clang_type,
     const lldb::AccessType default_accesibility,
     ClangASTImporter::LayoutInfo &layout_info) {
   assert(die.Tag() == llvm::dwarf::DW_TAG_variant_part);

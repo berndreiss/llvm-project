@@ -59,8 +59,8 @@ add_tablegen(llvm-tblgen LLVM
   InstrInfoEmitter.cpp
   IntrinsicEmitter.cpp
   MacroFusionPredicatorEmitter.cpp
-  OptionParserEmitter.cpp
-  OptionRSTEmitter.cpp
+  OptParserEmitter.cpp
+  OptRSTEmitter.cpp
   PseudoLoweringEmitter.cpp
   RegisterBankEmitter.cpp
   RegisterInfoEmitter.cpp

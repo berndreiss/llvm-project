@@ -8,6 +8,5 @@ add_lldb_library(lldbPluginInstrumentationRuntimeTSan PLUGIN
     lldbInterpreter
     lldbSymbol
     lldbTarget
-    lldbValueObject
     lldbPluginProcessUtility
   )

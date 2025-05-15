@@ -375,11 +375,12 @@ private:
 public:
   /// Construct a new code-completion context of the given kind.
   CodeCompletionContext(Kind CCKind)
-      : CCKind(CCKind), IsUsingDeclaration(false), SelIdents() {}
+      : CCKind(CCKind), IsUsingDeclaration(false), SelIdents(std::nullopt) {}
 
   /// Construct a new code-completion context of the given kind.
-  CodeCompletionContext(Kind CCKind, QualType T,
-                        ArrayRef<const IdentifierInfo *> SelIdents = {})
+  CodeCompletionContext(
+      Kind CCKind, QualType T,
+      ArrayRef<const IdentifierInfo *> SelIdents = std::nullopt)
       : CCKind(CCKind), IsUsingDeclaration(false), SelIdents(SelIdents) {
     if (CCKind == CCC_DotMemberAccess || CCKind == CCC_ArrowMemberAccess ||
         CCKind == CCC_ObjCPropertyAccess || CCKind == CCC_ObjCClassMessage ||

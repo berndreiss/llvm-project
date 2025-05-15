@@ -43,7 +43,7 @@ StringRef MCInstPrinter::getOpcodeName(unsigned Opcode) const {
   return MII.getName(Opcode);
 }
 
-void MCInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) {
+void MCInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
   llvm_unreachable("Target should implement this");
 }
 
@@ -224,32 +224,29 @@ format_object<uint64_t> MCInstPrinter::formatHex(uint64_t Value) const {
   llvm_unreachable("unsupported print style");
 }
 
-MCInstPrinter::WithMarkup MCInstPrinter::markup(raw_ostream &OS, Markup S) {
-  return WithMarkup(*this, OS, S, getUseMarkup(), getUseColor());
+MCInstPrinter::WithMarkup MCInstPrinter::markup(raw_ostream &OS,
+                                                Markup S) const {
+  return WithMarkup(OS, S, getUseMarkup(), getUseColor());
 }
 
-MCInstPrinter::WithMarkup::WithMarkup(MCInstPrinter &IP, raw_ostream &OS,
-                                      Markup M, bool EnableMarkup,
-                                      bool EnableColor)
-    : IP(IP), OS(OS), EnableMarkup(EnableMarkup), EnableColor(EnableColor) {
+MCInstPrinter::WithMarkup::WithMarkup(raw_ostream &OS, Markup M,
+                                      bool EnableMarkup, bool EnableColor)
+    : OS(OS), EnableMarkup(EnableMarkup), EnableColor(EnableColor) {
   if (EnableColor) {
-    raw_ostream::Colors Color = raw_ostream::Colors::RESET;
     switch (M) {
     case Markup::Immediate:
-      Color = raw_ostream::RED;
+      OS.changeColor(raw_ostream::RED);
       break;
     case Markup::Register:
-      Color = raw_ostream::CYAN;
+      OS.changeColor(raw_ostream::CYAN);
       break;
     case Markup::Target:
-      Color = raw_ostream::YELLOW;
+      OS.changeColor(raw_ostream::YELLOW);
       break;
     case Markup::Memory:
-      Color = raw_ostream::GREEN;
+      OS.changeColor(raw_ostream::GREEN);
       break;
     }
-    IP.ColorStack.push_back(Color);
-    OS.changeColor(Color);
   }
 
   if (EnableMarkup) {
@@ -273,8 +270,6 @@ MCInstPrinter::WithMarkup::WithMarkup(MCInstPrinter &IP, raw_ostream &OS,
 MCInstPrinter::WithMarkup::~WithMarkup() {
   if (EnableMarkup)
     OS << '>';
-  if (!EnableColor)
-    return;
-  IP.ColorStack.pop_back();
-  OS << IP.ColorStack.back();
+  if (EnableColor)
+    OS.resetColor();
 }

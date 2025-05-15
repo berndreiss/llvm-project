@@ -6,8 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "BenchmarkRunner.h"
+#include <cmath>
+#include <memory>
+#include <string>
+
 #include "Assembler.h"
+#include "BenchmarkRunner.h"
 #include "Error.h"
 #include "MCInstrDescView.h"
 #include "MmapUtils.h"
@@ -18,7 +22,6 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
-#include "llvm/Config/llvm-config.h" // for LLVM_ON_UNIX
 #include "llvm/Support/CrashRecoveryContext.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
@@ -26,9 +29,6 @@
 #include "llvm/Support/Program.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/SystemZ/zOSSupport.h"
-#include <cmath>
-#include <memory>
-#include <string>
 
 #ifdef __linux__
 #ifdef HAVE_LIBPFM
@@ -98,8 +98,7 @@ class InProcessFunctionExecutorImpl : public BenchmarkRunner::FunctionExecutor {
 public:
   static Expected<std::unique_ptr<InProcessFunctionExecutorImpl>>
   create(const LLVMState &State, object::OwningBinary<object::ObjectFile> Obj,
-         BenchmarkRunner::ScratchSpace *Scratch,
-         std::optional<int> BenchmarkProcessCPU) {
+         BenchmarkRunner::ScratchSpace *Scratch) {
     Expected<ExecutableFunction> EF =
         ExecutableFunction::create(State.createTargetMachine(), std::move(Obj));
 
@@ -191,31 +190,27 @@ class SubProcessFunctionExecutorImpl
 public:
   static Expected<std::unique_ptr<SubProcessFunctionExecutorImpl>>
   create(const LLVMState &State, object::OwningBinary<object::ObjectFile> Obj,
-         const BenchmarkKey &Key, std::optional<int> BenchmarkProcessCPU) {
+         const BenchmarkKey &Key) {
     Expected<ExecutableFunction> EF =
         ExecutableFunction::create(State.createTargetMachine(), std::move(Obj));
     if (!EF)
       return EF.takeError();
 
     return std::unique_ptr<SubProcessFunctionExecutorImpl>(
-        new SubProcessFunctionExecutorImpl(State, std::move(*EF), Key,
-                                           BenchmarkProcessCPU));
+        new SubProcessFunctionExecutorImpl(State, std::move(*EF), Key));
   }
 
 private:
   SubProcessFunctionExecutorImpl(const LLVMState &State,
                                  ExecutableFunction Function,
-                                 const BenchmarkKey &Key,
-                                 std::optional<int> BenchmarkCPU)
-      : State(State), Function(std::move(Function)), Key(Key),
-        BenchmarkProcessCPU(BenchmarkCPU) {}
+                                 const BenchmarkKey &Key)
+      : State(State), Function(std::move(Function)), Key(Key) {}
 
   enum ChildProcessExitCodeE {
     CounterFDReadFailed = 1,
     RSeqDisableFailed,
     FunctionDataMappingFailed,
-    AuxiliaryMemorySetupFailed,
-    SetCPUAffinityFailed
+    AuxiliaryMemorySetupFailed
   };
 
   StringRef childProcessExitCodeToString(int ExitCode) const {
@@ -228,8 +223,6 @@ private:
       return "Failed to map memory for assembled snippet";
     case ChildProcessExitCodeE::AuxiliaryMemorySetupFailed:
       return "Failed to setup auxiliary memory";
-    case ChildProcessExitCodeE::SetCPUAffinityFailed:
-      return "Failed to set CPU affinity of the benchmarking process";
     default:
       return "Child process returned with unknown exit code";
     }
@@ -386,44 +379,9 @@ private:
 
     if (ChildSignalInfo.si_signo == SIGSEGV)
       return make_error<SnippetSegmentationFault>(
-          reinterpret_cast<uintptr_t>(ChildSignalInfo.si_addr));
+          reinterpret_cast<intptr_t>(ChildSignalInfo.si_addr));
 
     return make_error<SnippetSignal>(ChildSignalInfo.si_signo);
-  }
-
-  static void setCPUAffinityIfRequested(int CPUToUse) {
-// Special case this function for x86_64 for now as certain more esoteric
-// platforms have different definitions for some of the libc functions that
-// cause buildtime failures. Additionally, the subprocess executor mode (the
-// sole mode where this is supported) currently only supports x86_64.
-
-// Also check that we have the SYS_getcpu macro defined, meaning the syscall
-// actually exists within the build environment. We manually use the syscall
-// rather than the libc wrapper given the wrapper for getcpu is only available
-// in glibc 2.29 and later.
-#if defined(__x86_64__) && defined(SYS_getcpu)
-    // Set the CPU affinity for the child process, so that we ensure that if
-    // the user specified a CPU the process should run on, the benchmarking
-    // process is running on that CPU.
-    cpu_set_t CPUMask;
-    CPU_ZERO(&CPUMask);
-    CPU_SET(CPUToUse, &CPUMask);
-    // TODO(boomanaiden154): Rewrite this to use LLVM primitives once they
-    // are available.
-    int SetAffinityReturn = sched_setaffinity(0, sizeof(CPUMask), &CPUMask);
-    if (SetAffinityReturn == -1) {
-      exit(ChildProcessExitCodeE::SetCPUAffinityFailed);
-    }
-
-    // Check (if assertions are enabled) that we are actually running on the
-    // CPU that was specified by the user.
-    [[maybe_unused]] unsigned int CurrentCPU;
-    assert(syscall(SYS_getcpu, &CurrentCPU, nullptr) == 0 &&
-           "Expected getcpu call to succeed.");
-    assert(static_cast<int>(CurrentCPU) == CPUToUse &&
-           "Expected current CPU to equal the CPU requested by the user");
-#endif // defined(__x86_64__) && defined(SYS_getcpu)
-    exit(ChildProcessExitCodeE::SetCPUAffinityFailed);
   }
 
   Error createSubProcessAndRunBenchmark(
@@ -458,10 +416,6 @@ private:
     }
 
     if (ParentOrChildPID == 0) {
-      if (BenchmarkProcessCPU.has_value()) {
-        setCPUAffinityIfRequested(*BenchmarkProcessCPU);
-      }
-
       // We are in the child process, close the write end of the pipe.
       close(PipeFiles[1]);
       // Unregister handlers, signal handling is now handled through ptrace in
@@ -523,10 +477,9 @@ private:
     if (__rseq_size < 32)
       RseqStructSize = 32;
 
-    long RseqDisableOutput = syscall(
-        SYS_rseq,
-        reinterpret_cast<uintptr_t>(__builtin_thread_pointer()) + __rseq_offset,
-        RseqStructSize, RSEQ_FLAG_UNREGISTER, RSEQ_SIG);
+    long RseqDisableOutput =
+        syscall(SYS_rseq, (intptr_t)__builtin_thread_pointer() + __rseq_offset,
+                RseqStructSize, RSEQ_FLAG_UNREGISTER, RSEQ_SIG);
     if (RseqDisableOutput != 0)
       exit(ChildProcessExitCodeE::RSeqDisableFailed);
 #endif // GLIBC_INITS_RSEQ
@@ -549,7 +502,7 @@ private:
     char *FunctionDataCopy =
         (char *)mmap(MapAddress, FunctionDataCopySize, PROT_READ | PROT_WRITE,
                      MapFlags, 0, 0);
-    if (reinterpret_cast<intptr_t>(FunctionDataCopy) == -1)
+    if ((intptr_t)FunctionDataCopy == -1)
       exit(ChildProcessExitCodeE::FunctionDataMappingFailed);
 
     memcpy(FunctionDataCopy, this->Function.FunctionBytes.data(),
@@ -562,8 +515,8 @@ private:
     if (!AuxMemFDOrError)
       exit(ChildProcessExitCodeE::AuxiliaryMemorySetupFailed);
 
-    ((void (*)(size_t, int))(uintptr_t)FunctionDataCopy)(FunctionDataCopySize,
-                                                         *AuxMemFDOrError);
+    ((void (*)(size_t, int))(intptr_t)FunctionDataCopy)(FunctionDataCopySize,
+                                                        *AuxMemFDOrError);
 
     exit(0);
   }
@@ -584,7 +537,6 @@ private:
   const LLVMState &State;
   const ExecutableFunction Function;
   const BenchmarkKey &Key;
-  const std::optional<int> BenchmarkProcessCPU;
 };
 #endif // __linux__
 } // namespace
@@ -662,15 +614,11 @@ BenchmarkRunner::getRunnableConfiguration(
 Expected<std::unique_ptr<BenchmarkRunner::FunctionExecutor>>
 BenchmarkRunner::createFunctionExecutor(
     object::OwningBinary<object::ObjectFile> ObjectFile,
-    const BenchmarkKey &Key, std::optional<int> BenchmarkProcessCPU) const {
+    const BenchmarkKey &Key) const {
   switch (ExecutionMode) {
   case ExecutionModeE::InProcess: {
-    if (BenchmarkProcessCPU.has_value())
-      return make_error<Failure>("The inprocess execution mode does not "
-                                 "support benchmark core pinning.");
-
     auto InProcessExecutorOrErr = InProcessFunctionExecutorImpl::create(
-        State, std::move(ObjectFile), Scratch.get(), BenchmarkProcessCPU);
+        State, std::move(ObjectFile), Scratch.get());
     if (!InProcessExecutorOrErr)
       return InProcessExecutorOrErr.takeError();
 
@@ -679,7 +627,7 @@ BenchmarkRunner::createFunctionExecutor(
   case ExecutionModeE::SubProcess: {
 #ifdef __linux__
     auto SubProcessExecutorOrErr = SubProcessFunctionExecutorImpl::create(
-        State, std::move(ObjectFile), Key, BenchmarkProcessCPU);
+        State, std::move(ObjectFile), Key);
     if (!SubProcessExecutorOrErr)
       return SubProcessExecutorOrErr.takeError();
 
@@ -694,8 +642,8 @@ BenchmarkRunner::createFunctionExecutor(
 }
 
 std::pair<Error, Benchmark> BenchmarkRunner::runConfiguration(
-    RunnableConfiguration &&RC, const std::optional<StringRef> &DumpFile,
-    std::optional<int> BenchmarkProcessCPU) const {
+    RunnableConfiguration &&RC,
+    const std::optional<StringRef> &DumpFile) const {
   Benchmark &BenchmarkResult = RC.BenchmarkResult;
   object::OwningBinary<object::ObjectFile> &ObjectFile = RC.ObjectFile;
 
@@ -716,8 +664,7 @@ std::pair<Error, Benchmark> BenchmarkRunner::runConfiguration(
   }
 
   Expected<std::unique_ptr<BenchmarkRunner::FunctionExecutor>> Executor =
-      createFunctionExecutor(std::move(ObjectFile), RC.BenchmarkResult.Key,
-                             BenchmarkProcessCPU);
+      createFunctionExecutor(std::move(ObjectFile), RC.BenchmarkResult.Key);
   if (!Executor)
     return {Executor.takeError(), std::move(BenchmarkResult)};
   auto NewMeasurements = runMeasurements(**Executor);

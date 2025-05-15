@@ -24,7 +24,6 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/Expr.h"
-#include "clang/AST/ParentMapContext.h"
 #include "clang/AST/RecordLayout.h"
 #include "clang/AST/StmtVisitor.h"
 #include "clang/Basic/CodeGenOptions.h"
@@ -36,7 +35,6 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/FixedPointBuilder.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/GEPNoWrapFlags.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Intrinsics.h"
@@ -197,36 +195,13 @@ static bool CanElideOverflowCheck(const ASTContext &Ctx, const BinOpInfo &Op) {
   if (!Op.mayHaveIntegerOverflow())
     return true;
 
-  if (Op.Ty->isSignedIntegerType() &&
-      Ctx.isTypeIgnoredBySanitizer(SanitizerKind::SignedIntegerOverflow,
-                                   Op.Ty)) {
-    return true;
-  }
-
-  if (Op.Ty->isUnsignedIntegerType() &&
-      Ctx.isTypeIgnoredBySanitizer(SanitizerKind::UnsignedIntegerOverflow,
-                                   Op.Ty)) {
-    return true;
-  }
-
-  const UnaryOperator *UO = dyn_cast<UnaryOperator>(Op.E);
-
-  if (UO && UO->getOpcode() == UO_Minus &&
-      Ctx.getLangOpts().isOverflowPatternExcluded(
-          LangOptions::OverflowPatternExclusionKind::NegUnsignedConst) &&
-      UO->isIntegerConstantExpr(Ctx))
-    return true;
-
   // If a unary op has a widened operand, the op cannot overflow.
-  if (UO)
+  if (const auto *UO = dyn_cast<UnaryOperator>(Op.E))
     return !UO->canOverflow();
 
   // We usually don't need overflow checks for binops with widened operands.
   // Multiplication with promoted unsigned operands is a special case.
   const auto *BO = cast<BinaryOperator>(Op.E);
-  if (BO->hasExcludedOverflowPattern())
-    return true;
-
   auto OptionalLHSTy = getUnwidenedIntegerType(Ctx, BO->getLHS());
   if (!OptionalLHSTy)
     return false;
@@ -543,10 +518,6 @@ public:
     return CGF.getOrCreateOpaqueRValueMapping(E).getScalarVal();
   }
 
-  Value *VisitOpenACCAsteriskSizeExpr(OpenACCAsteriskSizeExpr *E) {
-    llvm_unreachable("Codegen for this isn't defined/implemented");
-  }
-
   // l-values.
   Value *VisitDeclRefExpr(DeclRefExpr *E) {
     if (CodeGenFunction::ConstantEmission Constant = CGF.tryEmitAsConstant(E))
@@ -734,7 +705,7 @@ public:
   }
 
   Value *VisitArrayTypeTraitExpr(const ArrayTypeTraitExpr *E) {
-    return llvm::ConstantInt::get(ConvertType(E->getType()), E->getValue());
+    return llvm::ConstantInt::get(Builder.getInt32Ty(), E->getValue());
   }
 
   Value *VisitExpressionTraitExpr(const ExpressionTraitExpr *E) {
@@ -1137,10 +1108,6 @@ void ScalarExprEmitter::EmitIntegerTruncationCheck(Value *Src, QualType SrcType,
   if (!CGF.SanOpts.has(Check.second.second))
     return;
 
-  // Does some SSCL ignore this type?
-  if (CGF.getContext().isTypeIgnoredBySanitizer(Check.second.second, DstType))
-    return;
-
   llvm::Constant *StaticArgs[] = {
       CGF.EmitCheckSourceLocation(Loc), CGF.EmitCheckTypeDescriptor(SrcType),
       CGF.EmitCheckTypeDescriptor(DstType),
@@ -1251,15 +1218,6 @@ void ScalarExprEmitter::EmitIntegerSignChangeCheck(Value *Src, QualType SrcType,
     // Because here sign change check is interchangeable with truncation check.
     return;
   }
-  // Does an SSCL have an entry for the DstType under its respective sanitizer
-  // section?
-  if (DstSigned && CGF.getContext().isTypeIgnoredBySanitizer(
-                       SanitizerKind::ImplicitSignedIntegerTruncation, DstType))
-    return;
-  if (!DstSigned &&
-      CGF.getContext().isTypeIgnoredBySanitizer(
-          SanitizerKind::ImplicitUnsignedIntegerTruncation, DstType))
-    return;
   // That's it. We can't rule out any more cases with the data we have.
 
   CodeGenFunction::SanitizerScope SanScope(&CGF);
@@ -1484,10 +1442,6 @@ Value *ScalarExprEmitter::EmitScalarCast(Value *Src, QualType SrcType,
     return Builder.CreateFPToUI(Src, DstTy, "conv");
   }
 
-  if ((DstElementTy->is16bitFPTy() && SrcElementTy->is16bitFPTy())) {
-    Value *FloatVal = Builder.CreateFPExt(Src, Builder.getFloatTy(), "fpext");
-    return Builder.CreateFPTrunc(FloatVal, DstTy, "fptrunc");
-  }
   if (DstElementTy->getTypeID() < SrcElementTy->getTypeID())
     return Builder.CreateFPTrunc(Src, DstTy, "conv");
   return Builder.CreateFPExt(Src, DstTy, "conv");
@@ -1836,7 +1790,7 @@ ScalarExprEmitter::VisitSYCLUniqueStableNameExpr(SYCLUniqueStableNameExpr *E) {
   ASTContext &Context = CGF.getContext();
   unsigned AddrSpace =
       Context.getTargetAddressSpace(CGF.CGM.GetGlobalConstantAddressSpace());
-  llvm::Constant *GlobalConstStr = Builder.CreateGlobalString(
+  llvm::Constant *GlobalConstStr = Builder.CreateGlobalStringPtr(
       E->ComputeName(Context), "__usn_str", AddrSpace);
 
   llvm::Type *ExprTy = ConvertType(E->getType());
@@ -2041,8 +1995,8 @@ Value *ScalarExprEmitter::VisitMatrixSubscriptExpr(MatrixSubscriptExpr *E) {
 
   // Handle the vector case.  The base must be a vector, the index must be an
   // integer value.
-  Value *RowIdx = CGF.EmitMatrixIndexExpr(E->getRowIdx());
-  Value *ColumnIdx = CGF.EmitMatrixIndexExpr(E->getColumnIdx());
+  Value *RowIdx = Visit(E->getRowIdx());
+  Value *ColumnIdx = Visit(E->getColumnIdx());
 
   const auto *MatrixTy = E->getBase()->getType()->castAs<ConstantMatrixType>();
   unsigned NumRows = MatrixTy->getNumRows();
@@ -2738,19 +2692,14 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
     return CGF.CGM.createOpenCLIntToSamplerConversion(E, CGF);
 
   case CK_HLSLVectorTruncation: {
-    assert((DestTy->isVectorType() || DestTy->isBuiltinType()) &&
-           "Destination type must be a vector or builtin type.");
+    assert(DestTy->isVectorType() && "Expected dest type to be vector type");
     Value *Vec = Visit(const_cast<Expr *>(E));
-    if (auto *VecTy = DestTy->getAs<VectorType>()) {
-      SmallVector<int> Mask;
-      unsigned NumElts = VecTy->getNumElements();
-      for (unsigned I = 0; I != NumElts; ++I)
-        Mask.push_back(I);
+    SmallVector<int, 16> Mask;
+    unsigned NumElts = DestTy->castAs<VectorType>()->getNumElements();
+    for (unsigned I = 0; I != NumElts; ++I)
+      Mask.push_back(I);
 
-      return Builder.CreateShuffleVector(Vec, Mask, "trunc");
-    }
-    llvm::Value *Zero = llvm::Constant::getNullValue(CGF.SizeTy);
-    return Builder.CreateExtractElement(Vec, Zero, "cast.vtrunc");
+    return Builder.CreateShuffleVector(Vec, Mask, "trunc");
   }
 
   } // end of switch
@@ -2809,33 +2758,12 @@ llvm::Value *ScalarExprEmitter::EmitIncDecConsiderOverflowBehavior(
       return Builder.CreateNSWAdd(InVal, Amount, Name);
     [[fallthrough]];
   case LangOptions::SOB_Trapping:
-    BinOpInfo Info = createBinOpInfoFromIncDec(
-        E, InVal, IsInc, E->getFPFeaturesInEffect(CGF.getLangOpts()));
-    if (!E->canOverflow() || CanElideOverflowCheck(CGF.getContext(), Info))
+    if (!E->canOverflow())
       return Builder.CreateNSWAdd(InVal, Amount, Name);
-    return EmitOverflowCheckedBinOp(Info);
+    return EmitOverflowCheckedBinOp(createBinOpInfoFromIncDec(
+        E, InVal, IsInc, E->getFPFeaturesInEffect(CGF.getLangOpts())));
   }
   llvm_unreachable("Unknown SignedOverflowBehaviorTy");
-}
-
-/// For the purposes of overflow pattern exclusion, does this match the
-/// "while(i--)" pattern?
-static bool matchesPostDecrInWhile(const UnaryOperator *UO, bool isInc,
-                                   bool isPre, ASTContext &Ctx) {
-  if (isInc || isPre)
-    return false;
-
-  // -fsanitize-undefined-ignore-overflow-pattern=unsigned-post-decr-while
-  if (!Ctx.getLangOpts().isOverflowPatternExcluded(
-          LangOptions::OverflowPatternExclusionKind::PostDecrInWhile))
-    return false;
-
-  // all Parents (usually just one) must be a WhileStmt
-  for (const auto &Parent : Ctx.getParentMapContext().getParents(*UO))
-    if (!Parent.get<WhileStmt>())
-      return false;
-
-  return true;
 }
 
 namespace {
@@ -2915,9 +2843,9 @@ ScalarExprEmitter::EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
         llvm::Instruction::BinaryOps op =
             isInc ? llvm::Instruction::FAdd : llvm::Instruction::FSub;
         llvm::Value *amt = llvm::ConstantFP::get(Ty, 1.0);
-        llvm::AtomicRMWInst *old =
-            CGF.emitAtomicRMWInst(aop, LV.getAddress(), amt,
-                                  llvm::AtomicOrdering::SequentiallyConsistent);
+        llvm::AtomicRMWInst *old = Builder.CreateAtomicRMW(
+            aop, LV.getAddress(), amt,
+            llvm::AtomicOrdering::SequentiallyConsistent);
 
         return isPre ? Builder.CreateBinOp(op, old, amt) : old;
       }
@@ -2952,10 +2880,6 @@ ScalarExprEmitter::EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
   } else if (type->isIntegerType()) {
     QualType promotedType;
     bool canPerformLossyDemotionCheck = false;
-
-    bool excludeOverflowPattern =
-        matchesPostDecrInWhile(E, isInc, isPre, CGF.getContext());
-
     if (CGF.getContext().isPromotableIntegerType(type)) {
       promotedType = CGF.getContext().getPromotedIntegerType(type);
       assert(promotedType != type && "Shouldn't promote to the same type.");
@@ -3015,10 +2939,7 @@ ScalarExprEmitter::EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
     } else if (E->canOverflow() && type->isSignedIntegerOrEnumerationType()) {
       value = EmitIncDecConsiderOverflowBehavior(E, value, isInc);
     } else if (E->canOverflow() && type->isUnsignedIntegerType() &&
-               CGF.SanOpts.has(SanitizerKind::UnsignedIntegerOverflow) &&
-               !excludeOverflowPattern &&
-               !CGF.getContext().isTypeIgnoredBySanitizer(
-                   SanitizerKind::UnsignedIntegerOverflow, E->getType())) {
+               CGF.SanOpts.has(SanitizerKind::UnsignedIntegerOverflow)) {
       value = EmitOverflowCheckedBinOp(createBinOpInfoFromIncDec(
           E, value, isInc, E->getFPFeaturesInEffect(CGF.getLangOpts())));
     } else {
@@ -3666,9 +3587,9 @@ LValue ScalarExprEmitter::EmitCompoundAssignLValue(
             EmitScalarConversion(OpInfo.RHS, E->getRHS()->getType(), LHSTy,
                                  E->getExprLoc()),
             LHSTy);
-
-        llvm::AtomicRMWInst *OldVal =
-            CGF.emitAtomicRMWInst(AtomicOp, LHSLV.getAddress(), Amt);
+        Value *OldVal = Builder.CreateAtomicRMW(
+            AtomicOp, LHSLV.getAddress(), Amt,
+            llvm::AtomicOrdering::SequentiallyConsistent);
 
         // Since operation is atomic, the result type is guaranteed to be the
         // same as the input in LLVM terms.
@@ -5801,12 +5722,7 @@ CodeGenFunction::EmitCheckedInBoundsGEP(llvm::Type *ElemTy, Value *Ptr,
                                         bool SignedIndices, bool IsSubtraction,
                                         SourceLocation Loc, const Twine &Name) {
   llvm::Type *PtrTy = Ptr->getType();
-
-  llvm::GEPNoWrapFlags NWFlags = llvm::GEPNoWrapFlags::inBounds();
-  if (!SignedIndices && !IsSubtraction)
-    NWFlags |= llvm::GEPNoWrapFlags::noUnsignedWrap();
-
-  Value *GEPVal = Builder.CreateGEP(ElemTy, Ptr, IdxList, Name, NWFlags);
+  Value *GEPVal = Builder.CreateInBoundsGEP(ElemTy, Ptr, IdxList, Name);
 
   // If the pointer overflow sanitizer isn't enabled, do nothing.
   if (!SanOpts.has(SanitizerKind::PointerOverflow))
@@ -5921,13 +5837,8 @@ Address CodeGenFunction::EmitCheckedInBoundsGEP(
     Address Addr, ArrayRef<Value *> IdxList, llvm::Type *elementType,
     bool SignedIndices, bool IsSubtraction, SourceLocation Loc, CharUnits Align,
     const Twine &Name) {
-  if (!SanOpts.has(SanitizerKind::PointerOverflow)) {
-    llvm::GEPNoWrapFlags NWFlags = llvm::GEPNoWrapFlags::inBounds();
-    if (!SignedIndices && !IsSubtraction)
-      NWFlags |= llvm::GEPNoWrapFlags::noUnsignedWrap();
-
-    return Builder.CreateGEP(Addr, IdxList, elementType, Align, Name, NWFlags);
-  }
+  if (!SanOpts.has(SanitizerKind::PointerOverflow))
+    return Builder.CreateInBoundsGEP(Addr, IdxList, elementType, Align, Name);
 
   return RawAddress(
       EmitCheckedInBoundsGEP(Addr.getElementType(), Addr.emitRawPointer(*this),

@@ -273,6 +273,8 @@ private:
 
   LogicalResult processFunctionType(ArrayRef<uint32_t> operands);
 
+  LogicalResult processJointMatrixType(ArrayRef<uint32_t> operands);
+
   LogicalResult processImageType(ArrayRef<uint32_t> operands);
 
   LogicalResult processSampledImageType(ArrayRef<uint32_t> operands);

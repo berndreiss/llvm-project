@@ -23,11 +23,3 @@ main:
 bar:
         retw    $external_data
         .size   bar, .-bar
-
-# jitlink-check: decode_operand(baz, 0) = external_data + 23
-        .globl  baz
-        .align        2, 0x90
-        .type   baz,@function
-baz:
-        retw    $external_data+23
-        .size   baz, .-baz

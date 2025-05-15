@@ -334,12 +334,6 @@ public:
                                                  llvm::AtomicOrdering Ordering,
                                                  llvm::LLVMContext &Ctx) const;
 
-  /// Allow the target to apply other metadata to an atomic instruction
-  virtual void setTargetAtomicMetadata(CodeGenFunction &CGF,
-                                       llvm::Instruction &AtomicInst,
-                                       const AtomicExpr *Expr = nullptr) const {
-  }
-
   /// Interface class for filling custom fields of a block literal for OpenCL.
   class TargetOpenCLBlockHelper {
   public:
@@ -417,11 +411,6 @@ public:
 
   /// Return an LLVM type that corresponds to an OpenCL type.
   virtual llvm::Type *getOpenCLType(CodeGenModule &CGM, const Type *T) const {
-    return nullptr;
-  }
-
-  /// Return an LLVM type that corresponds to a HLSL type
-  virtual llvm::Type *getHLSLType(CodeGenModule &CGM, const Type *T) const {
     return nullptr;
   }
 
@@ -556,9 +545,6 @@ createTCETargetCodeGenInfo(CodeGenModule &CGM);
 
 std::unique_ptr<TargetCodeGenInfo>
 createVETargetCodeGenInfo(CodeGenModule &CGM);
-
-std::unique_ptr<TargetCodeGenInfo>
-createDirectXTargetCodeGenInfo(CodeGenModule &CGM);
 
 enum class WebAssemblyABIKind {
   MVP = 0,

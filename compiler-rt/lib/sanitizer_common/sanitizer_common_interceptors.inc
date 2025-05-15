@@ -41,7 +41,6 @@
 #include "sanitizer_errno.h"
 #include "sanitizer_placement_new.h"
 #include "sanitizer_platform_interceptors.h"
-#include "sanitizer_platform_limits_posix.h"
 #include "sanitizer_symbolizer.h"
 #include "sanitizer_tls_get_addr.h"
 
@@ -126,39 +125,6 @@
 extern const unsigned short *_ctype_tab_;
 extern const short *_toupper_tab_;
 extern const short *_tolower_tab_;
-#endif
-
-#if SANITIZER_LINUX && SANITIZER_SPARC32
-// On 32-bit Linux/sparc64, double and long double are identical and glibc
-// uses a __nldbl_ (no long double) prefix for various stdio functions.
-#  define __isoc23_fscanf __nldbl___isoc23_fscanf
-#  define __isoc23_scanf __nldbl___isoc23_scanf
-#  define __isoc23_sscanf __nldbl___isoc23_sscanf
-#  define __isoc23_vfscanf __nldbl___isoc23_vfscanf
-#  define __isoc23_vscanf __nldbl___isoc23_vscanf
-#  define __isoc23_vsscanf __nldbl___isoc23_vsscanf
-#  define __isoc99_fscanf __nldbl___isoc99_fscanf
-#  define __isoc99_scanf __nldbl___isoc99_scanf
-#  define __isoc99_sscanf __nldbl___isoc99_sscanf
-#  define __isoc99_vfscanf __nldbl___isoc99_vfscanf
-#  define __isoc99_vscanf __nldbl___isoc99_vscanf
-#  define __isoc99_vsscanf __nldbl___isoc99_vsscanf
-#  define asprintf __nldbl_asprintf
-#  define fprintf __nldbl_fprintf
-#  define fscanf __nldbl_fscanf
-#  define printf __nldbl_printf
-#  define scanf __nldbl_scanf
-#  define snprintf __nldbl_snprintf
-#  define sprintf __nldbl_sprintf
-#  define sscanf __nldbl_sscanf
-#  define vasprintf __nldbl_vasprintf
-#  define vfprintf __nldbl_vfprintf
-#  define vfscanf __nldbl_vfscanf
-#  define vprintf __nldbl_vprintf
-#  define vscanf __nldbl_vscanf
-#  define vsnprintf __nldbl_vsnprintf
-#  define vsprintf __nldbl_vsprintf
-#  define vsscanf __nldbl_vsscanf
 #endif
 
 #if SANITIZER_MUSL && \
@@ -1289,12 +1255,6 @@ INTERCEPTOR(int, prctl, int option, unsigned long arg2, unsigned long arg3,
   static const int PR_SET_VMA = 0x53564d41;
   static const int PR_SCHED_CORE = 62;
   static const int PR_SCHED_CORE_GET = 0;
-  static const int PR_GET_PDEATHSIG = 2;
-
-#  if !SANITIZER_ANDROID
-  static const int PR_SET_SECCOMP = 22;
-  static const int SECCOMP_MODE_FILTER = 2;
-#  endif
   if (option == PR_SET_VMA && arg2 == 0UL) {
     char *name = (char *)arg5;
     COMMON_INTERCEPTOR_READ_RANGE(ctx, name, internal_strlen(name) + 1);
@@ -1310,14 +1270,7 @@ INTERCEPTOR(int, prctl, int option, unsigned long arg2, unsigned long arg3,
     COMMON_INTERCEPTOR_WRITE_RANGE(ctx, name, internal_strlen(name) + 1);
   } else if (res != -1 && option == PR_SCHED_CORE &&
              arg2 == PR_SCHED_CORE_GET) {
-    COMMON_INTERCEPTOR_WRITE_RANGE(ctx, (u64 *)(arg5), sizeof(u64));
-  } else if (res != -1 && option == PR_GET_PDEATHSIG) {
-    COMMON_INTERCEPTOR_WRITE_RANGE(ctx, (u64 *)(arg2), sizeof(int));
-#  if !SANITIZER_ANDROID
-  } else if (res != -1 && option == PR_SET_SECCOMP &&
-             arg2 == SECCOMP_MODE_FILTER) {
-    COMMON_INTERCEPTOR_WRITE_RANGE(ctx, (u64 *)(arg3), struct_sock_fprog_sz);
-#  endif
+    COMMON_INTERCEPTOR_WRITE_RANGE(ctx, (u64*)(arg5), sizeof(u64));
   }
   return res;
 }
@@ -3474,27 +3427,23 @@ INTERCEPTOR(uptr, ptrace, int request, int pid, void *addr, void *data) {
   COMMON_INTERCEPTOR_ENTER(ctx, ptrace, request, pid, addr, data);
   __sanitizer_iovec local_iovec;
 
-  void *data_arg = ptrace_data_arg(request, addr, data);
-  if (data_arg) {
+  if (data) {
     if (request == ptrace_setregs) {
-      COMMON_INTERCEPTOR_READ_RANGE(ctx, data_arg, struct_user_regs_struct_sz);
+      COMMON_INTERCEPTOR_READ_RANGE(ctx, data, struct_user_regs_struct_sz);
     } else if (request == ptrace_setfpregs) {
-      COMMON_INTERCEPTOR_READ_RANGE(ctx, data_arg,
-                                    struct_user_fpregs_struct_sz);
+      COMMON_INTERCEPTOR_READ_RANGE(ctx, data, struct_user_fpregs_struct_sz);
     } else if (request == ptrace_setfpxregs) {
-      COMMON_INTERCEPTOR_READ_RANGE(ctx, data_arg,
-                                    struct_user_fpxregs_struct_sz);
+      COMMON_INTERCEPTOR_READ_RANGE(ctx, data, struct_user_fpxregs_struct_sz);
     } else if (request == ptrace_setvfpregs) {
-      COMMON_INTERCEPTOR_READ_RANGE(ctx, data_arg,
-                                    struct_user_vfpregs_struct_sz);
+      COMMON_INTERCEPTOR_READ_RANGE(ctx, data, struct_user_vfpregs_struct_sz);
     } else if (request == ptrace_setsiginfo) {
-      COMMON_INTERCEPTOR_READ_RANGE(ctx, data_arg, siginfo_t_sz);
+      COMMON_INTERCEPTOR_READ_RANGE(ctx, data, siginfo_t_sz);
 
-      // Some kernel might zero the iovec::iov_base in case of invalid
-      // write access.  In this case copy the invalid address for further
-      // inspection.
+    // Some kernel might zero the iovec::iov_base in case of invalid
+    // write access.  In this case copy the invalid address for further
+    // inspection.
     } else if (request == ptrace_setregset || request == ptrace_getregset) {
-      __sanitizer_iovec *iovec = (__sanitizer_iovec *)data_arg;
+      __sanitizer_iovec *iovec = (__sanitizer_iovec*)data;
       COMMON_INTERCEPTOR_READ_RANGE(ctx, iovec, sizeof(*iovec));
       local_iovec = *iovec;
       if (request == ptrace_setregset)
@@ -3507,26 +3456,23 @@ INTERCEPTOR(uptr, ptrace, int request, int pid, void *addr, void *data) {
   // https://github.com/google/sanitizers/issues/321.
   uptr res = REAL(ptrace)(request, pid, addr, data);
 
-  if (!res && data_arg) {
+  if (!res && data) {
     // Note that PEEK* requests assign different meaning to the return value.
     // This function does not handle them (nor does it need to).
     if (request == ptrace_getregs) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg, struct_user_regs_struct_sz);
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, struct_user_regs_struct_sz);
     } else if (request == ptrace_getfpregs) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg,
-                                     struct_user_fpregs_struct_sz);
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, struct_user_fpregs_struct_sz);
     } else if (request == ptrace_getfpxregs) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg,
-                                     struct_user_fpxregs_struct_sz);
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, struct_user_fpxregs_struct_sz);
     } else if (request == ptrace_getvfpregs) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg,
-                                     struct_user_vfpregs_struct_sz);
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, struct_user_vfpregs_struct_sz);
     } else if (request == ptrace_getsiginfo) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg, siginfo_t_sz);
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, siginfo_t_sz);
     } else if (request == ptrace_geteventmsg) {
-      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data_arg, sizeof(unsigned long));
+      COMMON_INTERCEPTOR_WRITE_RANGE(ctx, data, sizeof(unsigned long));
     } else if (request == ptrace_getregset) {
-      __sanitizer_iovec *iovec = (__sanitizer_iovec *)data_arg;
+      __sanitizer_iovec *iovec = (__sanitizer_iovec*)data;
       COMMON_INTERCEPTOR_WRITE_RANGE(ctx, iovec, sizeof(*iovec));
       COMMON_INTERCEPTOR_WRITE_RANGE(ctx, local_iovec.iov_base,
                                      local_iovec.iov_len);
@@ -9856,7 +9802,7 @@ INTERCEPTOR(SSIZE_T, getrandom, void *buf, SIZE_T buflen, unsigned int flags) {
   void *ctx;
   COMMON_INTERCEPTOR_ENTER(ctx, getrandom, buf, buflen, flags);
   // If GRND_NONBLOCK is set in the flags, it is non blocking.
-  static const int grnd_nonblock = 1;
+  static const int grnd_nonblock = 1; 
   SSIZE_T n;
   if ((flags & grnd_nonblock))
     n = REAL(getrandom)(buf, buflen, flags);
@@ -10170,23 +10116,6 @@ INTERCEPTOR(SSIZE_T, pwritev2, int fd, __sanitizer_iovec *iov, int iovcnt,
 #define INIT_PWRITEV2 COMMON_INTERCEPT_FUNCTION(pwritev2)
 #else
 #define INIT_PWRITEV2
-#endif
-
-#if SANITIZER_INTERCEPT_FREADLINK
-INTERCEPTOR(SSIZE_T, freadlink, int fd, char *buf, SIZE_T bufsiz) {
-  void *ctx;
-  COMMON_INTERCEPTOR_ENTER(ctx, freadlink, fd, buf, bufsiz);
-  COMMON_INTERCEPTOR_FD_ACCESS(ctx, fd);
-  SSIZE_T res = REAL(freadlink)(fd, buf, bufsiz);
-  if (res > 0)
-    COMMON_INTERCEPTOR_WRITE_RANGE(ctx, buf, res);
-  if (res >= 0 && fd > 0)
-    COMMON_INTERCEPTOR_FD_ACQUIRE(ctx, fd);
-  return res;
-}
-#  define INIT_FREADLINK COMMON_INTERCEPT_FUNCTION(freadlink)
-#else
-#  define INIT_FREADLINK
 #endif
 
 #include "sanitizer_common_interceptors_netbsd_compat.inc"
@@ -10508,7 +10437,6 @@ static void InitializeCommonInterceptors() {
   INIT_CPUSET_GETAFFINITY;
   INIT_PREADV2;
   INIT_PWRITEV2;
-  INIT_FREADLINK;
 
   INIT___PRINTF_CHK;
 }

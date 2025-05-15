@@ -65,7 +65,6 @@ enum ArchitectureType {
   eArchTypeMachO,
   eArchTypeELF,
   eArchTypeCOFF,
-  eArchTypeXCOFF,
   kNumArchTypes
 };
 
@@ -208,6 +207,8 @@ enum class CompilerContextKind : uint16_t {
   Builtin = 1 << 10,
 
   Any = 1 << 15,
+  /// Match 0..n nested modules.
+  AnyModule = Any | Module,
   /// Match any type.
   AnyType = Any | ClassOrStruct | Union | Enum | Typedef | Builtin,
   /// Math any declaration context.

@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/AST/ASTContext.h"
-#include "clang/AST/Availability.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/ExprObjC.h"
 #include "clang/AST/StmtVisitor.h"
@@ -305,7 +304,7 @@ static ObjCMethodDecl *getNSNumberFactoryMethod(SemaObjC &S, SourceLocation Loc,
         ParmVarDecl::Create(S.SemaRef.Context, Method, SourceLocation(),
                             SourceLocation(), &CX.Idents.get("value"),
                             NumberType, /*TInfo=*/nullptr, SC_None, nullptr);
-    Method->setMethodParams(S.SemaRef.Context, value, {});
+    Method->setMethodParams(S.SemaRef.Context, value, std::nullopt);
   }
 
   if (!validateBoxingMethod(S.SemaRef, Loc, S.NSNumberDecl, Sel, Method))
@@ -551,7 +550,9 @@ ExprResult SemaObjC::BuildObjCBoxedExpr(SourceRange SR, Expr *ValueExpr) {
             const llvm::UTF8 *StrEnd = Str.bytes_end();
             // Check that this is a valid UTF-8 string.
             if (llvm::isLegalUTF8String(&StrBegin, StrEnd)) {
-              BoxedType = Context.getAttributedType(NullabilityKind::NonNull,
+              BoxedType = Context.getAttributedType(
+                  AttributedType::getNullabilityAttrKind(
+                      NullabilityKind::NonNull),
                   NSStringPointer, NSStringPointer);
               return new (Context) ObjCBoxedExpr(CE, BoxedType, nullptr, SR);
             }
@@ -586,7 +587,7 @@ ExprResult SemaObjC::BuildObjCBoxedExpr(SourceRange SR, Expr *ValueExpr) {
                                 Context.getPointerType(ConstCharType),
                                 /*TInfo=*/nullptr,
                                 SC_None, nullptr);
-          M->setMethodParams(Context, value, {});
+          M->setMethodParams(Context, value, std::nullopt);
           BoxingMethod = M;
         }
 
@@ -603,8 +604,9 @@ ExprResult SemaObjC::BuildObjCBoxedExpr(SourceRange SR, Expr *ValueExpr) {
       std::optional<NullabilityKind> Nullability =
           BoxingMethod->getReturnType()->getNullability();
       if (Nullability)
-        BoxedType =
-            Context.getAttributedType(*Nullability, BoxedType, BoxedType);
+        BoxedType = Context.getAttributedType(
+            AttributedType::getNullabilityAttrKind(*Nullability), BoxedType,
+            BoxedType);
     }
   } else if (ValueType->isBuiltinType()) {
     // The other types we support are numeric, char and BOOL/bool. We could also
@@ -710,7 +712,7 @@ ExprResult SemaObjC::BuildObjCBoxedExpr(SourceRange SR, Expr *ValueExpr) {
                             SC_None, nullptr);
         Params.push_back(type);
 
-        M->setMethodParams(Context, Params, {});
+        M->setMethodParams(Context, Params, std::nullopt);
         BoxingMethod = M;
       }
 
@@ -840,7 +842,7 @@ ExprResult SemaObjC::BuildObjCArrayLiteral(SourceRange SR,
                                              /*TInfo=*/nullptr, SC_None,
                                              nullptr);
       Params.push_back(cnt);
-      Method->setMethodParams(Context, Params, {});
+      Method->setMethodParams(Context, Params, std::nullopt);
     }
 
     if (!validateBoxingMethod(SemaRef, Loc, NSArrayDecl, Sel, Method))
@@ -1009,7 +1011,7 @@ ExprResult SemaObjC::BuildObjCDictionaryLiteral(
                                              /*TInfo=*/nullptr, SC_None,
                                              nullptr);
       Params.push_back(cnt);
-      Method->setMethodParams(Context, Params, {});
+      Method->setMethodParams(Context, Params, std::nullopt);
     }
 
     if (!validateBoxingMethod(SemaRef, SR.getBegin(), NSDictionaryDecl, Sel,
@@ -1441,8 +1443,10 @@ static QualType stripObjCInstanceType(ASTContext &Context, QualType T) {
   QualType origType = T;
   if (auto nullability = AttributedType::stripOuterNullability(T)) {
     if (T == Context.getObjCInstanceType()) {
-      return Context.getAttributedType(*nullability, Context.getObjCIdType(),
-                                       Context.getObjCIdType());
+      return Context.getAttributedType(
+               AttributedType::getNullabilityAttrKind(*nullability),
+               Context.getObjCIdType(),
+               Context.getObjCIdType());
     }
 
     return origType;
@@ -1480,7 +1484,10 @@ static QualType getBaseMessageSendResultType(Sema &S,
       (void)AttributedType::stripOuterNullability(type);
 
       // Form a new attributed type using the method result type's nullability.
-      return Context.getAttributedType(*nullability, type, type);
+      return Context.getAttributedType(
+               AttributedType::getNullabilityAttrKind(*nullability),
+               type,
+               type);
     }
 
     return type;
@@ -1551,8 +1558,9 @@ QualType SemaObjC::getMessageSendResultType(const Expr *Receiver,
         QualType NewResultType = Context.getObjCObjectPointerType(
             Context.getObjCInterfaceType(MD->getClassInterface()));
         if (auto Nullability = resultType->getNullability())
-          NewResultType = Context.getAttributedType(*Nullability, NewResultType,
-                                                    NewResultType);
+          NewResultType = Context.getAttributedType(
+              AttributedType::getNullabilityAttrKind(*Nullability),
+              NewResultType, NewResultType);
         return NewResultType;
       }
     }
@@ -1614,7 +1622,9 @@ QualType SemaObjC::getMessageSendResultType(const Expr *Receiver,
   if (newResultNullabilityIdx > 0) {
     auto newNullability
       = static_cast<NullabilityKind>(newResultNullabilityIdx-1);
-    return Context.getAttributedType(newNullability, resultType, resultType);
+    return Context.getAttributedType(
+             AttributedType::getNullabilityAttrKind(newNullability),
+             resultType, resultType);
   }
 
   return resultType;
@@ -3196,10 +3206,9 @@ ExprResult SemaObjC::BuildInstanceMessage(
     }
     if (!isDesignatedInitChain) {
       const ObjCMethodDecl *InitMethod = nullptr;
-      auto *CurMD = SemaRef.getCurMethodDecl();
-      assert(CurMD && "Current method declaration should not be null");
       bool isDesignated =
-          CurMD->isDesignatedInitializerForTheInterface(&InitMethod);
+          SemaRef.getCurMethodDecl()->isDesignatedInitializerForTheInterface(
+              &InitMethod);
       assert(isDesignated && InitMethod);
       (void)isDesignated;
       Diag(SelLoc, SuperLoc.isValid() ?
@@ -4377,7 +4386,7 @@ bool SemaObjC::CheckObjCBridgeRelatedConversions(SourceLocation Loc,
 
         ExprResult msg = BuildInstanceMessageImplicit(
             SrcExpr, SrcType, InstanceMethod->getLocation(),
-            InstanceMethod->getSelector(), InstanceMethod, {});
+            InstanceMethod->getSelector(), InstanceMethod, std::nullopt);
         SrcExpr = msg.get();
       }
       return true;

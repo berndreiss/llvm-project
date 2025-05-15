@@ -163,7 +163,6 @@ void test_caller_accepts_nonconst() {
 
 struct MyVariant : std::variant<short, long, float> {};
 
-// FIXME: This is UB according to [namespace.std]
 namespace std {
 template <std::size_t Index>
 void get(const MyVariant&) {

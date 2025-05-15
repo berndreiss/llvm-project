@@ -42,7 +42,8 @@ TEST(FindDebugLocTest, DifferentIterators) {
   DIFile *OurFile = DIB.createFile("foo.c", "/bar");
   DICompileUnit *OurCU =
       DIB.createCompileUnit(dwarf::DW_LANG_C99, OurFile, "", false, "", 0);
-  auto OurSubT = DIB.createSubroutineType(DIB.getOrCreateTypeArray({}));
+  auto OurSubT =
+      DIB.createSubroutineType(DIB.getOrCreateTypeArray(std::nullopt));
   DISubprogram *OurFunc =
       DIB.createFunction(OurCU, "bees", "", OurFile, 1, OurSubT, 1,
                          DINode::FlagZero, DISubprogram::SPFlagDefinition);

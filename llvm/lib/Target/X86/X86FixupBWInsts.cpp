@@ -443,7 +443,8 @@ void FixupBWInstPass::processBasicBlock(MachineFunction &MF,
   // We run after PEI, so we need to AddPristinesAndCSRs.
   LiveUnits.addLiveOuts(MBB);
 
-  OptForSize = llvm::shouldOptimizeForSize(&MBB, PSI, MBFI);
+  OptForSize = MF.getFunction().hasOptSize() ||
+               llvm::shouldOptimizeForSize(&MBB, PSI, MBFI);
 
   for (MachineInstr &MI : llvm::reverse(MBB)) {
     if (MachineInstr *NewMI = tryReplaceInstr(&MI, MBB))

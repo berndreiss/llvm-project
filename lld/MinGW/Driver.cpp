@@ -514,8 +514,6 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
 
   for (auto *a : args.filtered(OPT_require_defined))
     add("-include:" + StringRef(a->getValue()));
-  for (auto *a : args.filtered(OPT_undefined_glob))
-    add("-includeglob:" + StringRef(a->getValue()));
   for (auto *a : args.filtered(OPT_undefined))
     add("-includeoptional:" + StringRef(a->getValue()));
   for (auto *a : args.filtered(OPT_delayload))

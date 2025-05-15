@@ -51,8 +51,8 @@ enum NodeType : unsigned {
   CallSeqEnd,
   CallPrototype,
   ProxyReg,
-  FSHL_CLAMP,
-  FSHR_CLAMP,
+  FUN_SHFL_CLAMP,
+  FUN_SHFR_CLAMP,
   MUL_WIDE_SIGNED,
   MUL_WIDE_UNSIGNED,
   IMAD,
@@ -61,17 +61,13 @@ enum NodeType : unsigned {
   BFE,
   BFI,
   PRMT,
-  FCOPYSIGN,
   DYNAMIC_STACKALLOC,
-  STACKRESTORE,
-  STACKSAVE,
-  BrxStart,
-  BrxItem,
-  BrxEnd,
   Dummy,
 
   LoadV2 = ISD::FIRST_TARGET_MEMORY_OPCODE,
   LoadV4,
+  LDGV2, // LDG.v2
+  LDGV4, // LDG.v4
   LDUV2, // LDU.v2
   LDUV4, // LDU.v4
   StoreV2,
@@ -528,8 +524,6 @@ public:
                     SmallVectorImpl<SDValue> &InVals) const override;
 
   SDValue LowerDYNAMIC_STACKALLOC(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
 
   std::string
   getPrototype(const DataLayout &DL, Type *, const ArgListTy &,
@@ -586,11 +580,6 @@ public:
     return true;
   }
 
-  // The default is the same as pointer type, but brx.idx only accepts i32
-  MVT getJumpTableRegTy(const DataLayout &) const override { return MVT::i32; }
-
-  unsigned getJumpTableEncoding() const override;
-
   bool enableAggressiveFMAFusion(EVT VT) const override { return true; }
 
   // The default is to transform llvm.ctlz(x, false) (where false indicates that
@@ -620,15 +609,11 @@ private:
   const NVPTXSubtarget &STI; // cache the subtarget here
   SDValue getParamSymbol(SelectionDAG &DAG, int idx, EVT) const;
 
-  SDValue LowerBITCAST(SDValue Op, SelectionDAG &DAG) const;
-
   SDValue LowerBUILD_VECTOR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCONCAT_VECTORS(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerEXTRACT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerINSERT_VECTOR_ELT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerVECTOR_SHUFFLE(SDValue Op, SelectionDAG &DAG) const;
-
-  SDValue LowerFCOPYSIGN(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerFROUND(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFROUND32(SDValue Op, SelectionDAG &DAG) const;
@@ -651,8 +636,6 @@ private:
   SDValue LowerShiftLeftParts(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerSelect(SDValue Op, SelectionDAG &DAG) const;
-
-  SDValue LowerBR_JT(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerVAARG(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG) const;

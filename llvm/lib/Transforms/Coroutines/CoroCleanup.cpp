@@ -53,7 +53,6 @@ bool Lowerer::lower(Function &F) {
       default:
         continue;
       case Intrinsic::coro_begin:
-      case Intrinsic::coro_begin_custom_abi:
         II->replaceAllUsesWith(II->getArgOperand(1));
         break;
       case Intrinsic::coro_free:
@@ -78,7 +77,7 @@ bool Lowerer::lower(Function &F) {
       case Intrinsic::coro_end:
       case Intrinsic::coro_suspend_retcon:
         if (IsPrivateAndUnprocessed) {
-          II->replaceAllUsesWith(PoisonValue::get(II->getType()));
+          II->replaceAllUsesWith(UndefValue::get(II->getType()));
         } else
           continue;
         break;
@@ -113,8 +112,7 @@ static bool declaresCoroCleanupIntrinsics(const Module &M) {
       M, {"llvm.coro.alloc", "llvm.coro.begin", "llvm.coro.subfn.addr",
           "llvm.coro.free", "llvm.coro.id", "llvm.coro.id.retcon",
           "llvm.coro.id.async", "llvm.coro.id.retcon.once",
-          "llvm.coro.async.size.replace", "llvm.coro.async.resume",
-          "llvm.coro.begin.custom.abi"});
+          "llvm.coro.async.size.replace", "llvm.coro.async.resume"});
 }
 
 PreservedAnalyses CoroCleanupPass::run(Module &M,

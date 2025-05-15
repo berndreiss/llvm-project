@@ -278,18 +278,16 @@ CSKYMCCodeEmitter::getRegisterSeqOpValue(const MCInst &MI, unsigned Op,
 unsigned CSKYMCCodeEmitter::getImmJMPIX(const MCInst &MI, unsigned Idx,
                                         SmallVectorImpl<MCFixup> &Fixups,
                                         const MCSubtargetInfo &STI) const {
-  switch (MI.getOperand(Idx).getImm()) {
-  default:
-    llvm_unreachable("Unhandled jmpix imm!");
-  case 16:
+  if (MI.getOperand(Idx).getImm() == 16)
     return 0;
-  case 24:
+  else if (MI.getOperand(Idx).getImm() == 24)
     return 1;
-  case 32:
+  else if (MI.getOperand(Idx).getImm() == 32)
     return 2;
-  case 40:
+  else if (MI.getOperand(Idx).getImm() == 40)
     return 3;
-  }
+  else
+    assert(0);
 }
 
 MCFixupKind CSKYMCCodeEmitter::getTargetFixup(const MCExpr *Expr) const {

@@ -52,7 +52,6 @@ public:
   struct Options {
     FunctionNameKind PrintFunctions = FunctionNameKind::LinkageName;
     FileLineInfoKind PathStyle = FileLineInfoKind::AbsoluteFilePath;
-    bool SkipLineZero = false;
     bool UseSymbolTable = true;
     bool Demangle = true;
     bool RelativeAddresses = false;
@@ -77,7 +76,7 @@ public:
   // Overloads accepting ObjectFile does not support COFF currently
   Expected<DILineInfo> symbolizeCode(const ObjectFile &Obj,
                                      object::SectionedAddress ModuleOffset);
-  Expected<DILineInfo> symbolizeCode(StringRef ModuleName,
+  Expected<DILineInfo> symbolizeCode(const std::string &ModuleName,
                                      object::SectionedAddress ModuleOffset);
   Expected<DILineInfo> symbolizeCode(ArrayRef<uint8_t> BuildID,
                                      object::SectionedAddress ModuleOffset);
@@ -85,7 +84,7 @@ public:
   symbolizeInlinedCode(const ObjectFile &Obj,
                        object::SectionedAddress ModuleOffset);
   Expected<DIInliningInfo>
-  symbolizeInlinedCode(StringRef ModuleName,
+  symbolizeInlinedCode(const std::string &ModuleName,
                        object::SectionedAddress ModuleOffset);
   Expected<DIInliningInfo>
   symbolizeInlinedCode(ArrayRef<uint8_t> BuildID,
@@ -93,14 +92,15 @@ public:
 
   Expected<DIGlobal> symbolizeData(const ObjectFile &Obj,
                                    object::SectionedAddress ModuleOffset);
-  Expected<DIGlobal> symbolizeData(StringRef ModuleName,
+  Expected<DIGlobal> symbolizeData(const std::string &ModuleName,
                                    object::SectionedAddress ModuleOffset);
   Expected<DIGlobal> symbolizeData(ArrayRef<uint8_t> BuildID,
                                    object::SectionedAddress ModuleOffset);
   Expected<std::vector<DILocal>>
   symbolizeFrame(const ObjectFile &Obj, object::SectionedAddress ModuleOffset);
   Expected<std::vector<DILocal>>
-  symbolizeFrame(StringRef ModuleName, object::SectionedAddress ModuleOffset);
+  symbolizeFrame(const std::string &ModuleName,
+                 object::SectionedAddress ModuleOffset);
   Expected<std::vector<DILocal>>
   symbolizeFrame(ArrayRef<uint8_t> BuildID,
                  object::SectionedAddress ModuleOffset);
@@ -108,7 +108,7 @@ public:
   Expected<std::vector<DILineInfo>>
   findSymbol(const ObjectFile &Obj, StringRef Symbol, uint64_t Offset);
   Expected<std::vector<DILineInfo>>
-  findSymbol(StringRef ModuleName, StringRef Symbol, uint64_t Offset);
+  findSymbol(const std::string &ModuleName, StringRef Symbol, uint64_t Offset);
   Expected<std::vector<DILineInfo>>
   findSymbol(ArrayRef<uint8_t> BuildID, StringRef Symbol, uint64_t Offset);
 
@@ -131,7 +131,8 @@ public:
   /// Only one attempt is made to load a module, and errors during loading are
   /// only reported once. Subsequent calls to get module info for a module that
   /// failed to load will return nullptr.
-  Expected<SymbolizableModule *> getOrCreateModuleInfo(StringRef ModuleName);
+  Expected<SymbolizableModule *>
+  getOrCreateModuleInfo(const std::string &ModuleName);
 
 private:
   // Bundles together object file with code/data and object file with
@@ -208,7 +209,7 @@ private:
       ObjectPairForPathArch;
 
   /// Contains parsed binary for each path, or parsing error.
-  std::map<std::string, CachedBinary, std::less<>> BinaryForPath;
+  std::map<std::string, CachedBinary> BinaryForPath;
 
   /// A list of cached binaries in LRU order.
   simple_ilist<CachedBinary> LRUBinaries;

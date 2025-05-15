@@ -19,7 +19,6 @@
     __cpp_lib_constrained_equality      202403L [C++26]
     __cpp_lib_freestanding_optional     202311L [C++26]
     __cpp_lib_optional                  201606L [C++17]
-                                        202106L [C++20]
                                         202110L [C++23]
     __cpp_lib_optional_range_support    202406L [C++26]
 */
@@ -97,8 +96,8 @@
 # ifndef __cpp_lib_optional
 #   error "__cpp_lib_optional should be defined in c++20"
 # endif
-# if __cpp_lib_optional != 202106L
-#   error "__cpp_lib_optional should have the value 202106L in c++20"
+# if __cpp_lib_optional != 201606L
+#   error "__cpp_lib_optional should have the value 201606L in c++20"
 # endif
 
 # ifdef __cpp_lib_optional_range_support

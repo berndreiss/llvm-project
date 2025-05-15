@@ -37,9 +37,7 @@ class MachineFunction;
 class TargetRegisterInfo;
 class VirtRegMap;
 
-class LiveRegMatrix {
-  friend class LiveRegMatrixWrapperLegacy;
-  friend class LiveRegMatrixAnalysis;
+class LiveRegMatrix : public MachineFunctionPass {
   const TargetRegisterInfo *TRI = nullptr;
   LiveIntervals *LIS = nullptr;
   VirtRegMap *VRM = nullptr;
@@ -59,17 +57,15 @@ class LiveRegMatrix {
   unsigned RegMaskVirtReg = 0;
   BitVector RegMaskUsable;
 
-  LiveRegMatrix() = default;
-  void releaseMemory();
+  // MachineFunctionPass boilerplate.
+  void getAnalysisUsage(AnalysisUsage &) const override;
+  bool runOnMachineFunction(MachineFunction &) override;
+  void releaseMemory() override;
 
 public:
-  LiveRegMatrix(LiveRegMatrix &&Other)
-      : TRI(Other.TRI), LIS(Other.LIS), VRM(Other.VRM), UserTag(Other.UserTag),
-        Matrix(std::move(Other.Matrix)), Queries(std::move(Other.Queries)),
-        RegMaskTag(Other.RegMaskTag), RegMaskVirtReg(Other.RegMaskVirtReg),
-        RegMaskUsable(std::move(Other.RegMaskUsable)) {}
+  static char ID;
 
-  void init(MachineFunction &MF, LiveIntervals &LIS, VirtRegMap &VRM);
+  LiveRegMatrix();
 
   //===--------------------------------------------------------------------===//
   // High-level interface.
@@ -118,16 +114,6 @@ public:
   /// the segment [Start, End).
   bool checkInterference(SlotIndex Start, SlotIndex End, MCRegister PhysReg);
 
-  /// Check for interference in the segment [Start, End) that may prevent
-  /// assignment to PhysReg, like checkInterference. Returns a lane mask of
-  /// which lanes of the physical register interfere in the segment [Start, End)
-  /// of some other interval already assigned to PhysReg.
-  ///
-  /// If this function returns LaneBitmask::getNone(), PhysReg is completely
-  /// free at the segment [Start, End).
-  LaneBitmask checkInterferenceLanes(SlotIndex Start, SlotIndex End,
-                                     MCRegister PhysReg);
-
   /// Assign VirtReg to PhysReg.
   /// This will mark VirtReg's live range as occupied in the LiveRegMatrix and
   /// update VirtRegMap. The live range is expected to be available in PhysReg.
@@ -171,32 +157,6 @@ public:
   LiveIntervalUnion *getLiveUnions() { return &Matrix[0]; }
 
   Register getOneVReg(unsigned PhysReg) const;
-};
-
-class LiveRegMatrixWrapperLegacy : public MachineFunctionPass {
-  LiveRegMatrix LRM;
-
-public:
-  static char ID;
-
-  LiveRegMatrixWrapperLegacy() : MachineFunctionPass(ID) {}
-
-  LiveRegMatrix &getLRM() { return LRM; }
-  const LiveRegMatrix &getLRM() const { return LRM; }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
-  bool runOnMachineFunction(MachineFunction &MF) override;
-  void releaseMemory() override;
-};
-
-class LiveRegMatrixAnalysis : public AnalysisInfoMixin<LiveRegMatrixAnalysis> {
-  friend AnalysisInfoMixin<LiveRegMatrixAnalysis>;
-  static AnalysisKey Key;
-
-public:
-  using Result = LiveRegMatrix;
-
-  LiveRegMatrix run(MachineFunction &MF, MachineFunctionAnalysisManager &MFAM);
 };
 
 } // end namespace llvm

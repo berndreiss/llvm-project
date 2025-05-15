@@ -201,8 +201,11 @@ const CachedRealPath &DependencyScanningFilesystemSharedCache::CacheShard::
   return *StoredRealPath;
 }
 
-bool DependencyScanningWorkerFilesystem::shouldBypass(StringRef Path) const {
-  return BypassedPathPrefix && Path.starts_with(*BypassedPathPrefix);
+static bool shouldCacheStatFailures(StringRef Filename) {
+  StringRef Ext = llvm::sys::path::extension(Filename);
+  if (Ext.empty())
+    return false; // This may be the module cache directory.
+  return true;
 }
 
 DependencyScanningWorkerFilesystem::DependencyScanningWorkerFilesystem(
@@ -241,6 +244,8 @@ DependencyScanningWorkerFilesystem::computeAndStoreResult(
   llvm::ErrorOr<llvm::vfs::Status> Stat =
       getUnderlyingFS().status(OriginalFilename);
   if (!Stat) {
+    if (!shouldCacheStatFailures(OriginalFilename))
+      return Stat.getError();
     const auto &Entry =
         getOrEmplaceSharedEntryForFilename(FilenameForLookup, Stat.getError());
     return insertLocalEntryForFilename(FilenameForLookup, Entry);
@@ -286,7 +291,7 @@ DependencyScanningWorkerFilesystem::status(const Twine &Path) {
   SmallString<256> OwnedFilename;
   StringRef Filename = Path.toStringRef(OwnedFilename);
 
-  if (shouldBypass(Filename))
+  if (Filename.ends_with(".pcm"))
     return getUnderlyingFS().status(Path);
 
   llvm::ErrorOr<EntryRef> Result = getOrCreateFileSystemEntry(Filename);
@@ -357,7 +362,7 @@ DependencyScanningWorkerFilesystem::openFileForRead(const Twine &Path) {
   SmallString<256> OwnedFilename;
   StringRef Filename = Path.toStringRef(OwnedFilename);
 
-  if (shouldBypass(Filename))
+  if (Filename.ends_with(".pcm"))
     return getUnderlyingFS().openFileForRead(Path);
 
   llvm::ErrorOr<EntryRef> Result = getOrCreateFileSystemEntry(Filename);
@@ -371,9 +376,6 @@ DependencyScanningWorkerFilesystem::getRealPath(const Twine &Path,
                                                 SmallVectorImpl<char> &Output) {
   SmallString<256> OwnedFilename;
   StringRef OriginalFilename = Path.toStringRef(OwnedFilename);
-
-  if (shouldBypass(OriginalFilename))
-    return getUnderlyingFS().getRealPath(Path, Output);
 
   SmallString<256> PathBuf;
   auto FilenameForLookup = tryGetFilenameForLookup(OriginalFilename, PathBuf);

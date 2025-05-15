@@ -39,6 +39,7 @@ namespace llvm {
 template <typename T, typename... TArgs> class AnalysisManager;
 template <class T> class ArrayRef;
 class AssumptionCache;
+class BinaryOperator;
 class CallBase;
 class DataLayout;
 class DominatorTree;

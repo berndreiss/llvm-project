@@ -27,9 +27,7 @@
 ; RUN:   | FileCheck %s --check-prefix=VERBOSE --check-prefix=CONV "--implicit-check-not={{DW_TAG|NULL}}"
 
 
-;; NB: This checks that the type reference in DW_OP_convert participates in the
-;; DWO hash.
-; SPLITCONV: Compile Unit:{{.*}} DWO_id = 0xbf4ac610d9ea282c
+; SPLITCONV: Compile Unit:{{.*}} DWO_id = 0x06580df9fdd5b54b
 ; SPLIT: DW_TAG_skeleton_unit
 
 ; CONV: DW_TAG_compile_unit

@@ -147,8 +147,4 @@ prepareTweak(StringRef ID, const Tweak::Selection &S,
 } // namespace clangd
 } // namespace clang
 
-namespace llvm {
-extern template class Registry<clang::clangd::Tweak>;
-} // namespace llvm
-
 #endif

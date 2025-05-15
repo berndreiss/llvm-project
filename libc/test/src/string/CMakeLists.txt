@@ -210,22 +210,21 @@ add_libc_test(
   SRCS
     strdup_test.cpp
   DEPENDS
+    libc.include.stdlib
     libc.src.string.strdup
     libc.src.errno.errno
 )
 
-# FIXME: This is failing on the bot for some reason, disable for now.
-if(NOT LIBC_TARGET_ARCHITECTURE_IS_NVPTX)
-  add_libc_test(
-    strerror_test
-    SUITE
-      libc-string-tests
-    SRCS
-      strerror_test.cpp
-    DEPENDS
-      libc.src.string.strerror
-  )
-endif()
+add_libc_test(
+  strerror_test
+  SUITE
+    libc-string-tests
+  SRCS
+    strerror_test.cpp
+  DEPENDS
+    libc.src.string.strerror
+)
+
 
 add_libc_test(
   strerror_r_test
@@ -314,6 +313,7 @@ add_libc_test(
   SRCS
     strndup_test.cpp
   DEPENDS
+    libc.include.stdlib
     libc.src.string.strndup
 )
 

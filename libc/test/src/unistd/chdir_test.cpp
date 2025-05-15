@@ -13,7 +13,7 @@
 #include "test/UnitTest/ErrnoSetterMatcher.h"
 #include "test/UnitTest/Test.h"
 
-#include "hdr/fcntl_macros.h"
+#include <fcntl.h>
 
 TEST(LlvmLibcChdirTest, ChangeAndOpen) {
   // The idea of this test is that we will first open an existing test file

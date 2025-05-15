@@ -38,20 +38,34 @@ void BuiltinDialect::registerLocationAttributes() {
 //===----------------------------------------------------------------------===//
 
 WalkResult LocationAttr::walk(function_ref<WalkResult(Location)> walkFn) {
-  AttrTypeWalker walker;
-  // Walk locations, but skip any other attribute.
-  walker.addWalk([&](Attribute attr) {
-    if (auto loc = llvm::dyn_cast<LocationAttr>(attr))
-      return walkFn(loc);
+  if (walkFn(*this).wasInterrupted())
+    return WalkResult::interrupt();
 
-    return WalkResult::skip();
-  });
-  return walker.walk<WalkOrder::PreOrder>(*this);
+  return TypeSwitch<LocationAttr, WalkResult>(*this)
+      .Case([&](CallSiteLoc callLoc) -> WalkResult {
+        if (callLoc.getCallee()->walk(walkFn).wasInterrupted())
+          return WalkResult::interrupt();
+        return callLoc.getCaller()->walk(walkFn);
+      })
+      .Case([&](FusedLoc fusedLoc) -> WalkResult {
+        for (Location subLoc : fusedLoc.getLocations())
+          if (subLoc->walk(walkFn).wasInterrupted())
+            return WalkResult::interrupt();
+        return WalkResult::advance();
+      })
+      .Case([&](NameLoc nameLoc) -> WalkResult {
+        return nameLoc.getChildLoc()->walk(walkFn);
+      })
+      .Case([&](OpaqueLoc opaqueLoc) -> WalkResult {
+        return opaqueLoc.getFallbackLocation()->walk(walkFn);
+      })
+      .Default(WalkResult::advance());
 }
 
 /// Methods for support type inquiry through isa, cast, and dyn_cast.
 bool LocationAttr::classof(Attribute attr) {
-  return attr.hasTrait<AttributeTrait::IsLocation>();
+  return llvm::isa<CallSiteLoc, FileLineColLoc, FusedLoc, NameLoc, OpaqueLoc,
+                   UnknownLoc>(attr);
 }
 
 //===----------------------------------------------------------------------===//

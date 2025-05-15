@@ -50,7 +50,9 @@ AssumptionCache::getOrInsertAffectedValues(Value *V) {
   if (AVI != AffectedValues.end())
     return AVI->second;
 
-  return AffectedValues[AffectedValueCallbackVH(V, this)];
+  auto AVIP = AffectedValues.insert(
+      {AffectedValueCallbackVH(V, this), SmallVector<ResultElem, 1>()});
+  return AVIP.first->second;
 }
 
 static void

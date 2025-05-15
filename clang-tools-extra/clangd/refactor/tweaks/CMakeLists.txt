@@ -29,7 +29,6 @@ add_clang_library(clangDaemonTweaks OBJECT
   RemoveUsingNamespace.cpp
   ScopifyEnum.cpp
   SpecialMembers.cpp
-  SwapBinaryOperands.cpp
   SwapIfBranches.cpp
 
   LINK_LIBS

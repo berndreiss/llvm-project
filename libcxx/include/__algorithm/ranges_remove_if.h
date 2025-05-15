@@ -53,7 +53,8 @@ __remove_if_impl(_Iter __first, _Sent __last, _Pred& __pred, _Proj& __proj) {
   return {__new_end, __i};
 }
 
-struct __remove_if {
+namespace __remove_if {
+struct __fn {
   template <permutable _Iter,
             sentinel_for<_Iter> _Sent,
             class _Proj = identity,
@@ -72,9 +73,10 @@ struct __remove_if {
     return ranges::__remove_if_impl(ranges::begin(__range), ranges::end(__range), __pred, __proj);
   }
 };
+} // namespace __remove_if
 
 inline namespace __cpo {
-inline constexpr auto remove_if = __remove_if{};
+inline constexpr auto remove_if = __remove_if::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

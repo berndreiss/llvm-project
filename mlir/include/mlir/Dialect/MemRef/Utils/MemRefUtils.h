@@ -32,8 +32,7 @@ namespace memref {
 bool isStaticShapeAndContiguousRowMajor(MemRefType type);
 
 /// For a `memref` with `offset`, `sizes` and `strides`, returns the
-/// offset, size, and potentially the size padded at the front to use for the
-/// linearized `memref`.
+/// offset and size to use for the linearized `memref`.
 /// - If the linearization is done for emulating load/stores of
 ///   element type with bitwidth `srcBits` using element type with
 ///   bitwidth `dstBits`, the linearized offset and size are
@@ -43,14 +42,9 @@ bool isStaticShapeAndContiguousRowMajor(MemRefType type);
 ///   index to use in the linearized `memref`. The linearized index
 ///   is also scaled down by `dstBits`/`srcBits`. If `indices` is not provided
 ///   0, is returned for the linearized index.
-/// - If the size of the load/store is smaller than the linearized memref
-/// load/store, the memory region emulated is larger than the actual memory
-/// region needed. `intraDataOffset` returns the element offset of the data
-/// relevant at the beginning.
 struct LinearizedMemRefInfo {
   OpFoldResult linearizedOffset;
   OpFoldResult linearizedSize;
-  OpFoldResult intraDataOffset;
 };
 std::pair<LinearizedMemRefInfo, OpFoldResult> getLinearizedMemRefOffsetAndSize(
     OpBuilder &builder, Location loc, int srcBits, int dstBits,
@@ -112,9 +106,9 @@ inline bool isSameViewOrTrivialAlias(MemrefValue a, MemrefValue b) {
   return skipFullyAliasingOperations(a) == skipFullyAliasingOperations(b);
 }
 
-/// Walk up the source chain until we find an operation that is not a view of
-/// the source memref (i.e. implements ViewLikeOpInterface).
-MemrefValue skipViewLikeOps(MemrefValue source);
+/// Walk up the source chain until something an op other than a `memref.subview`
+/// or `memref.cast` is found.
+MemrefValue skipSubViewsAndCasts(MemrefValue source);
 
 } // namespace memref
 } // namespace mlir

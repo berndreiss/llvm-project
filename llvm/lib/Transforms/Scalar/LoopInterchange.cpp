@@ -26,6 +26,7 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -382,7 +383,7 @@ struct LoopInterchange {
   }
 
   bool run(LoopNest &LN) {
-    SmallVector<Loop *, 8> LoopList(LN.getLoops());
+    SmallVector<Loop *, 8> LoopList(LN.getLoops().begin(), LN.getLoops().end());
     for (unsigned I = 1; I < LoopList.size(); ++I)
       if (LoopList[I]->getParentLoop() != LoopList[I - 1])
         return false;

@@ -80,6 +80,7 @@ namespace wasm {
 DefinedFunction *WasmSym::callCtors;
 DefinedFunction *WasmSym::callDtors;
 DefinedFunction *WasmSym::initMemory;
+DefinedFunction *WasmSym::applyDataRelocs;
 DefinedFunction *WasmSym::applyGlobalRelocs;
 DefinedFunction *WasmSym::applyTLSRelocs;
 DefinedFunction *WasmSym::applyGlobalTLSRelocs;

@@ -89,14 +89,8 @@ public:
   size_t size() const { return array_size; }
 
   // Make an Array starting at index |i| and size |s|.
-  LIBC_INLINE Array make_array(size_t i, size_t s) const {
+  Array make_array(size_t i, size_t s) const {
     return Array(get(i), s, elem_size, compare);
-  }
-
-  // Reset this Array to point at a different interval of the same items.
-  LIBC_INLINE void reset_bounds(uint8_t *a, size_t s) {
-    array = a;
-    array_size = s;
   }
 };
 

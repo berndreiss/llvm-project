@@ -127,8 +127,7 @@ void SPIRVRegularizer::runLowerConstExpr(Function &F) {
             ReplList.push_back(Inst);
           Repl = InsertElementInst::Create(
               (Repl ? Repl : PoisonValue::get(Vec->getType())), V,
-              ConstantInt::get(Type::getInt32Ty(Ctx), Idx++), "",
-              InsPoint->getIterator());
+              ConstantInt::get(Type::getInt32Ty(Ctx), Idx++), "", InsPoint);
         }
         WorkList.splice(WorkList.begin(), ReplList);
         return Repl;
@@ -235,12 +234,11 @@ void SPIRVRegularizer::visitCallScalToVec(CallInst *CI, StringRef MangledName,
   // %call = OpExtInst %v2uint %1 s_min %14 %11
   auto ConstInt = ConstantInt::get(IntegerType::get(CI->getContext(), 32), 0);
   PoisonValue *PVal = PoisonValue::get(Arg0Ty);
-  Instruction *Inst = InsertElementInst::Create(
-      PVal, CI->getOperand(1), ConstInt, "", CI->getIterator());
+  Instruction *Inst =
+      InsertElementInst::Create(PVal, CI->getOperand(1), ConstInt, "", CI);
   ElementCount VecElemCount = cast<VectorType>(Arg0Ty)->getElementCount();
   Constant *ConstVec = ConstantVector::getSplat(VecElemCount, ConstInt);
-  Value *NewVec =
-      new ShuffleVectorInst(Inst, PVal, ConstVec, "", CI->getIterator());
+  Value *NewVec = new ShuffleVectorInst(Inst, PVal, ConstVec, "", CI);
   CI->setOperand(1, NewVec);
   CI->replaceUsesOfWith(OldF, NewF);
   CI->mutateFunctionType(NewF->getFunctionType());

@@ -237,7 +237,7 @@ transform::TransformState::setPayloadOps(Value value,
 
   // Setting new payload for the value without cleaning it first is a misuse of
   // the API, assert here.
-  SmallVector<Operation *> storedTargets(targets);
+  SmallVector<Operation *> storedTargets(targets.begin(), targets.end());
   Mappings &mappings = getMapping(value);
   bool inserted =
       mappings.direct.insert({value, std::move(storedTargets)}).second;
@@ -330,7 +330,7 @@ void transform::TransformState::forgetMapping(Value opHandle,
   for (Operation *op : mappings.direct[opHandle])
     dropMappingEntry(mappings.reverse, op, opHandle);
   mappings.direct.erase(opHandle);
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
   // Payload IR is removed from the mapping. This invalidates the respective
   // iterators.
   mappings.incrementTimestamp(opHandle);
@@ -342,7 +342,7 @@ void transform::TransformState::forgetMapping(Value opHandle,
     for (Value resultHandle : resultHandles) {
       Mappings &localMappings = getMapping(resultHandle);
       dropMappingEntry(localMappings.values, resultHandle, opResult);
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
       // Payload IR is removed from the mapping. This invalidates the respective
       // iterators.
       mappings.incrementTimestamp(resultHandle);
@@ -358,7 +358,7 @@ void transform::TransformState::forgetValueMapping(
   for (Value payloadValue : mappings.reverseValues[valueHandle])
     dropMappingEntry(mappings.reverseValues, payloadValue, valueHandle);
   mappings.values.erase(valueHandle);
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
   // Payload IR is removed from the mapping. This invalidates the respective
   // iterators.
   mappings.incrementTimestamp(valueHandle);
@@ -372,7 +372,7 @@ void transform::TransformState::forgetValueMapping(
       dropMappingEntry(localMappings.direct, opHandle, payloadOp);
       dropMappingEntry(localMappings.reverse, payloadOp, opHandle);
 
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
       // Payload IR is removed from the mapping. This invalidates the respective
       // iterators.
       localMappings.incrementTimestamp(opHandle);
@@ -452,7 +452,7 @@ transform::TransformState::replacePayloadValue(Value value, Value replacement) {
     // between the handles and the IR objects
     if (!replacement) {
       dropMappingEntry(mappings.values, handle, value);
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
       // Payload IR is removed from the mapping. This invalidates the respective
       // iterators.
       mappings.incrementTimestamp(handle);
@@ -804,7 +804,7 @@ checkRepeatedConsumptionInOperand(ArrayRef<T> payload,
 void transform::TransformState::compactOpHandles() {
   for (Value handle : opHandlesToCompact) {
     Mappings &mappings = getMapping(handle, /*allowOutOfScope=*/true);
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
     if (llvm::find(mappings.direct[handle], nullptr) !=
         mappings.direct[handle].end())
       // Payload IR is removed from the mapping. This invalidates the respective
@@ -934,10 +934,12 @@ transform::TransformState::applyTransform(TransformOpInterface transform) {
     assert(scopeIt != regionStack.rend() &&
            "could not find region scope for handle");
     RegionScope *scope = *scopeIt;
-    return llvm::all_of(handle.getUsers(), [&](Operation *user) {
-      return user == scope->currentTransform ||
-             happensBefore(user, scope->currentTransform);
-    });
+    for (Operation *user : handle.getUsers()) {
+      if (user != scope->currentTransform &&
+          !happensBefore(user, scope->currentTransform))
+        return false;
+    }
+    return true;
   };
   transform::ErrorCheckingTrackingListener trackingListener(*this, transform,
                                                             config);
@@ -1997,9 +1999,7 @@ LogicalResult transform::detail::verifyTransformOpInterface(Operation *op) {
 LogicalResult transform::applyTransforms(
     Operation *payloadRoot, TransformOpInterface transform,
     const RaggedArray<MappedValue> &extraMapping,
-    const TransformOptions &options, bool enforceToplevelTransformOp,
-    function_ref<void(TransformState &)> stateInitializer,
-    function_ref<LogicalResult(TransformState &)> stateExporter) {
+    const TransformOptions &options, bool enforceToplevelTransformOp) {
   if (enforceToplevelTransformOp) {
     if (!transform->hasTrait<PossibleTopLevelTransformOpTrait>() ||
         transform->getNumOperands() != 0) {
@@ -2013,13 +2013,7 @@ LogicalResult transform::applyTransforms(
 
   TransformState state(transform->getParentRegion(), payloadRoot, extraMapping,
                        options);
-  if (stateInitializer)
-    stateInitializer(state);
-  if (state.applyTransform(transform).checkAndReport().failed())
-    return failure();
-  if (stateExporter)
-    return stateExporter(state);
-  return success();
+  return state.applyTransform(transform).checkAndReport();
 }
 
 //===----------------------------------------------------------------------===//

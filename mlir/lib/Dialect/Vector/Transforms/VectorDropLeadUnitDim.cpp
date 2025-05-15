@@ -550,7 +550,9 @@ struct CastAwayConstantMaskLeadingOneDim
       return failure();
 
     int64_t dropDim = oldType.getRank() - newType.getRank();
-    ArrayRef<int64_t> dimSizes = mask.getMaskDimSizes();
+    SmallVector<int64_t> dimSizes;
+    for (auto attr : mask.getMaskDimSizes())
+      dimSizes.push_back(llvm::cast<IntegerAttr>(attr).getInt());
 
     // If any of the dropped unit dims has a size of `0`, the entire mask is a
     // zero mask, else the unit dim has no effect on the mask.
@@ -561,7 +563,7 @@ struct CastAwayConstantMaskLeadingOneDim
     newDimSizes.append(dimSizes.begin() + dropDim + 1, dimSizes.end());
 
     auto newMask = rewriter.create<vector::ConstantMaskOp>(
-        mask.getLoc(), newType, newDimSizes);
+        mask.getLoc(), newType, rewriter.getI64ArrayAttr(newDimSizes));
     rewriter.replaceOpWithNewOp<vector::BroadcastOp>(mask, oldType, newMask);
     return success();
   }

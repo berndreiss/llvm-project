@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "MCTargetDesc/SystemZGNUInstPrinter.h"
+#include "MCTargetDesc/SystemZInstPrinter.h"
 #include "MCTargetDesc/SystemZMCAsmInfo.h"
 #include "MCTargetDesc/SystemZMCTargetDesc.h"
 #include "SystemZTargetStreamer.h"
@@ -416,8 +416,7 @@ private:
     return static_cast<SystemZTargetStreamer &>(TS);
   }
 
-  bool parseRegister(Register &Reg, bool RequirePercent,
-                     bool RestoreOnFailure = false);
+  bool parseRegister(Register &Reg, bool RestoreOnFailure = false);
 
   bool parseIntegerRegister(Register &Reg, RegisterGroup Group);
 
@@ -442,7 +441,7 @@ private:
 
   bool parseOperand(OperandVector &Operands, StringRef Mnemonic);
 
-  // Both the hlasm and gnu variants still rely on the basic gnu asm
+  // Both the hlasm and att variants still rely on the basic gnu asm
   // format with respect to inputs, clobbers, outputs etc.
   //
   // However, calling the overriden getAssemblerDialect() method in
@@ -475,8 +474,8 @@ private:
   // Are we parsing using the AD_HLASM dialect?
   inline bool isParsingHLASM() { return getMAIAssemblerDialect() == AD_HLASM; }
 
-  // Are we parsing using the AD_GNU dialect?
-  inline bool isParsingGNU() { return getMAIAssemblerDialect() == AD_GNU; }
+  // Are we parsing using the AD_ATT dialect?
+  inline bool isParsingATT() { return getMAIAssemblerDialect() == AD_ATT; }
 
 public:
   SystemZAsmParser(const MCSubtargetInfo &sti, MCAsmParser &parser,
@@ -496,12 +495,12 @@ public:
   ParseStatus parseDirective(AsmToken DirectiveID) override;
   bool parseRegister(MCRegister &Reg, SMLoc &StartLoc, SMLoc &EndLoc) override;
   bool ParseRegister(MCRegister &RegNo, SMLoc &StartLoc, SMLoc &EndLoc,
-                     bool RequirePercent, bool RestoreOnFailure);
+                     bool RestoreOnFailure);
   ParseStatus tryParseRegister(MCRegister &Reg, SMLoc &StartLoc,
                                SMLoc &EndLoc) override;
-  bool parseInstruction(ParseInstructionInfo &Info, StringRef Name,
+  bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
-  bool matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
+  bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
@@ -721,7 +720,7 @@ void SystemZOperand::print(raw_ostream &OS) const {
     OS << "Token:" << getToken();
     break;
   case KindReg:
-    OS << "Reg:" << SystemZGNUInstPrinter::getRegisterName(getReg());
+    OS << "Reg:" << SystemZInstPrinter::getRegisterName(getReg());
     break;
   case KindImm:
     OS << "Imm:";
@@ -743,10 +742,10 @@ void SystemZOperand::print(raw_ostream &OS) const {
       if (Op.MemKind == BDLMem)
         OS << *cast<MCConstantExpr>(Op.Length.Imm) << ",";
       else if (Op.MemKind == BDRMem)
-        OS << SystemZGNUInstPrinter::getRegisterName(Op.Length.Reg) << ",";
+        OS << SystemZInstPrinter::getRegisterName(Op.Length.Reg) << ",";
       if (Op.Index)
-        OS << SystemZGNUInstPrinter::getRegisterName(Op.Index) << ",";
-      OS << SystemZGNUInstPrinter::getRegisterName(Op.Base);
+        OS << SystemZInstPrinter::getRegisterName(Op.Index) << ",";
+      OS << SystemZInstPrinter::getRegisterName(Op.Base);
       OS << ")";
     }
     break;
@@ -757,32 +756,26 @@ void SystemZOperand::print(raw_ostream &OS) const {
 }
 
 // Parse one register of the form %<prefix><number>.
-bool SystemZAsmParser::parseRegister(Register &Reg, bool RequirePercent,
-                                     bool RestoreOnFailure) {
+bool SystemZAsmParser::parseRegister(Register &Reg, bool RestoreOnFailure) {
+  Reg.StartLoc = Parser.getTok().getLoc();
+
+  // Eat the % prefix.
+  if (Parser.getTok().isNot(AsmToken::Percent))
+    return Error(Parser.getTok().getLoc(), "register expected");
   const AsmToken &PercentTok = Parser.getTok();
-  bool HasPercent = PercentTok.is(AsmToken::Percent);
-
-  Reg.StartLoc = PercentTok.getLoc();
-
-  if (RequirePercent && PercentTok.isNot(AsmToken::Percent))
-    return Error(PercentTok.getLoc(), "register expected");
-
-  if (HasPercent) {
-    Parser.Lex(); // Eat percent token.
-  }
+  Parser.Lex();
 
   // Expect a register name.
   if (Parser.getTok().isNot(AsmToken::Identifier)) {
-    if (RestoreOnFailure && HasPercent)
+    if (RestoreOnFailure)
       getLexer().UnLex(PercentTok);
-    return Error(Reg.StartLoc,
-                 HasPercent ? "invalid register" : "register expected");
+    return Error(Reg.StartLoc, "invalid register");
   }
 
   // Check that there's a prefix.
   StringRef Name = Parser.getTok().getString();
   if (Name.size() < 2) {
-    if (RestoreOnFailure && HasPercent)
+    if (RestoreOnFailure)
       getLexer().UnLex(PercentTok);
     return Error(Reg.StartLoc, "invalid register");
   }
@@ -790,7 +783,7 @@ bool SystemZAsmParser::parseRegister(Register &Reg, bool RequirePercent,
 
   // Treat the rest of the register name as a register number.
   if (Name.substr(1).getAsInteger(10, Reg.Num)) {
-    if (RestoreOnFailure && HasPercent)
+    if (RestoreOnFailure)
       getLexer().UnLex(PercentTok);
     return Error(Reg.StartLoc, "invalid register");
   }
@@ -807,7 +800,7 @@ bool SystemZAsmParser::parseRegister(Register &Reg, bool RequirePercent,
   else if (Prefix == 'c' && Reg.Num < 16)
     Reg.Group = RegCR;
   else {
-    if (RestoreOnFailure && HasPercent)
+    if (RestoreOnFailure)
       getLexer().UnLex(PercentTok);
     return Error(Reg.StartLoc, "invalid register");
   }
@@ -848,8 +841,8 @@ ParseStatus SystemZAsmParser::parseRegister(OperandVector &Operands,
   }
 
   // Handle register names of the form %<prefix><number>
-  if (isParsingGNU() && Parser.getTok().is(AsmToken::Percent)) {
-    if (parseRegister(Reg, /*RequirePercent=*/true))
+  if (isParsingATT() && Parser.getTok().is(AsmToken::Percent)) {
+    if (parseRegister(Reg))
       return ParseStatus::Failure;
 
     // Check the parsed register group "Reg.Group" with the expected "Group"
@@ -925,7 +918,7 @@ ParseStatus SystemZAsmParser::parseAnyRegister(OperandVector &Operands) {
       return ParseStatus::NoMatch;
 
     Register Reg;
-    if (parseRegister(Reg, /*RequirePercent=*/true))
+    if (parseRegister(Reg))
       return ParseStatus::Failure;
 
     if (Reg.Num > 15)
@@ -1029,10 +1022,10 @@ bool SystemZAsmParser::parseAddress(bool &HaveReg1, Register &Reg1,
   if (getLexer().is(AsmToken::LParen)) {
     Parser.Lex();
 
-    if (isParsingGNU() && getLexer().is(AsmToken::Percent)) {
+    if (isParsingATT() && getLexer().is(AsmToken::Percent)) {
       // Parse the first register.
       HaveReg1 = true;
-      if (parseRegister(Reg1, /*RequirePercent=*/true))
+      if (parseRegister(Reg1))
         return true;
     }
     // So if we have an integer as the first token in ([tok1], ..), it could:
@@ -1072,7 +1065,7 @@ bool SystemZAsmParser::parseAddress(bool &HaveReg1, Register &Reg1,
         if (parseIntegerRegister(Reg2, RegGR))
           return true;
       } else {
-        if (isParsingGNU() && parseRegister(Reg2, /*RequirePercent=*/true))
+        if (isParsingATT() && parseRegister(Reg2))
           return true;
       }
     }
@@ -1362,10 +1355,9 @@ bool SystemZAsmParser::ParseGNUAttribute(SMLoc L) {
 }
 
 bool SystemZAsmParser::ParseRegister(MCRegister &RegNo, SMLoc &StartLoc,
-                                     SMLoc &EndLoc, bool RequirePercent,
-                                     bool RestoreOnFailure) {
+                                     SMLoc &EndLoc, bool RestoreOnFailure) {
   Register Reg;
-  if (parseRegister(Reg, RequirePercent, RestoreOnFailure))
+  if (parseRegister(Reg, RestoreOnFailure))
     return true;
   if (Reg.Group == RegGR)
     RegNo = SystemZMC::GR64Regs[Reg.Num];
@@ -1384,14 +1376,12 @@ bool SystemZAsmParser::ParseRegister(MCRegister &RegNo, SMLoc &StartLoc,
 
 bool SystemZAsmParser::parseRegister(MCRegister &Reg, SMLoc &StartLoc,
                                      SMLoc &EndLoc) {
-  return ParseRegister(Reg, StartLoc, EndLoc, /*RequirePercent=*/false,
-                       /*RestoreOnFailure=*/false);
+  return ParseRegister(Reg, StartLoc, EndLoc, /*RestoreOnFailure=*/false);
 }
 
 ParseStatus SystemZAsmParser::tryParseRegister(MCRegister &Reg, SMLoc &StartLoc,
                                                SMLoc &EndLoc) {
-  bool Result = ParseRegister(Reg, StartLoc, EndLoc, /*RequirePercent=*/false,
-                              /*RestoreOnFailure=*/true);
+  bool Result = ParseRegister(Reg, StartLoc, EndLoc, /*RestoreOnFailure=*/true);
   bool PendingErrors = getParser().hasPendingError();
   getParser().clearPendingErrors();
   if (PendingErrors)
@@ -1401,7 +1391,7 @@ ParseStatus SystemZAsmParser::tryParseRegister(MCRegister &Reg, SMLoc &StartLoc,
   return ParseStatus::Success;
 }
 
-bool SystemZAsmParser::parseInstruction(ParseInstructionInfo &Info,
+bool SystemZAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                         StringRef Name, SMLoc NameLoc,
                                         OperandVector &Operands) {
 
@@ -1490,9 +1480,9 @@ bool SystemZAsmParser::parseOperand(OperandVector &Operands,
   // a context-dependent parse routine, which gives the required register
   // class.  The code is here to mop up other cases, like those where
   // the instruction isn't recognized.
-  if (isParsingGNU() && Parser.getTok().is(AsmToken::Percent)) {
+  if (isParsingATT() && Parser.getTok().is(AsmToken::Percent)) {
     Register Reg;
-    if (parseRegister(Reg, /*RequirePercent=*/true))
+    if (parseRegister(Reg))
       return true;
     Operands.push_back(SystemZOperand::createInvalid(Reg.StartLoc, Reg.EndLoc));
     return false;
@@ -1526,7 +1516,7 @@ bool SystemZAsmParser::parseOperand(OperandVector &Operands,
   return false;
 }
 
-bool SystemZAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
+bool SystemZAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                                OperandVector &Operands,
                                                MCStreamer &Out,
                                                uint64_t &ErrorInfo,
@@ -1672,7 +1662,7 @@ ParseStatus SystemZAsmParser::parsePCRel(OperandVector &Operands,
 }
 
 bool SystemZAsmParser::isLabel(AsmToken &Token) {
-  if (isParsingGNU())
+  if (isParsingATT())
     return true;
 
   // HLASM labels are ordinary symbols.

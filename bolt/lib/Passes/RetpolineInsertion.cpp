@@ -181,6 +181,7 @@ std::string createRetpolineFunctionTag(BinaryContext &BC,
   if (BrInfo.isReg()) {
     BC.InstPrinter->printRegName(TagOS, BrInfo.BranchReg);
     TagOS << "_";
+    TagOS.flush();
     return Tag;
   }
 
@@ -211,6 +212,7 @@ std::string createRetpolineFunctionTag(BinaryContext &BC,
     BC.InstPrinter->printRegName(TagOS, MemRef.SegRegNum);
   }
 
+  TagOS.flush();
   return Tag;
 }
 

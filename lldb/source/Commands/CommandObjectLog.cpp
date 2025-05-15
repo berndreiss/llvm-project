@@ -99,12 +99,14 @@ public:
         handler = (LogHandlerKind)OptionArgParser::ToOptionEnum(
             option_arg, GetDefinitions()[option_idx].enum_values, 0, error);
         if (!error.Success())
-          return Status::FromErrorStringWithFormatv(
-              "unrecognized value for log handler '{0}'", option_arg);
+          error.SetErrorStringWithFormat(
+              "unrecognized value for log handler '%s'",
+              option_arg.str().c_str());
         break;
       case 'b':
-        return buffer_size.SetValueFromString(option_arg,
-                                              eVarSetOperationAssign);
+        error =
+            buffer_size.SetValueFromString(option_arg, eVarSetOperationAssign);
+        break;
       case 'v':
         log_options |= LLDB_LOG_OPTION_VERBOSE;
         break;
@@ -204,7 +206,7 @@ protected:
         channel, args.GetArgumentArrayRef(), log_file, m_options.log_options,
         m_options.buffer_size.GetCurrentValue(), m_options.handler,
         error_stream);
-    result.GetErrorStream() << error;
+    result.GetErrorStream() << error_stream.str();
 
     if (success)
       result.SetStatus(eReturnStatusSuccessFinishNoResult);
@@ -273,7 +275,7 @@ protected:
       if (Log::DisableLogChannel(channel, args.GetArgumentArrayRef(),
                                  error_stream))
         result.SetStatus(eReturnStatusSuccessFinishNoResult);
-      result.GetErrorStream() << error;
+      result.GetErrorStream() << error_stream.str();
     }
   }
 };
@@ -313,7 +315,7 @@ protected:
       if (success)
         result.SetStatus(eReturnStatusSuccessFinishResult);
     }
-    result.GetOutputStream() << output;
+    result.GetOutputStream() << output_stream.str();
   }
 };
 class CommandObjectLogDump : public CommandObjectParsed {
@@ -404,7 +406,7 @@ protected:
       result.SetStatus(eReturnStatusSuccessFinishNoResult);
     } else {
       result.SetStatus(eReturnStatusFailed);
-      result.GetErrorStream() << error;
+      result.GetErrorStream() << error_stream.str();
     }
   }
 

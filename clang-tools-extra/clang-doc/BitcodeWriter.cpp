@@ -536,8 +536,6 @@ void ClangDocBitcodeWriter::emitBlock(const EnumValueInfo &I) {
   emitRecord(I.Name, ENUM_VALUE_NAME);
   emitRecord(I.Value, ENUM_VALUE_VALUE);
   emitRecord(I.ValueExpr, ENUM_VALUE_EXPR);
-  for (const auto &CI : I.Description)
-    emitBlock(CI);
 }
 
 void ClangDocBitcodeWriter::emitBlock(const RecordInfo &I) {

@@ -212,7 +212,7 @@ MDNode *MachineLoop::getLoopID() const {
           }
         }
         if (!MD)
-          continue;
+          return nullptr;
         if (!LoopID)
           LoopID = MD;
         else if (MD != LoopID)
@@ -287,7 +287,7 @@ bool MachineLoop::isLoopInvariant(MachineInstr &I,
       }
     }
 
-    if (!MO.readsReg())
+    if (!MO.isUse())
       continue;
 
     assert(MRI->getVRegDef(Reg) &&

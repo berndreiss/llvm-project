@@ -165,8 +165,7 @@ public:
   /// Make a deep copy of this offloading file.
   OffloadFile copy() const {
     std::unique_ptr<MemoryBuffer> Buffer = MemoryBuffer::getMemBufferCopy(
-        getBinary()->getMemoryBufferRef().getBuffer(),
-        getBinary()->getMemoryBufferRef().getBufferIdentifier());
+        getBinary()->getMemoryBufferRef().getBuffer());
 
     // This parsing should never fail because it has already been parsed.
     auto NewBinaryOrErr = OffloadBinary::create(*Buffer);

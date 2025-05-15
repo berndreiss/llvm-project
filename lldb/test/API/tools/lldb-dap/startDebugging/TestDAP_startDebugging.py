@@ -1,10 +1,12 @@
 """
-Test lldb-dap start-debugging reverse requests.
+Test lldb-dap startDebugging reverse request
 """
 
 
+import dap_server
 from lldbsuite.test.decorators import *
 from lldbsuite.test.lldbtest import *
+from lldbsuite.test import lldbutil
 import lldbdap_testcase
 
 
@@ -23,7 +25,7 @@ class TestDAP_startDebugging(lldbdap_testcase.DAPTestCaseBase):
         self.set_source_breakpoints(source, [breakpoint_line])
         self.continue_to_next_stop()
         self.dap_server.request_evaluate(
-            "`lldb-dap start-debugging attach '{\"pid\":321}'", context="repl"
+            "`lldb-dap startDebugging attach '{\"pid\":321}'", context="repl"
         )
 
         self.continue_to_exit()

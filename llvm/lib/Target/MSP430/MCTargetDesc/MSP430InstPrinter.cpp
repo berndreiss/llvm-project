@@ -26,7 +26,7 @@ using namespace llvm;
 #define PRINT_ALIAS_INSTR
 #include "MSP430GenAsmWriter.inc"
 
-void MSP430InstPrinter::printRegName(raw_ostream &O, MCRegister Reg) {
+void MSP430InstPrinter::printRegName(raw_ostream &O, MCRegister Reg) const {
   O << getRegisterName(Reg);
 }
 

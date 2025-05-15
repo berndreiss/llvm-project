@@ -28,15 +28,13 @@ class NarrowTypeEmulationConverter;
 /// types into supported ones. This is done by splitting original power-of-two
 /// i2N integer types into two iN halves.
 void populateArithWideIntEmulationPatterns(
-    const WideIntEmulationConverter &typeConverter,
-    RewritePatternSet &patterns);
+    WideIntEmulationConverter &typeConverter, RewritePatternSet &patterns);
 
 /// Adds patterns to emulate narrow Arith and Function ops into wide
 /// supported types. Users need to add conversions about the computation
 /// domain of narrow types.
 void populateArithNarrowTypeEmulationPatterns(
-    const NarrowTypeEmulationConverter &typeConverter,
-    RewritePatternSet &patterns);
+    NarrowTypeEmulationConverter &typeConverter, RewritePatternSet &patterns);
 
 /// Populate the type conversions needed to emulate the unsupported
 /// `sourceTypes` with `destType`
@@ -47,12 +45,12 @@ void populateEmulateUnsupportedFloatsConversions(TypeConverter &converter,
 /// Add rewrite patterns for converting operations that use illegal float types
 /// to ones that use legal ones.
 void populateEmulateUnsupportedFloatsPatterns(RewritePatternSet &patterns,
-                                              const TypeConverter &converter);
+                                              TypeConverter &converter);
 
 /// Set up a dialect conversion to reject arithmetic operations on unsupported
 /// float types.
 void populateEmulateUnsupportedFloatsLegality(ConversionTarget &target,
-                                              const TypeConverter &converter);
+                                              TypeConverter &converter);
 /// Add patterns to expand Arith ceil/floor division ops.
 void populateCeilFloorDivExpandOpsPatterns(RewritePatternSet &patterns);
 
@@ -70,17 +68,12 @@ std::unique_ptr<Pass> createArithUnsignedWhenEquivalentPass();
 void populateIntRangeOptimizationsPatterns(RewritePatternSet &patterns,
                                            DataFlowSolver &solver);
 
-/// Replace signed ops with unsigned ones where they are proven equivalent.
-void populateUnsignedWhenEquivalentPatterns(RewritePatternSet &patterns,
-                                            DataFlowSolver &solver);
-
 /// Create a pass which do optimizations based on integer range analysis.
 std::unique_ptr<Pass> createIntRangeOptimizationsPass();
 
-/// Add patterns for int range based narrowing.
-void populateIntRangeNarrowingPatterns(RewritePatternSet &patterns,
-                                       DataFlowSolver &solver,
-                                       ArrayRef<unsigned> bitwidthsSupported);
+/// Add patterns for integer bitwidth narrowing.
+void populateArithIntNarrowingPatterns(RewritePatternSet &patterns,
+                                       const ArithIntNarrowingOptions &options);
 
 //===----------------------------------------------------------------------===//
 // Registration

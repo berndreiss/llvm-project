@@ -37,8 +37,13 @@ struct TestSPIRVFuncSignatureConversion final
   }
 
   void runOnOperation() override {
-    Operation *op = getOperation();
-    (void)spirv::unrollVectorsInSignatures(op);
+    RewritePatternSet patterns(&getContext());
+    populateFuncOpVectorRewritePatterns(patterns);
+    populateReturnOpVectorRewritePatterns(patterns);
+    GreedyRewriteConfig config;
+    config.strictMode = GreedyRewriteStrictness::ExistingOps;
+    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns),
+                                       config);
   }
 };
 

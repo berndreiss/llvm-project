@@ -30,7 +30,6 @@
 #include <string>
 #include <vector>
 
-using namespace llvm;
 using testing::ContainerEq;
 using testing::Test;
 

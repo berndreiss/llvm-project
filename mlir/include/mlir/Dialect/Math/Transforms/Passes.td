@@ -19,7 +19,7 @@ def MathUpliftToFMA : Pass<"math-uplift-to-fma"> {
   let dependentDialects = ["math::MathDialect"];
 }
 
-def MathExtendToSupportedTypes : Pass<"math-extend-to-supported-types"> {
+def MathLegalizeToF32 : Pass<"math-legalize-to-f32"> {
   let summary = "Legalize floating-point math ops on low-precision floats";
   let description = [{
     On many targets, the math functions are not implemented for floating-point
@@ -28,19 +28,11 @@ def MathExtendToSupportedTypes : Pass<"math-extend-to-supported-types"> {
 
     This pass explicitly legalizes these math functions by inserting
     `arith.extf` and `arith.truncf` pairs around said op, which preserves
-    the original semantics while enabling lowering. The extra supported floating-point
-    types for the target are passed as arguments. Types f64 and f32 are implicitly 
-    supported.
+    the original semantics while enabling lowering.
 
     As an exception, this pass does not legalize `math.fma`, because
     that is an operation frequently implemented at low precisions.
   }];
-  let options = [
-    ListOption<"extraTypeStrs", "extra-types", "std::string",
-      "MLIR types with arithmetic support on a given target (f64 and f32 are implicitly supported)">,
-    Option<"targetTypeStr", "target-type", "std::string", "\"f32\"",
-      "MLIR type to convert the unsupported source types to">,
-  ];
   let dependentDialects = ["math::MathDialect", "arith::ArithDialect"];
 }
 

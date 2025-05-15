@@ -72,7 +72,6 @@ struct ShaderHash {
   std::vector<llvm::yaml::Hex8> Digest;
 };
 
-using ResourceFlags = dxbc::PSV::ResourceFlags;
 using ResourceBindInfo = dxbc::PSV::v2::ResourceBindInfo;
 
 struct SignatureElement {
@@ -177,8 +176,6 @@ LLVM_YAML_IS_SEQUENCE_VECTOR(llvm::DXContainerYAML::SignatureParameter)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::PSV::SemanticKind)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::PSV::ComponentType)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::PSV::InterpolationMode)
-LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::PSV::ResourceType)
-LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::PSV::ResourceKind)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::D3DSystemValue)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::SigComponentType)
 LLVM_YAML_DECLARE_ENUM_TRAITS(llvm::dxbc::SigMinPrecision)
@@ -219,10 +216,6 @@ template <> struct MappingTraits<DXContainerYAML::Part> {
 
 template <> struct MappingTraits<DXContainerYAML::Object> {
   static void mapping(IO &IO, DXContainerYAML::Object &Obj);
-};
-
-template <> struct MappingTraits<DXContainerYAML::ResourceFlags> {
-  static void mapping(IO &IO, DXContainerYAML::ResourceFlags &Flags);
 };
 
 template <> struct MappingTraits<DXContainerYAML::ResourceBindInfo> {

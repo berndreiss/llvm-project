@@ -19,7 +19,6 @@
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/Transforms/SubsetInsertionOpInterfaceImpl.h"
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
-#include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/Operation.h"
 
@@ -637,28 +636,6 @@ struct InsertOpInterface
   }
 };
 
-template <typename InsertOpTy>
-static bool insertSliceOpRequiresRead(InsertOpTy insertSliceOp,
-                                      OpOperand &opOperand) {
-  // The source is always read.
-  if (opOperand == insertSliceOp.getSourceMutable())
-    return true;
-
-  // For the destination, it depends...
-  assert(opOperand == insertSliceOp.getDestMutable() && "expected dest");
-
-  // Dest is not read if it is entirely overwritten. E.g.:
-  // tensor.insert_slice %a into %t[0][10][1] : ... into tensor<10xf32>
-  bool allOffsetsZero =
-      llvm::all_of(insertSliceOp.getMixedOffsets(), isZeroIndex);
-  RankedTensorType destType = insertSliceOp.getDestType();
-  bool sizesMatchDestSizes =
-      areConstantIntValues(insertSliceOp.getMixedSizes(), destType.getShape());
-  bool allStridesOne =
-      areAllConstantIntValue(insertSliceOp.getMixedStrides(), 1);
-  return !(allOffsetsZero && sizesMatchDestSizes && allStridesOne);
-}
-
 /// Bufferization of tensor.insert_slice. Replace with a memory copy. Under
 /// certain circumstances, this op can also be a no-op.
 ///
@@ -669,8 +646,32 @@ struct InsertSliceOpInterface
                                                      tensor::InsertSliceOp> {
   bool bufferizesToMemoryRead(Operation *op, OpOperand &opOperand,
                               const AnalysisState &state) const {
-    return insertSliceOpRequiresRead(cast<tensor::InsertSliceOp>(op),
-                                     opOperand);
+    auto insertSliceOp = cast<tensor::InsertSliceOp>(op);
+    RankedTensorType destType = insertSliceOp.getDestType();
+
+    // The source is always read.
+    if (opOperand == insertSliceOp.getSourceMutable())
+      return true;
+
+    // For the destination, it depends...
+    assert(opOperand == insertSliceOp.getDestMutable() && "expected dest");
+
+    // Dest is not read if it is entirely overwritten. E.g.:
+    // tensor.insert_slice %a into %t[0][10][1] : ... into tensor<10xf32>
+    bool allOffsetsZero =
+        llvm::all_of(insertSliceOp.getMixedOffsets(), [](OpFoldResult ofr) {
+          return isConstantIntValue(ofr, 0);
+        });
+    bool sizesMatchDestSizes = llvm::all_of(
+        llvm::enumerate(insertSliceOp.getMixedSizes()), [&](const auto &it) {
+          return getConstantIntValue(it.value()) ==
+                 destType.getDimSize(it.index());
+        });
+    bool allStridesOne =
+        llvm::all_of(insertSliceOp.getMixedStrides(), [](OpFoldResult ofr) {
+          return isConstantIntValue(ofr, 1);
+        });
+    return !(allOffsetsZero && sizesMatchDestSizes && allStridesOne);
   }
 
   LogicalResult bufferize(Operation *op, RewriterBase &rewriter,
@@ -930,8 +931,7 @@ struct ParallelInsertSliceOpInterface
 
   bool bufferizesToMemoryRead(Operation *op, OpOperand &opOperand,
                               const AnalysisState &state) const {
-    return insertSliceOpRequiresRead(cast<tensor::ParallelInsertSliceOp>(op),
-                                     opOperand);
+    return true;
   }
 
   bool bufferizesToMemoryWrite(Operation *op, OpOperand &opOperand,

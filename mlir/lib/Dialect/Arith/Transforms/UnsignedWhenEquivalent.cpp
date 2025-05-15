@@ -13,8 +13,7 @@
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
 #include "mlir/Analysis/DataFlow/IntegerRangeAnalysis.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Transforms/WalkPatternRewriteDriver.h"
+#include "mlir/Transforms/DialectConversion.h"
 
 namespace mlir {
 namespace arith {
@@ -30,9 +29,6 @@ using namespace mlir::dataflow;
 /// Succeeds when a value is statically non-negative in that it has a lower
 /// bound on its value (if it is treated as signed) and that bound is
 /// non-negative.
-// TODO: IntegerRangeAnalysis internally assumes index is 64bit and this pattern
-// relies on this. These transformations may not be valid for 32bit index,
-// need more investigation.
 static LogicalResult staticallyNonNegative(DataFlowSolver &solver, Value v) {
   auto *result = solver.lookupState<IntegerValueRangeLattice>(v);
   if (!result || result->getValue().isUninitialized())
@@ -89,60 +85,35 @@ static CmpIPredicate toUnsignedPred(CmpIPredicate pred) {
 }
 
 namespace {
-class DataFlowListener : public RewriterBase::Listener {
-public:
-  DataFlowListener(DataFlowSolver &s) : s(s) {}
-
-protected:
-  void notifyOperationErased(Operation *op) override {
-    s.eraseState(s.getProgramPointAfter(op));
-    for (Value res : op->getResults())
-      s.eraseState(res);
-  }
-
-  DataFlowSolver &s;
-};
-
 template <typename Signed, typename Unsigned>
-struct ConvertOpToUnsigned final : OpRewritePattern<Signed> {
-  ConvertOpToUnsigned(MLIRContext *context, DataFlowSolver &s)
-      : OpRewritePattern<Signed>(context), solver(s) {}
+struct ConvertOpToUnsigned : OpConversionPattern<Signed> {
+  using OpConversionPattern<Signed>::OpConversionPattern;
 
-  LogicalResult matchAndRewrite(Signed op, PatternRewriter &rw) const override {
-    if (failed(
-            staticallyNonNegative(this->solver, static_cast<Operation *>(op))))
-      return failure();
-
-    rw.replaceOpWithNewOp<Unsigned>(op, op->getResultTypes(), op->getOperands(),
-                                    op->getAttrs());
+  LogicalResult matchAndRewrite(Signed op, typename Signed::Adaptor adaptor,
+                                ConversionPatternRewriter &rw) const override {
+    rw.replaceOpWithNewOp<Unsigned>(op, op->getResultTypes(),
+                                    adaptor.getOperands(), op->getAttrs());
     return success();
   }
-
-private:
-  DataFlowSolver &solver;
 };
 
-struct ConvertCmpIToUnsigned final : OpRewritePattern<CmpIOp> {
-  ConvertCmpIToUnsigned(MLIRContext *context, DataFlowSolver &s)
-      : OpRewritePattern<CmpIOp>(context), solver(s) {}
+struct ConvertCmpIToUnsigned : OpConversionPattern<CmpIOp> {
+  using OpConversionPattern<CmpIOp>::OpConversionPattern;
 
-  LogicalResult matchAndRewrite(CmpIOp op, PatternRewriter &rw) const override {
-    if (failed(isCmpIConvertable(this->solver, op)))
-      return failure();
-
+  LogicalResult matchAndRewrite(CmpIOp op, CmpIOpAdaptor adaptor,
+                                ConversionPatternRewriter &rw) const override {
     rw.replaceOpWithNewOp<CmpIOp>(op, toUnsignedPred(op.getPredicate()),
                                   op.getLhs(), op.getRhs());
     return success();
   }
-
-private:
-  DataFlowSolver &solver;
 };
 
 struct ArithUnsignedWhenEquivalentPass
     : public arith::impl::ArithUnsignedWhenEquivalentBase<
           ArithUnsignedWhenEquivalentPass> {
-
+  /// Implementation structure: first find all equivalent ops and collect them,
+  /// then perform all the rewrites in a second pass over the target op. This
+  /// ensures that analysis results are not invalidated during rewriting.
   void runOnOperation() override {
     Operation *op = getOperation();
     MLIRContext *ctx = op->getContext();
@@ -152,27 +123,34 @@ struct ArithUnsignedWhenEquivalentPass
     if (failed(solver.initializeAndRun(op)))
       return signalPassFailure();
 
-    DataFlowListener listener(solver);
+    ConversionTarget target(*ctx);
+    target.addLegalDialect<ArithDialect>();
+    target.addDynamicallyLegalOp<DivSIOp, CeilDivSIOp, FloorDivSIOp, RemSIOp,
+                                 MinSIOp, MaxSIOp, ExtSIOp>(
+        [&solver](Operation *op) -> std::optional<bool> {
+          return failed(staticallyNonNegative(solver, op));
+        });
+    target.addDynamicallyLegalOp<CmpIOp>(
+        [&solver](CmpIOp op) -> std::optional<bool> {
+          return failed(isCmpIConvertable(solver, op));
+        });
 
     RewritePatternSet patterns(ctx);
-    populateUnsignedWhenEquivalentPatterns(patterns, solver);
+    patterns.add<ConvertOpToUnsigned<DivSIOp, DivUIOp>,
+                 ConvertOpToUnsigned<CeilDivSIOp, CeilDivUIOp>,
+                 ConvertOpToUnsigned<FloorDivSIOp, DivUIOp>,
+                 ConvertOpToUnsigned<RemSIOp, RemUIOp>,
+                 ConvertOpToUnsigned<MinSIOp, MinUIOp>,
+                 ConvertOpToUnsigned<MaxSIOp, MaxUIOp>,
+                 ConvertOpToUnsigned<ExtSIOp, ExtUIOp>, ConvertCmpIToUnsigned>(
+        ctx);
 
-    walkAndApplyPatterns(op, std::move(patterns), &listener);
+    if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
+      signalPassFailure();
+    }
   }
 };
 } // end anonymous namespace
-
-void mlir::arith::populateUnsignedWhenEquivalentPatterns(
-    RewritePatternSet &patterns, DataFlowSolver &solver) {
-  patterns.add<ConvertOpToUnsigned<DivSIOp, DivUIOp>,
-               ConvertOpToUnsigned<CeilDivSIOp, CeilDivUIOp>,
-               ConvertOpToUnsigned<FloorDivSIOp, DivUIOp>,
-               ConvertOpToUnsigned<RemSIOp, RemUIOp>,
-               ConvertOpToUnsigned<MinSIOp, MinUIOp>,
-               ConvertOpToUnsigned<MaxSIOp, MaxUIOp>,
-               ConvertOpToUnsigned<ExtSIOp, ExtUIOp>, ConvertCmpIToUnsigned>(
-      patterns.getContext(), solver);
-}
 
 std::unique_ptr<Pass> mlir::arith::createArithUnsignedWhenEquivalentPass() {
   return std::make_unique<ArithUnsignedWhenEquivalentPass>();

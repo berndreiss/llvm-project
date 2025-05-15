@@ -20,8 +20,6 @@
  * THE SOFTWARE.
  */
 
-#include <clc/clctypes.h>
-
 #define TABLE_SPACE __constant
 
 #define TABLE_MANGLE(NAME) __clc_##NAME

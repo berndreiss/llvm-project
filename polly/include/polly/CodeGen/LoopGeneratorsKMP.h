@@ -27,8 +27,9 @@ using llvm::GlobalVariable;
 class ParallelLoopGeneratorKMP final : public ParallelLoopGenerator {
 public:
   /// Create a parallel loop generator for the current function.
-  ParallelLoopGeneratorKMP(PollyIRBuilder &Builder, const DataLayout &DL)
-      : ParallelLoopGenerator(Builder, DL) {
+  ParallelLoopGeneratorKMP(PollyIRBuilder &Builder, LoopInfo &LI,
+                           DominatorTree &DT, const DataLayout &DL)
+      : ParallelLoopGenerator(Builder, LI, DT, DL) {
     SourceLocationInfo = createSourceLocation();
   }
 

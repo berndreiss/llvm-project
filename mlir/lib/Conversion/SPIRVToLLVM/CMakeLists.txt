@@ -18,7 +18,6 @@ add_mlir_conversion_library(MLIRSPIRVToLLVM
   MLIRLLVMCommonConversion
   MLIRLLVMDialect
   MLIRMemRefToLLVM
-  MLIRSPIRVAttrToLLVMConversion
   MLIRSPIRVDialect
   MLIRSPIRVUtils
   MLIRTransforms

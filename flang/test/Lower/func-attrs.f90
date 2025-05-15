@@ -3,34 +3,29 @@
 pure subroutine sub1()
 end
 
-! CHECK: func.func @_QPsub1() attributes {fir.proc_attrs = #fir.proc_attrs<pure>}
+! CHECK: func.func @_QPsub1() attributes {fir.func_pure}
 
 elemental subroutine sub2()
 end
 
-! CHECK: func.func @_QPsub2() attributes {fir.proc_attrs = #fir.proc_attrs<elemental, pure>}
+! CHECK: func.func @_QPsub2() attributes {fir.func_elemental, fir.func_pure}
 
-non_recursive subroutine sub3()
+recursive subroutine sub3()
 end
 
-! CHECK: func.func @_QPsub3() attributes {fir.proc_attrs = #fir.proc_attrs<non_recursive>}
-
-impure elemental subroutine sub4()
-end
-
-! CHECK: func.func @_QPsub4() attributes {fir.proc_attrs = #fir.proc_attrs<elemental>}
+! CHECK: func.func @_QPsub3() attributes {fir.func_recursive}
 
 pure function fct1()
 end
 
-! CHECK: func.func @_QPfct1() -> f32 attributes {fir.proc_attrs = #fir.proc_attrs<pure>}
+! CHECK: func.func @_QPfct1() -> f32 attributes {fir.func_pure}
 
 elemental function fct2()
 end
 
-! CHECK: func.func @_QPfct2() -> f32 attributes {fir.proc_attrs = #fir.proc_attrs<elemental, pure>}
+! CHECK: func.func @_QPfct2() -> f32 attributes {fir.func_elemental, fir.func_pure}
 
-non_recursive function fct3()
+recursive function fct3()
 end
 
-! CHECK: func.func @_QPfct3() -> f32 attributes {fir.proc_attrs = #fir.proc_attrs<non_recursive>}
+! CHECK: func.func @_QPfct3() -> f32 attributes {fir.func_recursive}

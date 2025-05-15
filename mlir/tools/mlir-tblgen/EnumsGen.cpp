@@ -26,9 +26,10 @@
 using llvm::formatv;
 using llvm::isDigit;
 using llvm::PrintFatalError;
+using llvm::raw_ostream;
 using llvm::Record;
 using llvm::RecordKeeper;
-using namespace mlir;
+using llvm::StringRef;
 using mlir::tblgen::Attribute;
 using mlir::tblgen::EnumAttr;
 using mlir::tblgen::EnumAttrCase;
@@ -138,7 +139,7 @@ inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, {0} value) {{
     // is not a power of two (i.e. not a single bit case) and not a known case.
   } else if (enumAttr.isBitEnum()) {
     // Process the known multi-bit cases that use valid keywords.
-    SmallVector<EnumAttrCase *> validMultiBitCases;
+    llvm::SmallVector<EnumAttrCase *> validMultiBitCases;
     for (auto [index, caseVal] : llvm::enumerate(cases)) {
       uint64_t value = caseVal.getValue();
       if (value && !llvm::has_single_bit(value) && !nonKeywordCases.test(index))
@@ -475,7 +476,7 @@ static void emitSpecializedAttrDef(const Record &enumDef, raw_ostream &os) {
   EnumAttr enumAttr(enumDef);
   StringRef enumName = enumAttr.getEnumClassName();
   StringRef attrClassName = enumAttr.getSpecializedAttrClassName();
-  const Record *baseAttrDef = enumAttr.getBaseAttrClass();
+  llvm::Record *baseAttrDef = enumAttr.getBaseAttrClass();
   Attribute baseAttr(baseAttrDef);
 
   // Emit classof method
@@ -564,7 +565,7 @@ static void emitEnumDecl(const Record &enumDef, raw_ostream &os) {
   StringRef underlyingToSymFnName = enumAttr.getUnderlyingToSymbolFnName();
   auto enumerants = enumAttr.getAllCases();
 
-  SmallVector<StringRef, 2> namespaces;
+  llvm::SmallVector<StringRef, 2> namespaces;
   llvm::SplitString(cppNamespace, namespaces, "::");
 
   for (auto ns : namespaces)
@@ -641,11 +642,11 @@ public:
   emitDenseMapInfo(qualName, underlyingType, cppNamespace, os);
 }
 
-static bool emitEnumDecls(const RecordKeeper &records, raw_ostream &os) {
-  llvm::emitSourceFileHeader("Enum Utility Declarations", os, records);
+static bool emitEnumDecls(const RecordKeeper &recordKeeper, raw_ostream &os) {
+  llvm::emitSourceFileHeader("Enum Utility Declarations", os, recordKeeper);
 
-  for (const Record *def :
-       records.getAllDerivedDefinitionsIfDefined("EnumAttrInfo"))
+  auto defs = recordKeeper.getAllDerivedDefinitionsIfDefined("EnumAttrInfo");
+  for (const auto *def : defs)
     emitEnumDecl(*def, os);
 
   return false;
@@ -655,7 +656,7 @@ static void emitEnumDef(const Record &enumDef, raw_ostream &os) {
   EnumAttr enumAttr(enumDef);
   StringRef cppNamespace = enumAttr.getCppNamespace();
 
-  SmallVector<StringRef, 2> namespaces;
+  llvm::SmallVector<StringRef, 2> namespaces;
   llvm::SplitString(cppNamespace, namespaces, "::");
 
   for (auto ns : namespaces)
@@ -679,11 +680,11 @@ static void emitEnumDef(const Record &enumDef, raw_ostream &os) {
   os << "\n";
 }
 
-static bool emitEnumDefs(const RecordKeeper &records, raw_ostream &os) {
-  llvm::emitSourceFileHeader("Enum Utility Definitions", os, records);
+static bool emitEnumDefs(const RecordKeeper &recordKeeper, raw_ostream &os) {
+  llvm::emitSourceFileHeader("Enum Utility Definitions", os, recordKeeper);
 
-  for (const Record *def :
-       records.getAllDerivedDefinitionsIfDefined("EnumAttrInfo"))
+  auto defs = recordKeeper.getAllDerivedDefinitionsIfDefined("EnumAttrInfo");
+  for (const auto *def : defs)
     emitEnumDef(*def, os);
 
   return false;

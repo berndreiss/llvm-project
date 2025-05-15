@@ -10,7 +10,6 @@
 #include "clang-include-cleaner/Types.h"
 #include "clang/AST/Decl.h"
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/FileEntry.h"
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Frontend/CompilerInvocation.h"
@@ -25,7 +24,6 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/Path.h"
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Testing/Annotations/Annotations.h"
@@ -55,11 +53,9 @@ MATCHER_P(named, N, "") {
 }
 
 MATCHER_P(FileNamed, N, "") {
-  llvm::StringRef ActualName =
-      llvm::sys::path::remove_leading_dotslash(arg.getName());
-  if (ActualName == N)
+  if (arg.getFileEntry().tryGetRealPathName() == N)
     return true;
-  *result_listener << ActualName.str();
+  *result_listener << arg.getFileEntry().tryGetRealPathName().str();
   return false;
 }
 
@@ -234,7 +230,7 @@ TEST_F(RecordPPTest, CapturesMacroRefs) {
   const auto &SM = AST.sourceManager();
 
   SourceLocation Def = SM.getComposedLoc(
-      SM.translateFile(*AST.fileManager().getOptionalFileRef("header.h")),
+      SM.translateFile(AST.fileManager().getFile("header.h").get()),
       Header.point("def"));
   ASSERT_THAT(Recorded.MacroReferences, Not(IsEmpty()));
   Symbol OrigX = Recorded.MacroReferences.front().Target;
@@ -321,8 +317,7 @@ protected:
   }
 
   TestAST build(bool ResetPragmaIncludes = true) {
-    if (ResetPragmaIncludes)
-      PI = PragmaIncludes();
+    if (ResetPragmaIncludes) PI = PragmaIncludes();
     return TestAST(Inputs);
   }
 
@@ -368,29 +363,29 @@ TEST_F(PragmaIncludeTest, IWYUKeep) {
   TestAST Processed = build();
   auto &FM = Processed.fileManager();
 
-  EXPECT_FALSE(PI.shouldKeep(*FM.getOptionalFileRef("normal.h")));
-  EXPECT_FALSE(PI.shouldKeep(*FM.getOptionalFileRef("std/vector")));
+  EXPECT_FALSE(PI.shouldKeep(FM.getFile("normal.h").get()));
+  EXPECT_FALSE(PI.shouldKeep(FM.getFile("std/vector").get()));
 
   // Keep
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep1.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep2.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep3.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep4.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep5.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("keep6.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("std/map")));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep1.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep2.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep3.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep4.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep5.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("keep6.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("std/map").get()));
 
   // Exports
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("export1.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("export2.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("export3.h")));
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("std/set")));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("export1.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("export2.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("export3.h").get()));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("std/set").get()));
 }
 
 TEST_F(PragmaIncludeTest, AssociatedHeader) {
   createEmptyFiles({"foo/main.h", "bar/main.h", "bar/other.h", "std/vector"});
   auto IsKeep = [&](llvm::StringRef Name, TestAST &AST) {
-    return PI.shouldKeep(*AST.fileManager().getOptionalFileRef(Name));
+    return PI.shouldKeep(AST.fileManager().getFile(Name).get());
   };
 
   Inputs.FileName = "main.cc";
@@ -452,19 +447,19 @@ TEST_F(PragmaIncludeTest, IWYUPrivate) {
     // IWYU pragma: private
   )cpp";
   TestAST Processed = build();
-  auto PrivateFE = Processed.fileManager().getOptionalFileRef("private.h");
+  auto PrivateFE = Processed.fileManager().getFile("private.h");
   assert(PrivateFE);
-  EXPECT_TRUE(PI.isPrivate(*PrivateFE));
-  EXPECT_EQ(PI.getPublic(*PrivateFE), "\"public2.h\"");
+  EXPECT_TRUE(PI.isPrivate(PrivateFE.get()));
+  EXPECT_EQ(PI.getPublic(PrivateFE.get()), "\"public2.h\"");
 
-  auto PublicFE = Processed.fileManager().getOptionalFileRef("public.h");
+  auto PublicFE = Processed.fileManager().getFile("public.h");
   assert(PublicFE);
-  EXPECT_EQ(PI.getPublic(*PublicFE), ""); // no mapping.
-  EXPECT_FALSE(PI.isPrivate(*PublicFE));
+  EXPECT_EQ(PI.getPublic(PublicFE.get()), ""); // no mapping.
+  EXPECT_FALSE(PI.isPrivate(PublicFE.get()));
 
-  auto Private2FE = Processed.fileManager().getOptionalFileRef("private2.h");
+  auto Private2FE = Processed.fileManager().getFile("private2.h");
   assert(Private2FE);
-  EXPECT_TRUE(PI.isPrivate(*Private2FE));
+  EXPECT_TRUE(PI.isPrivate(Private2FE.get()));
 }
 
 TEST_F(PragmaIncludeTest, IWYUExport) {
@@ -486,13 +481,13 @@ TEST_F(PragmaIncludeTest, IWYUExport) {
   const auto &SM = Processed.sourceManager();
   auto &FM = Processed.fileManager();
 
-  EXPECT_THAT(PI.getExporters(*FM.getOptionalFileRef("private.h"), FM),
+  EXPECT_THAT(PI.getExporters(FM.getFile("private.h").get(), FM),
               testing::UnorderedElementsAre(FileNamed("export1.h"),
                                             FileNamed("export3.h")));
 
-  EXPECT_TRUE(PI.getExporters(*FM.getOptionalFileRef("export1.h"), FM).empty());
-  EXPECT_TRUE(PI.getExporters(*FM.getOptionalFileRef("export2.h"), FM).empty());
-  EXPECT_TRUE(PI.getExporters(*FM.getOptionalFileRef("export3.h"), FM).empty());
+  EXPECT_TRUE(PI.getExporters(FM.getFile("export1.h").get(), FM).empty());
+  EXPECT_TRUE(PI.getExporters(FM.getFile("export2.h").get(), FM).empty());
+  EXPECT_TRUE(PI.getExporters(FM.getFile("export3.h").get(), FM).empty());
   EXPECT_TRUE(
       PI.getExporters(SM.getFileEntryForID(SM.getMainFileID()), FM).empty());
 }
@@ -540,32 +535,16 @@ TEST_F(PragmaIncludeTest, IWYUExportBlock) {
   TestAST Processed = build();
   auto &FM = Processed.fileManager();
 
-  auto GetNames = [](llvm::ArrayRef<FileEntryRef> FEs) {
-    std::string Result;
-    llvm::raw_string_ostream OS(Result);
-    for (auto &FE : FEs) {
-      OS << FE.getName() << " ";
-    }
-    return Result;
-  };
-  auto Exporters = PI.getExporters(*FM.getOptionalFileRef("private1.h"), FM);
-  EXPECT_THAT(Exporters, testing::UnorderedElementsAre(FileNamed("export1.h"),
-                                                       FileNamed("normal.h")))
-      << GetNames(Exporters);
+  EXPECT_THAT(PI.getExporters(FM.getFile("private1.h").get(), FM),
+              testing::UnorderedElementsAre(FileNamed("export1.h"),
+                                            FileNamed("normal.h")));
+  EXPECT_THAT(PI.getExporters(FM.getFile("private2.h").get(), FM),
+              testing::UnorderedElementsAre(FileNamed("export1.h")));
+  EXPECT_THAT(PI.getExporters(FM.getFile("private3.h").get(), FM),
+              testing::UnorderedElementsAre(FileNamed("export1.h")));
 
-  Exporters = PI.getExporters(*FM.getOptionalFileRef("private2.h"), FM);
-  EXPECT_THAT(Exporters, testing::UnorderedElementsAre(FileNamed("export1.h")))
-      << GetNames(Exporters);
-
-  Exporters = PI.getExporters(*FM.getOptionalFileRef("private3.h"), FM);
-  EXPECT_THAT(Exporters, testing::UnorderedElementsAre(FileNamed("export1.h")))
-      << GetNames(Exporters);
-
-  Exporters = PI.getExporters(*FM.getOptionalFileRef("foo.h"), FM);
-  EXPECT_TRUE(Exporters.empty()) << GetNames(Exporters);
-
-  Exporters = PI.getExporters(*FM.getOptionalFileRef("bar.h"), FM);
-  EXPECT_TRUE(Exporters.empty()) << GetNames(Exporters);
+  EXPECT_TRUE(PI.getExporters(FM.getFile("foo.h").get(), FM).empty());
+  EXPECT_TRUE(PI.getExporters(FM.getFile("bar.h").get(), FM).empty());
 }
 
 TEST_F(PragmaIncludeTest, SelfContained) {
@@ -580,8 +559,8 @@ TEST_F(PragmaIncludeTest, SelfContained) {
   Inputs.ExtraFiles["unguarded.h"] = "";
   TestAST Processed = build();
   auto &FM = Processed.fileManager();
-  EXPECT_TRUE(PI.isSelfContained(*FM.getOptionalFileRef("guarded.h")));
-  EXPECT_FALSE(PI.isSelfContained(*FM.getOptionalFileRef("unguarded.h")));
+  EXPECT_TRUE(PI.isSelfContained(FM.getFile("guarded.h").get()));
+  EXPECT_FALSE(PI.isSelfContained(FM.getFile("unguarded.h").get()));
 }
 
 TEST_F(PragmaIncludeTest, AlwaysKeep) {
@@ -596,8 +575,8 @@ TEST_F(PragmaIncludeTest, AlwaysKeep) {
   Inputs.ExtraFiles["usual.h"] = "#pragma once";
   TestAST Processed = build();
   auto &FM = Processed.fileManager();
-  EXPECT_TRUE(PI.shouldKeep(*FM.getOptionalFileRef("always_keep.h")));
-  EXPECT_FALSE(PI.shouldKeep(*FM.getOptionalFileRef("usual.h")));
+  EXPECT_TRUE(PI.shouldKeep(FM.getFile("always_keep.h").get()));
+  EXPECT_FALSE(PI.shouldKeep(FM.getFile("usual.h").get()));
 }
 
 TEST_F(PragmaIncludeTest, ExportInUnnamedBuffer) {
@@ -653,13 +632,13 @@ TEST_F(PragmaIncludeTest, OutlivesFMAndSM) {
   // Now this build gives us a new File&Source Manager.
   TestAST Processed = build(/*ResetPragmaIncludes=*/false);
   auto &FM = Processed.fileManager();
-  auto PrivateFE = FM.getOptionalFileRef("private.h");
+  auto PrivateFE = FM.getFile("private.h");
   assert(PrivateFE);
-  EXPECT_EQ(PI.getPublic(*PrivateFE), "\"public.h\"");
+  EXPECT_EQ(PI.getPublic(PrivateFE.get()), "\"public.h\"");
 
-  auto Private2FE = FM.getOptionalFileRef("private2.h");
+  auto Private2FE = FM.getFile("private2.h");
   assert(Private2FE);
-  EXPECT_THAT(PI.getExporters(*Private2FE, FM),
+  EXPECT_THAT(PI.getExporters(Private2FE.get(), FM),
               testing::ElementsAre(llvm::cantFail(FM.getFileRef("public.h"))));
 }
 
@@ -676,8 +655,8 @@ TEST_F(PragmaIncludeTest, CanRecordManyTimes) {
 
   TestAST Processed = build();
   auto &FM = Processed.fileManager();
-  auto PrivateFE = FM.getOptionalFileRef("private.h");
-  llvm::StringRef Public = PI.getPublic(*PrivateFE);
+  auto PrivateFE = FM.getFile("private.h");
+  llvm::StringRef Public = PI.getPublic(PrivateFE.get());
   EXPECT_EQ(Public, "\"public.h\"");
 
   // This build populates same PI during build, but this time we don't have

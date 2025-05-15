@@ -18,6 +18,7 @@
 
 #include <fstream>
 #include <string>
+#include <vector>
 
 using namespace lldb_dap;
 

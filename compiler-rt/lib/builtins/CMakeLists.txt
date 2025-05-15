@@ -192,7 +192,6 @@ set(GENERIC_SOURCES
 set(BF16_SOURCES
     extendbfsf2.c
     truncdfbf2.c
-    truncxfbf2.c
     truncsfbf2.c
 )
 
@@ -740,7 +739,6 @@ endif()
 set(powerpc64le_SOURCES ${powerpc64_SOURCES})
 
 set(riscv_SOURCES
-  cpu_model/riscv.c
   riscv/fp_mode.c
   riscv/save.S
   riscv/restore.S

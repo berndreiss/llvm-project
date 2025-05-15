@@ -66,12 +66,12 @@ int64_t OptionArgParser::ToOptionEnum(llvm::StringRef s,
                                       int32_t fail_value, Status &error) {
   error.Clear();
   if (enum_values.empty()) {
-    error = Status::FromErrorString("invalid enumeration argument");
+    error.SetErrorString("invalid enumeration argument");
     return fail_value;
   }
 
   if (s.empty()) {
-    error = Status::FromErrorString("empty enumeration string");
+    error.SetErrorString("empty enumeration string");
     return fail_value;
   }
 
@@ -88,7 +88,7 @@ int64_t OptionArgParser::ToOptionEnum(llvm::StringRef s,
     strm.Printf("%s\"%s\"",
         is_first ? is_first = false,"" : ", ", enum_value.string_value);
   }
-  error = Status(strm.GetString().str());
+  error.SetErrorString(strm.GetString());
   return fail_value;
 }
 
@@ -125,14 +125,13 @@ Status OptionArgParser::ToFormat(const char *s, lldb::Format &format,
       if (byte_size_ptr)
         error_strm.PutCString(
             "An optional byte size can precede the format character.\n");
-      error = Status(error_strm.GetString().str());
+      error.SetErrorString(error_strm.GetString());
     }
 
     if (error.Fail())
       return error;
   } else {
-    error = Status::FromErrorStringWithFormat("%s option string",
-                                              s ? "empty" : "invalid");
+    error.SetErrorStringWithFormat("%s option string", s ? "empty" : "invalid");
   }
   return error;
 }
@@ -186,8 +185,8 @@ OptionArgParser::DoToAddress(const ExecutionContext *exe_ctx, llvm::StringRef s,
                              Status *error_ptr) {
   if (s.empty()) {
     if (error_ptr)
-      *error_ptr = Status::FromErrorStringWithFormat(
-          "invalid address expression \"%s\"", s.str().c_str());
+      error_ptr->SetErrorStringWithFormat("invalid address expression \"%s\"",
+                                          s.str().c_str());
     return {};
   }
 
@@ -211,8 +210,8 @@ OptionArgParser::DoToAddress(const ExecutionContext *exe_ctx, llvm::StringRef s,
   Target *target = nullptr;
   if (!exe_ctx || !(target = exe_ctx->GetTargetPtr())) {
     if (error_ptr)
-      *error_ptr = Status::FromErrorStringWithFormat(
-          "invalid address expression \"%s\"", s.str().c_str());
+      error_ptr->SetErrorStringWithFormat("invalid address expression \"%s\"",
+                                          s.str().c_str());
     return {};
   }
 
@@ -240,7 +239,7 @@ OptionArgParser::DoToAddress(const ExecutionContext *exe_ctx, llvm::StringRef s,
       return addr;
     }
     if (error_ptr)
-      *error_ptr = Status::FromErrorStringWithFormat(
+      error_ptr->SetErrorStringWithFormat(
           "address expression \"%s\" resulted in a value whose type "
           "can't be converted to an address: %s",
           s.str().c_str(), valobj_sp->GetTypeName().GetCString());
@@ -315,7 +314,7 @@ OptionArgParser::DoToAddress(const ExecutionContext *exe_ctx, llvm::StringRef s,
   }
 
   if (error_ptr)
-    *error_ptr = Status::FromErrorStringWithFormat(
+    error_ptr->SetErrorStringWithFormat(
         "address expression \"%s\" evaluation failed", s.str().c_str());
   return {};
 }

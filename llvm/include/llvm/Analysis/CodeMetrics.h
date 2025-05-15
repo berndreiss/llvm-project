@@ -20,6 +20,7 @@
 namespace llvm {
 class AssumptionCache;
 class BasicBlock;
+class Instruction;
 class Loop;
 class Function;
 template <class T> class SmallPtrSetImpl;

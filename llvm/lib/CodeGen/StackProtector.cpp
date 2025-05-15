@@ -519,7 +519,7 @@ static Value *getStackGuard(const TargetLoweringBase *TLI, Module *M,
   if (SupportsSelectionDAGSP)
     *SupportsSelectionDAGSP = true;
   TLI->insertSSPDeclarations(*M);
-  return B.CreateIntrinsic(Intrinsic::stackguard, {}, {});
+  return B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::stackguard));
 }
 
 /// Insert code into the entry block that stores the stack guard
@@ -540,7 +540,8 @@ static bool CreatePrologue(Function *F, Module *M, Instruction *CheckLoc,
   AI = B.CreateAlloca(PtrTy, nullptr, "StackGuardSlot");
 
   Value *GuardSlot = getStackGuard(TLI, M, B, &SupportsSelectionDAGSP);
-  B.CreateIntrinsic(Intrinsic::stackprotector, {}, {GuardSlot, AI});
+  B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::stackprotector),
+               {GuardSlot, AI});
   return SupportsSelectionDAGSP;
 }
 
@@ -704,7 +705,7 @@ BasicBlock *CreateFailBB(Function *F, const Triple &Trip) {
     StackChkFail = M->getOrInsertFunction("__stack_smash_handler",
                                           Type::getVoidTy(Context),
                                           PointerType::getUnqual(Context));
-    Args.push_back(B.CreateGlobalString(F->getName(), "SSH"));
+    Args.push_back(B.CreateGlobalStringPtr(F->getName(), "SSH"));
   } else {
     StackChkFail =
         M->getOrInsertFunction("__stack_chk_fail", Type::getVoidTy(Context));

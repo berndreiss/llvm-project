@@ -282,9 +282,9 @@ public:
     // Use UnrealizedConversionCast as the bridge so that we don't need to pull
     // in patterns for other dialects.
     auto addUnrealizedCast = [](OpBuilder &builder, Type type,
-                                ValueRange inputs, Location loc) -> Value {
+                                ValueRange inputs, Location loc) {
       auto cast = builder.create<UnrealizedConversionCastOp>(loc, type, inputs);
-      return cast.getResult(0);
+      return std::optional<Value>(cast.getResult(0));
     };
 
     addSourceMaterialization(addUnrealizedCast);

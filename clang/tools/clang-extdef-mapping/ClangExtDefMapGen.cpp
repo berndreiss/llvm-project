@@ -155,7 +155,7 @@ static bool HandleAST(StringRef AstPath) {
   IntrusiveRefCntPtr<DiagnosticsEngine> DiagEngine = GetDiagnosticsEngine();
 
   std::unique_ptr<ASTUnit> Unit = ASTUnit::LoadFromASTFile(
-      AstPath, CI->getPCHContainerOperations()->getRawReader(),
+      AstPath.str(), CI->getPCHContainerOperations()->getRawReader(),
       ASTUnit::LoadASTOnly, DiagEngine, CI->getFileSystemOpts(),
       CI->getHeaderSearchOptsPtr());
 

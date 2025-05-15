@@ -27,7 +27,6 @@
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/SparseTensor/Transforms/Passes.h"
 #include "mlir/Dialect/Vector/IR/VectorOps.h"
-#include "mlir/Dialect/Vector/Transforms/LoweringPatterns.h"
 #include "mlir/IR/Matchers.h"
 
 using namespace mlir;
@@ -113,7 +112,7 @@ static Value genVectorLoad(PatternRewriter &rewriter, Location loc, VL vl,
   VectorType vtp = vectorType(vl, mem);
   Value pass = constantZero(rewriter, loc, vtp);
   if (llvm::isa<VectorType>(idxs.back().getType())) {
-    SmallVector<Value> scalarArgs(idxs);
+    SmallVector<Value> scalarArgs(idxs.begin(), idxs.end());
     Value indexVec = idxs.back();
     scalarArgs.back() = constantIndex(rewriter, loc, 0);
     return rewriter.create<vector::GatherOp>(loc, vtp, mem, scalarArgs,
@@ -130,7 +129,7 @@ static Value genVectorLoad(PatternRewriter &rewriter, Location loc, VL vl,
 static void genVectorStore(PatternRewriter &rewriter, Location loc, Value mem,
                            ArrayRef<Value> idxs, Value vmask, Value rhs) {
   if (llvm::isa<VectorType>(idxs.back().getType())) {
-    SmallVector<Value> scalarArgs(idxs);
+    SmallVector<Value> scalarArgs(idxs.begin(), idxs.end());
     Value indexVec = idxs.back();
     scalarArgs.back() = constantIndex(rewriter, loc, 0);
     rewriter.create<vector::ScatterOp>(loc, mem, scalarArgs, indexVec, vmask,
@@ -665,7 +664,6 @@ void mlir::populateSparseVectorizationPatterns(RewritePatternSet &patterns,
                                                bool enableVLAVectorization,
                                                bool enableSIMDIndex32) {
   assert(vectorLength > 0);
-  vector::populateVectorStepLoweringPatterns(patterns);
   patterns.add<ForOpRewriter>(patterns.getContext(), vectorLength,
                               enableVLAVectorization, enableSIMDIndex32);
   patterns.add<ReducChainRewriter<vector::InsertElementOp>,

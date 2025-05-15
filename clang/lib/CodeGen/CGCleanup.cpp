@@ -293,25 +293,18 @@ void CodeGenFunction::initFullExprCleanupWithFlag(RawAddress ActiveFlag) {
 void EHScopeStack::Cleanup::anchor() {}
 
 static void createStoreInstBefore(llvm::Value *value, Address addr,
-                                  llvm::BasicBlock::iterator beforeInst,
+                                  llvm::Instruction *beforeInst,
                                   CodeGenFunction &CGF) {
   auto store = new llvm::StoreInst(value, addr.emitRawPointer(CGF), beforeInst);
   store->setAlignment(addr.getAlignment().getAsAlign());
 }
 
-static llvm::LoadInst *
-createLoadInstBefore(Address addr, const Twine &name,
-                     llvm::BasicBlock::iterator beforeInst,
-                     CodeGenFunction &CGF) {
+static llvm::LoadInst *createLoadInstBefore(Address addr, const Twine &name,
+                                            llvm::Instruction *beforeInst,
+                                            CodeGenFunction &CGF) {
   return new llvm::LoadInst(addr.getElementType(), addr.emitRawPointer(CGF),
                             name, false, addr.getAlignment().getAsAlign(),
                             beforeInst);
-}
-
-static llvm::LoadInst *createLoadInstBefore(Address addr, const Twine &name,
-                                            CodeGenFunction &CGF) {
-  return new llvm::LoadInst(addr.getElementType(), addr.emitRawPointer(CGF),
-                            name, false, addr.getAlignment().getAsAlign());
 }
 
 /// All the branch fixups on the EH stack have propagated out past the
@@ -337,8 +330,8 @@ static void ResolveAllBranchFixups(CodeGenFunction &CGF,
     // entry which we're currently popping.
     if (Fixup.OptimisticBranchBlock == nullptr) {
       createStoreInstBefore(CGF.Builder.getInt32(Fixup.DestinationIndex),
-                            CGF.getNormalCleanupDestSlot(),
-                            Fixup.InitialBranch->getIterator(), CGF);
+                            CGF.getNormalCleanupDestSlot(), Fixup.InitialBranch,
+                            CGF);
       Fixup.InitialBranch->setSuccessor(0, CleanupEntry);
     }
 
@@ -365,7 +358,7 @@ static llvm::SwitchInst *TransitionToCleanupSwitch(CodeGenFunction &CGF,
   if (llvm::BranchInst *Br = dyn_cast<llvm::BranchInst>(Term)) {
     assert(Br->isUnconditional());
     auto Load = createLoadInstBefore(CGF.getNormalCleanupDestSlot(),
-                                     "cleanup.dest", Term->getIterator(), CGF);
+                                     "cleanup.dest", Term, CGF);
     llvm::SwitchInst *Switch =
       llvm::SwitchInst::Create(Load, Br->getSuccessor(0), 4, Block);
     Br->eraseFromParent();
@@ -619,8 +612,7 @@ static void destroyOptimisticNormalEntry(CodeGenFunction &CGF,
     llvm::SwitchInst *si = cast<llvm::SwitchInst>(use.getUser());
     if (si->getNumCases() == 1 && si->getDefaultDest() == unreachableBB) {
       // Replace the switch with a branch.
-      llvm::BranchInst::Create(si->case_begin()->getCaseSuccessor(),
-                               si->getIterator());
+      llvm::BranchInst::Create(si->case_begin()->getCaseSuccessor(), si);
 
       // The switch operand is a load from the cleanup-dest alloca.
       llvm::LoadInst *condition = cast<llvm::LoadInst>(si->getCondition());
@@ -916,8 +908,8 @@ void CodeGenFunction::PopCleanupBlock(bool FallthroughIsBranchThrough,
         // pass the abnormal exit flag to Fn (SEH cleanup)
         cleanupFlags.setHasExitSwitch();
 
-        llvm::LoadInst *Load = createLoadInstBefore(getNormalCleanupDestSlot(),
-                                                    "cleanup.dest", *this);
+        llvm::LoadInst *Load = createLoadInstBefore(
+            getNormalCleanupDestSlot(), "cleanup.dest", nullptr, *this);
         llvm::SwitchInst *Switch =
           llvm::SwitchInst::Create(Load, Default, SwitchCapacity);
 
@@ -962,12 +954,11 @@ void CodeGenFunction::PopCleanupBlock(bool FallthroughIsBranchThrough,
       for (unsigned I = FixupDepth, E = EHStack.getNumBranchFixups();
            I < E; ++I) {
         BranchFixup &Fixup = EHStack.getBranchFixup(I);
-        if (!Fixup.Destination)
-          continue;
+        if (!Fixup.Destination) continue;
         if (!Fixup.OptimisticBranchBlock) {
           createStoreInstBefore(Builder.getInt32(Fixup.DestinationIndex),
-                                getNormalCleanupDestSlot(),
-                                Fixup.InitialBranch->getIterator(), *this);
+                                getNormalCleanupDestSlot(), Fixup.InitialBranch,
+                                *this);
           Fixup.InitialBranch->setSuccessor(0, NormalEntry);
         }
         Fixup.OptimisticBranchBlock = NormalExit;
@@ -1142,8 +1133,7 @@ void CodeGenFunction::EmitBranchThroughCleanup(JumpDest Dest) {
 
   // Store the index at the start.
   llvm::ConstantInt *Index = Builder.getInt32(Dest.getDestIndex());
-  createStoreInstBefore(Index, getNormalCleanupDestSlot(), BI->getIterator(),
-                        *this);
+  createStoreInstBefore(Index, getNormalCleanupDestSlot(), BI, *this);
 
   // Adjust BI to point to the first cleanup block.
   {
@@ -1262,7 +1252,7 @@ static void SetupCleanupBlockActivation(CodeGenFunction &CGF,
     if (CGF.isInConditionalBranch()) {
       CGF.setBeforeOutermostConditional(value, var, CGF);
     } else {
-      createStoreInstBefore(value, var, dominatingIP->getIterator(), CGF);
+      createStoreInstBefore(value, var, dominatingIP, CGF);
     }
   }
 
@@ -1329,7 +1319,8 @@ static void EmitSehScope(CodeGenFunction &CGF,
       CGF.getBundlesForFunclet(SehCppScope.getCallee());
   if (CGF.CurrentFuncletPad)
     BundleList.emplace_back("funclet", CGF.CurrentFuncletPad);
-  CGF.Builder.CreateInvoke(SehCppScope, Cont, InvokeDest, {}, BundleList);
+  CGF.Builder.CreateInvoke(SehCppScope, Cont, InvokeDest, std::nullopt,
+                           BundleList);
   CGF.EmitBlock(Cont);
 }
 

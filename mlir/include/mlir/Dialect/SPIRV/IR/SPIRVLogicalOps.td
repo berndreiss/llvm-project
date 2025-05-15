@@ -760,8 +760,7 @@ def SPIRV_SLessThanEqualOp : SPIRV_LogicalBinaryOp<"SLessThanEqual",
 def SPIRV_SelectOp : SPIRV_Op<"Select",
     [Pure,
      AllTypesMatch<["true_value", "false_value", "result"]>,
-     UsableInSpecConstantOp,
-     DeclareOpInterfaceMethods<SelectLikeOpInterface>]> {
+     UsableInSpecConstantOp]> {
   let summary = [{
     Select between two objects. Before version 1.4, results are only
     computed per component.

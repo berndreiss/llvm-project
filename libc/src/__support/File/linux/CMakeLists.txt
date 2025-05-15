@@ -7,7 +7,8 @@ add_object_library(
     file.h
     lseekImpl.h
   DEPENDS
-    libc.hdr.fcntl_macros
+    libc.include.fcntl
+    libc.include.stdio
     libc.include.sys_syscall
     libc.include.sys_stat
     libc.src.__support.CPP.new
@@ -55,7 +56,7 @@ add_object_library(
   SRCS
     dir.cpp
   DEPENDS
-    libc.hdr.fcntl_macros
+    libc.include.fcntl
     libc.include.sys_syscall
     libc.src.__support.OSUtil.osutil
     libc.src.__support.error_or

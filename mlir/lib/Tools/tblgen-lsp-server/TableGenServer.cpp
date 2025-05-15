@@ -22,10 +22,6 @@
 #include <optional>
 
 using namespace mlir;
-using llvm::Record;
-using llvm::RecordKeeper;
-using llvm::RecordVal;
-using llvm::SourceMgr;
 
 /// Returns the range of a lexical token given a SMLoc corresponding to the
 /// start of an token location. The range is computed heuristically, and
@@ -36,7 +32,7 @@ static SMRange convertTokenLocToRange(SMLoc loc) {
 
 /// Returns a language server uri for the given source location. `mainFileURI`
 /// corresponds to the uri for the main file of the source manager.
-static lsp::URIForFile getURIFromLoc(const SourceMgr &mgr, SMLoc loc,
+static lsp::URIForFile getURIFromLoc(const llvm::SourceMgr &mgr, SMLoc loc,
                                      const lsp::URIForFile &mainFileURI) {
   int bufferId = mgr.FindBufferContainingLoc(loc);
   if (bufferId == 0 || bufferId == static_cast<int>(mgr.getMainFileID()))
@@ -51,12 +47,12 @@ static lsp::URIForFile getURIFromLoc(const SourceMgr &mgr, SMLoc loc,
 }
 
 /// Returns a language server location from the given source range.
-static lsp::Location getLocationFromLoc(SourceMgr &mgr, SMRange loc,
+static lsp::Location getLocationFromLoc(llvm::SourceMgr &mgr, SMRange loc,
                                         const lsp::URIForFile &uri) {
   return lsp::Location(getURIFromLoc(mgr, loc.Start, uri),
                        lsp::Range(mgr, loc));
 }
-static lsp::Location getLocationFromLoc(SourceMgr &mgr, SMLoc loc,
+static lsp::Location getLocationFromLoc(llvm::SourceMgr &mgr, SMLoc loc,
                                         const lsp::URIForFile &uri) {
   return getLocationFromLoc(mgr, convertTokenLocToRange(loc), uri);
 }
@@ -65,7 +61,7 @@ static lsp::Location getLocationFromLoc(SourceMgr &mgr, SMLoc loc,
 static std::optional<lsp::Diagnostic>
 getLspDiagnoticFromDiag(const llvm::SMDiagnostic &diag,
                         const lsp::URIForFile &uri) {
-  auto *sourceMgr = const_cast<SourceMgr *>(diag.getSourceMgr());
+  auto *sourceMgr = const_cast<llvm::SourceMgr *>(diag.getSourceMgr());
   if (!sourceMgr || !diag.getLoc().isValid())
     return std::nullopt;
 
@@ -83,17 +79,17 @@ getLspDiagnoticFromDiag(const llvm::SMDiagnostic &diag,
 
   // Convert the severity for the diagnostic.
   switch (diag.getKind()) {
-  case SourceMgr::DK_Warning:
+  case llvm::SourceMgr::DK_Warning:
     lspDiag.severity = lsp::DiagnosticSeverity::Warning;
     break;
-  case SourceMgr::DK_Error:
+  case llvm::SourceMgr::DK_Error:
     lspDiag.severity = lsp::DiagnosticSeverity::Error;
     break;
-  case SourceMgr::DK_Note:
+  case llvm::SourceMgr::DK_Note:
     // Notes are emitted separately from the main diagnostic, so we just treat
     // them as remarks given that we can't determine the diagnostic to relate
     // them to.
-  case SourceMgr::DK_Remark:
+  case llvm::SourceMgr::DK_Remark:
     lspDiag.severity = lsp::DiagnosticSeverity::Information;
     break;
   }
@@ -104,15 +100,16 @@ getLspDiagnoticFromDiag(const llvm::SMDiagnostic &diag,
 
 /// Get the base definition of the given record value, or nullptr if one
 /// couldn't be found.
-static std::pair<const Record *, const RecordVal *>
-getBaseValue(const Record *record, const RecordVal *value) {
+static std::pair<const llvm::Record *, const llvm::RecordVal *>
+getBaseValue(const llvm::Record *record, const llvm::RecordVal *value) {
   if (value->isTemplateArg())
     return {nullptr, nullptr};
 
   // Find a base value for the field in the super classes of the given record.
   // On success, `record` is updated to the new parent record.
   StringRef valueName = value->getName();
-  auto findValueInSupers = [&](const Record *&record) -> const RecordVal * {
+  auto findValueInSupers =
+      [&](const llvm::Record *&record) -> llvm::RecordVal * {
     for (auto [parentRecord, loc] : record->getSuperClasses()) {
       if (auto *newBase = parentRecord->getValue(valueName)) {
         record = parentRecord;
@@ -123,8 +120,8 @@ getBaseValue(const Record *record, const RecordVal *value) {
   };
 
   // Try to find the lowest definition of the record value.
-  std::pair<const Record *, const RecordVal *> baseValue = {};
-  while (const RecordVal *newBase = findValueInSupers(record))
+  std::pair<const llvm::Record *, const llvm::RecordVal *> baseValue = {};
+  while (const llvm::RecordVal *newBase = findValueInSupers(record))
     baseValue = {record, newBase};
 
   // Check that the base isn't the same as the current value (e.g. if the value
@@ -143,15 +140,15 @@ namespace {
 /// contains the definition of the symbol, the location of the symbol, and any
 /// recorded references.
 struct TableGenIndexSymbol {
-  TableGenIndexSymbol(const Record *record)
+  TableGenIndexSymbol(const llvm::Record *record)
       : definition(record),
         defLoc(convertTokenLocToRange(record->getLoc().front())) {}
-  TableGenIndexSymbol(const RecordVal *value)
+  TableGenIndexSymbol(const llvm::RecordVal *value)
       : definition(value), defLoc(convertTokenLocToRange(value->getLoc())) {}
   virtual ~TableGenIndexSymbol() = default;
 
   // The main definition of the symbol.
-  PointerUnion<const Record *, const RecordVal *> definition;
+  PointerUnion<const llvm::Record *, const llvm::RecordVal *> definition;
 
   /// The source location of the definition.
   SMRange defLoc;
@@ -161,33 +158,37 @@ struct TableGenIndexSymbol {
 };
 /// This class represents a single record symbol.
 struct TableGenRecordSymbol : public TableGenIndexSymbol {
-  TableGenRecordSymbol(const Record *record) : TableGenIndexSymbol(record) {}
+  TableGenRecordSymbol(const llvm::Record *record)
+      : TableGenIndexSymbol(record) {}
   ~TableGenRecordSymbol() override = default;
 
   static bool classof(const TableGenIndexSymbol *symbol) {
-    return symbol->definition.is<const Record *>();
+    return symbol->definition.is<const llvm::Record *>();
   }
 
   /// Return the value of this symbol.
-  const Record *getValue() const { return definition.get<const Record *>(); }
+  const llvm::Record *getValue() const {
+    return definition.get<const llvm::Record *>();
+  }
 };
 /// This class represents a single record value symbol.
 struct TableGenRecordValSymbol : public TableGenIndexSymbol {
-  TableGenRecordValSymbol(const Record *record, const RecordVal *value)
+  TableGenRecordValSymbol(const llvm::Record *record,
+                          const llvm::RecordVal *value)
       : TableGenIndexSymbol(value), record(record) {}
   ~TableGenRecordValSymbol() override = default;
 
   static bool classof(const TableGenIndexSymbol *symbol) {
-    return symbol->definition.is<const RecordVal *>();
+    return symbol->definition.is<const llvm::RecordVal *>();
   }
 
   /// Return the value of this symbol.
-  const RecordVal *getValue() const {
-    return definition.get<const RecordVal *>();
+  const llvm::RecordVal *getValue() const {
+    return definition.get<const llvm::RecordVal *>();
   }
 
   /// The parent record of this symbol.
-  const Record *record;
+  const llvm::Record *record;
 };
 
 /// This class provides an index for definitions/uses within a TableGen
@@ -198,7 +199,7 @@ public:
   TableGenIndex() : intervalMap(allocator) {}
 
   /// Initialize the index with the given RecordKeeper.
-  void initialize(const RecordKeeper &records);
+  void initialize(const llvm::RecordKeeper &records);
 
   /// Lookup a symbol for the given location. Returns nullptr if no symbol could
   /// be found. If provided, `overlappedRange` is set to the range that the
@@ -216,15 +217,15 @@ private:
       llvm::IntervalMapHalfOpenInfo<const char *>>;
 
   /// Get or insert a symbol for the given record.
-  TableGenIndexSymbol *getOrInsertDef(const Record *record) {
+  TableGenIndexSymbol *getOrInsertDef(const llvm::Record *record) {
     auto it = defToSymbol.try_emplace(record, nullptr);
     if (it.second)
       it.first->second = std::make_unique<TableGenRecordSymbol>(record);
     return &*it.first->second;
   }
   /// Get or insert a symbol for the given record value.
-  TableGenIndexSymbol *getOrInsertDef(const Record *record,
-                                      const RecordVal *value) {
+  TableGenIndexSymbol *getOrInsertDef(const llvm::Record *record,
+                                      const llvm::RecordVal *value) {
     auto it = defToSymbol.try_emplace(value, nullptr);
     if (it.second) {
       it.first->second =
@@ -245,7 +246,7 @@ private:
 };
 } // namespace
 
-void TableGenIndex::initialize(const RecordKeeper &records) {
+void TableGenIndex::initialize(const llvm::RecordKeeper &records) {
   intervalMap.clear();
   defToSymbol.clear();
 
@@ -281,7 +282,7 @@ void TableGenIndex::initialize(const RecordKeeper &records) {
       llvm::make_pointee_range(llvm::make_second_range(records.getClasses()));
   auto defs =
       llvm::make_pointee_range(llvm::make_second_range(records.getDefs()));
-  for (const Record &def : llvm::concat<Record>(classes, defs)) {
+  for (const llvm::Record &def : llvm::concat<llvm::Record>(classes, defs)) {
     auto *sym = getOrInsertDef(&def);
     insertRef(sym, sym->defLoc, /*isDef=*/true);
 
@@ -292,7 +293,7 @@ void TableGenIndex::initialize(const RecordKeeper &records) {
       insertRef(sym, loc);
 
     // Add definitions for any values.
-    for (const RecordVal &value : def.getValues()) {
+    for (const llvm::RecordVal &value : def.getValues()) {
       auto *sym = getOrInsertDef(&def, &value);
       insertRef(sym, sym->defLoc, /*isDef=*/true);
       for (SMRange refLoc : value.getReferenceLocs())
@@ -358,12 +359,13 @@ public:
 
   std::optional<lsp::Hover> findHover(const lsp::URIForFile &uri,
                                       const lsp::Position &hoverPos);
-  lsp::Hover buildHoverForRecord(const Record *record,
+  lsp::Hover buildHoverForRecord(const llvm::Record *record,
                                  const SMRange &hoverRange);
-  lsp::Hover buildHoverForTemplateArg(const Record *record,
-                                      const RecordVal *value,
+  lsp::Hover buildHoverForTemplateArg(const llvm::Record *record,
+                                      const llvm::RecordVal *value,
                                       const SMRange &hoverRange);
-  lsp::Hover buildHoverForField(const Record *record, const RecordVal *value,
+  lsp::Hover buildHoverForField(const llvm::Record *record,
+                                const llvm::RecordVal *value,
                                 const SMRange &hoverRange);
 
 private:
@@ -381,10 +383,10 @@ private:
   std::vector<std::string> includeDirs;
 
   /// The source manager containing the contents of the input file.
-  SourceMgr sourceMgr;
+  llvm::SourceMgr sourceMgr;
 
   /// The record keeper containing the parsed tablegen constructs.
-  std::unique_ptr<RecordKeeper> recordKeeper;
+  std::unique_ptr<llvm::RecordKeeper> recordKeeper;
 
   /// The index of the parsed file.
   TableGenIndex index;
@@ -428,8 +430,8 @@ void TableGenTextFile::initialize(const lsp::URIForFile &uri,
                                   int64_t newVersion,
                                   std::vector<lsp::Diagnostic> &diagnostics) {
   version = newVersion;
-  sourceMgr = SourceMgr();
-  recordKeeper = std::make_unique<RecordKeeper>();
+  sourceMgr = llvm::SourceMgr();
+  recordKeeper = std::make_unique<llvm::RecordKeeper>();
 
   // Build a buffer for this file.
   auto memBuffer = llvm::MemoryBuffer::getMemBuffer(contents, uri.file());
@@ -440,7 +442,7 @@ void TableGenTextFile::initialize(const lsp::URIForFile &uri,
   sourceMgr.setIncludeDirs(includeDirs);
   sourceMgr.AddNewSourceBuffer(std::move(memBuffer), SMLoc());
 
-  // This class provides a context argument for the SourceMgr diagnostic
+  // This class provides a context argument for the llvm::SourceMgr diagnostic
   // handler.
   struct DiagHandlerContext {
     std::vector<lsp::Diagnostic> &diagnostics;
@@ -541,13 +543,13 @@ TableGenTextFile::findHover(const lsp::URIForFile &uri,
   // Build hover for a RecordVal, which is either a template argument or a
   // field.
   auto *recordVal = cast<TableGenRecordValSymbol>(symbol);
-  const RecordVal *value = recordVal->getValue();
+  const llvm::RecordVal *value = recordVal->getValue();
   if (value->isTemplateArg())
     return buildHoverForTemplateArg(recordVal->record, value, hoverRange);
   return buildHoverForField(recordVal->record, value, hoverRange);
 }
 
-lsp::Hover TableGenTextFile::buildHoverForRecord(const Record *record,
+lsp::Hover TableGenTextFile::buildHoverForRecord(const llvm::Record *record,
                                                  const SMRange &hoverRange) {
   lsp::Hover hover(lsp::Range(sourceMgr, hoverRange));
   {
@@ -568,7 +570,7 @@ lsp::Hover TableGenTextFile::buildHoverForRecord(const Record *record,
     auto printAndFormatField = [&](StringRef fieldName) {
       // Check that the record actually has the given field, and that it's a
       // string.
-      const RecordVal *value = record->getValue(fieldName);
+      const llvm::RecordVal *value = record->getValue(fieldName);
       if (!value || !value->getValue())
         return;
       auto *stringValue = dyn_cast<llvm::StringInit>(value->getValue());
@@ -591,8 +593,10 @@ lsp::Hover TableGenTextFile::buildHoverForRecord(const Record *record,
   return hover;
 }
 
-lsp::Hover TableGenTextFile::buildHoverForTemplateArg(
-    const Record *record, const RecordVal *value, const SMRange &hoverRange) {
+lsp::Hover
+TableGenTextFile::buildHoverForTemplateArg(const llvm::Record *record,
+                                           const llvm::RecordVal *value,
+                                           const SMRange &hoverRange) {
   lsp::Hover hover(lsp::Range(sourceMgr, hoverRange));
   {
     llvm::raw_string_ostream hoverOS(hover.contents.value);
@@ -605,8 +609,8 @@ lsp::Hover TableGenTextFile::buildHoverForTemplateArg(
   return hover;
 }
 
-lsp::Hover TableGenTextFile::buildHoverForField(const Record *record,
-                                                const RecordVal *value,
+lsp::Hover TableGenTextFile::buildHoverForField(const llvm::Record *record,
+                                                const llvm::RecordVal *value,
                                                 const SMRange &hoverRange) {
   lsp::Hover hover(lsp::Range(sourceMgr, hoverRange));
   {

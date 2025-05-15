@@ -33,8 +33,6 @@
 
 using namespace llvm;
 
-#define DEBUG_TYPE "m68k-frame"
-
 M68kFrameLowering::M68kFrameLowering(const M68kSubtarget &STI, Align Alignment)
     : TargetFrameLowering(StackGrowsDown, Alignment, -4), STI(STI),
       TII(*STI.getInstrInfo()), TRI(STI.getRegisterInfo()) {
@@ -42,7 +40,7 @@ M68kFrameLowering::M68kFrameLowering(const M68kSubtarget &STI, Align Alignment)
   StackPtr = TRI->getStackRegister();
 }
 
-bool M68kFrameLowering::hasFPImpl(const MachineFunction &MF) const {
+bool M68kFrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   const TargetRegisterInfo *TRI = STI.getRegisterInfo();
 
@@ -233,8 +231,8 @@ MachineBasicBlock::iterator M68kFrameLowering::eliminateCallFramePseudoInstr(
   unsigned Opcode = I->getOpcode();
   bool IsDestroy = Opcode == TII.getCallFrameDestroyOpcode();
   DebugLoc DL = I->getDebugLoc();
-  uint64_t Amount = I->getOperand(0).getImm();
-  uint64_t InternalAmt = (IsDestroy || Amount) ? I->getOperand(1).getImm() : 0;
+  uint64_t Amount = !ReserveCallFrame ? I->getOperand(0).getImm() : 0;
+  uint64_t InternalAmt = (IsDestroy && Amount) ? I->getOperand(1).getImm() : 0;
   I = MBB.erase(I);
 
   if (!ReserveCallFrame) {
@@ -477,11 +475,13 @@ void M68kFrameLowering::emitPrologue(MachineFunction &MF,
 
   MachineBasicBlock::iterator MBBI = MBB.begin();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  const auto &Fn = MF.getFunction();
+  MachineModuleInfo &MMI = MF.getMMI();
   M68kMachineFunctionInfo *MMFI = MF.getInfo<M68kMachineFunctionInfo>();
   uint64_t MaxAlign = calculateMaxStackAlign(MF); // Desired stack alignment.
   uint64_t StackSize = MFI.getStackSize(); // Number of bytes to allocate.
   bool HasFP = hasFP(MF);
-  bool NeedsDwarfCFI = MF.needsFrameMoves();
+  bool NeedsDwarfCFI = MMI.hasDebugInfo() || Fn.needsUnwindTableEntry();
   Register FramePtr = TRI->getFrameRegister(MF);
   const unsigned MachineFramePtr = FramePtr;
   unsigned BasePtr = TRI->getBaseRegister();

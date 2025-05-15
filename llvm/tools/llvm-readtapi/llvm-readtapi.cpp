@@ -71,14 +71,9 @@ struct StubOptions {
   bool TraceLibs = false;
 };
 
-struct CompareOptions {
-  ArchitectureSet ArchsToIgnore;
-};
-
 struct Context {
   std::vector<std::string> Inputs;
   StubOptions StubOpt;
-  CompareOptions CmpOpt;
   std::unique_ptr<llvm::raw_fd_stream> OutStream;
   FileType WriteFT = FileType::TBD_V5;
   bool Compact = false;
@@ -130,7 +125,7 @@ static std::unique_ptr<InterfaceFile>
 getInterfaceFile(const StringRef Filename, bool ResetBanner = true) {
   ExitOnErr.setBanner(TOOLNAME + ": error: '" + Filename.str() + "' ");
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
-      MemoryBuffer::getFile(Filename, /*IsText=*/true);
+      MemoryBuffer::getFile(Filename);
   if (BufferOrErr.getError())
     ExitOnErr(errorCodeToError(BufferOrErr.getError()));
   auto Buffer = std::move(*BufferOrErr);
@@ -164,28 +159,6 @@ static bool handleCompareAction(const Context &Ctx) {
                           /*DefaultErrorExitCode=*/NON_TAPI_EXIT_CODE);
   auto LeftIF = getInterfaceFile(Ctx.Inputs.front());
   auto RightIF = getInterfaceFile(Ctx.Inputs.at(1));
-
-  // Remove all architectures to ignore before running comparison.
-  auto removeArchFromIF = [](auto &IF, const ArchitectureSet &ArchSet,
-                             const Architecture ArchToRemove) {
-    if (!ArchSet.has(ArchToRemove))
-      return;
-    if (ArchSet.count() == 1)
-      return;
-    auto OutIF = IF->remove(ArchToRemove);
-    if (!OutIF)
-      ExitOnErr(OutIF.takeError());
-    IF = std::move(*OutIF);
-  };
-
-  if (!Ctx.CmpOpt.ArchsToIgnore.empty()) {
-    const ArchitectureSet LeftArchs = LeftIF->getArchitectures();
-    const ArchitectureSet RightArchs = RightIF->getArchitectures();
-    for (const auto Arch : Ctx.CmpOpt.ArchsToIgnore) {
-      removeArchFromIF(LeftIF, LeftArchs, Arch);
-      removeArchFromIF(RightIF, RightArchs, Arch);
-    }
-  }
 
   raw_ostream &OS = Ctx.OutStream ? *Ctx.OutStream : outs();
   return DiffEngine(LeftIF.get(), RightIF.get()).compareFiles(OS);
@@ -325,8 +298,8 @@ static void stubifyDirectory(const StringRef InputPath, Context &Ctx) {
         continue;
       }
 
-      SymLinks[LinkTarget.c_str()].emplace_back(LinkSrc.str(),
-                                                std::string(SymPath.str()));
+      auto itr = SymLinks.insert({LinkTarget.c_str(), std::vector<SymLink>()});
+      itr.first->second.emplace_back(LinkSrc.str(), std::string(SymPath.str()));
 
       continue;
     }
@@ -382,7 +355,7 @@ static void stubifyDirectory(const StringRef InputPath, Context &Ctx) {
     // libraries to stubify.
     StringRef LibToCheck = Found->second;
     for (int i = 0; i < 20; ++i) {
-      auto LinkIt = SymLinks.find(LibToCheck);
+      auto LinkIt = SymLinks.find(LibToCheck.str());
       if (LinkIt != SymLinks.end()) {
         for (auto &SymInfo : LinkIt->second) {
           SmallString<PATH_MAX> LinkSrc(SymInfo.SrcPath);
@@ -524,20 +497,12 @@ int main(int Argc, char **Argv) {
       reportError("unsupported filetype '" + FT + "'");
   }
 
-  auto SanitizeArch = [&](opt::Arg *A) {
-    StringRef ArchStr = A->getValue();
-    auto Arch = getArchitectureFromName(ArchStr);
-    if (Arch == AK_unknown)
-      reportError("unsupported architecture '" + ArchStr);
-    return Arch;
-  };
-
-  if (opt::Arg *A = Args.getLastArg(OPT_arch_EQ))
-    Ctx.Arch = SanitizeArch(A);
-
-  for (opt::Arg *A : Args.filtered(OPT_ignore_arch_EQ))
-    Ctx.CmpOpt.ArchsToIgnore.set(SanitizeArch(A));
-
+  if (opt::Arg *A = Args.getLastArg(OPT_arch_EQ)) {
+    StringRef Arch = A->getValue();
+    Ctx.Arch = getArchitectureFromName(Arch);
+    if (Ctx.Arch == AK_unknown)
+      reportError("unsupported architecture '" + Arch);
+  }
   // Handle top level and exclusive operation.
   SmallVector<opt::Arg *, 1> ActionArgs(Args.filtered(OPT_action_group));
 

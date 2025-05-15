@@ -259,13 +259,10 @@ bool DynamicLoaderMacOSXDYLD::ReadDYLDInfoFromMemoryAndSetNotificationCallback(
       ModuleSP dyld_module_sp;
       if (ParseLoadCommands(data, m_dyld, &m_dyld.file_spec)) {
         if (m_dyld.file_spec) {
-          if (!UpdateDYLDImageInfoFromNewImageInfo(m_dyld))
-            return false;
+          UpdateDYLDImageInfoFromNewImageInfo(m_dyld);
         }
       }
       dyld_module_sp = GetDYLDModule();
-      if (!dyld_module_sp)
-        return false;
 
       Target &target = m_process->GetTarget();
 
@@ -572,9 +569,8 @@ bool DynamicLoaderMacOSXDYLD::AddModulesUsingImageInfosAddress(
               ->GetSize() == image_infos_count) {
     bool return_value = false;
     if (JSONImageInformationIntoImageInfo(image_infos_json_sp, image_infos)) {
-      auto images = PreloadModulesFromImageInfos(image_infos);
-      UpdateSpecialBinariesFromPreloadedModules(images);
-      return_value = AddModulesUsingPreloadedModules(images);
+      UpdateSpecialBinariesFromNewImageInfos(image_infos);
+      return_value = AddModulesUsingImageInfos(image_infos);
     }
     m_dyld_image_infos_stop_id = m_process->GetStopID();
     return return_value;
@@ -1064,7 +1060,7 @@ Status DynamicLoaderMacOSXDYLD::CanLoadImage() {
       return error; // Success
   }
 
-  error = Status::FromErrorString("unsafe to load or unload shared libraries");
+  error.SetErrorString("unsafe to load or unload shared libraries");
   return error;
 }
 
@@ -1148,19 +1144,13 @@ bool DynamicLoaderMacOSXDYLD::IsFullyInitialized() {
 
 void DynamicLoaderMacOSXDYLD::Initialize() {
   PluginManager::RegisterPlugin(GetPluginNameStatic(),
-                                GetPluginDescriptionStatic(), CreateInstance,
-                                DebuggerInitialize);
+                                GetPluginDescriptionStatic(), CreateInstance);
   DynamicLoaderMacOS::Initialize();
 }
 
 void DynamicLoaderMacOSXDYLD::Terminate() {
   DynamicLoaderMacOS::Terminate();
   PluginManager::UnregisterPlugin(CreateInstance);
-}
-
-void DynamicLoaderMacOSXDYLD::DebuggerInitialize(
-    lldb_private::Debugger &debugger) {
-  CreateSettings(debugger);
 }
 
 llvm::StringRef DynamicLoaderMacOSXDYLD::GetPluginDescriptionStatic() {

@@ -80,7 +80,6 @@ public:
     UbuntuMantic,
     UbuntuNoble,
     UbuntuOracular,
-    UbuntuPlucky,
     UnknownDistro
   };
 
@@ -132,7 +131,7 @@ public:
   }
 
   bool IsUbuntu() const {
-    return DistroVal >= UbuntuHardy && DistroVal <= UbuntuPlucky;
+    return DistroVal >= UbuntuHardy && DistroVal <= UbuntuOracular;
   }
 
   bool IsAlpineLinux() const { return DistroVal == AlpineLinux; }

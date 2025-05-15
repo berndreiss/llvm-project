@@ -51,6 +51,8 @@ define amdgpu_ps void @raw_buffer_load_i8_tfe(<4 x i32> inreg %rsrc, ptr addrspa
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b8 v[0:1], v4, off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_i8_tfe:
@@ -62,6 +64,8 @@ define amdgpu_ps void @raw_buffer_load_i8_tfe(<4 x i32> inreg %rsrc, ptr addrspa
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b8 v[0:1], v4, off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { i8, i32 } @llvm.amdgcn.raw.buffer.load.sl_i8i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { i8, i32 } %res, 0
@@ -115,6 +119,8 @@ define amdgpu_ps void @raw_buffer_load_i16_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b16 v[0:1], v4, off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_i16_tfe:
@@ -126,6 +132,8 @@ define amdgpu_ps void @raw_buffer_load_i16_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b16 v[0:1], v4, off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { i16, i32 } @llvm.amdgcn.raw.buffer.load.sl_i16i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { i16, i32 } %res, 0
@@ -179,6 +187,8 @@ define amdgpu_ps void @raw_buffer_load_f16_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b16 v[0:1], v4, off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_f16_tfe:
@@ -190,6 +200,8 @@ define amdgpu_ps void @raw_buffer_load_f16_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b16 v[0:1], v4, off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { half, i32 } @llvm.amdgcn.raw.buffer.load.sl_f16i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { half, i32 } %res, 0
@@ -243,6 +255,8 @@ define amdgpu_ps void @raw_buffer_load_i32_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b32 v[0:1], v4, off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_i32_tfe:
@@ -254,6 +268,8 @@ define amdgpu_ps void @raw_buffer_load_i32_tfe(<4 x i32> inreg %rsrc, ptr addrsp
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b32 v[0:1], v4, off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v5, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { i32, i32 } @llvm.amdgcn.raw.buffer.load.sl_i32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { i32, i32 } %res, 0
@@ -327,6 +343,8 @@ define amdgpu_ps void @raw_buffer_load_v2i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[4:5], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v6, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v2i32_tfe:
@@ -338,6 +356,8 @@ define amdgpu_ps void @raw_buffer_load_v2i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[4:5], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v6, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <2 x i32>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v2i32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <2 x i32>, i32 } %res, 0
@@ -411,6 +431,8 @@ define amdgpu_ps void @raw_buffer_load_v2f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b64 v[0:1], v[4:5], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v6, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v2f32_tfe:
@@ -422,6 +444,8 @@ define amdgpu_ps void @raw_buffer_load_v2f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b64 v[0:1], v[4:5], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v6, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <2 x float>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v2f32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <2 x float>, i32 } %res, 0
@@ -500,6 +524,8 @@ define amdgpu_ps void @raw_buffer_load_v3i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b96 v[0:1], v[4:6], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v7, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v3i32_tfe:
@@ -512,6 +538,8 @@ define amdgpu_ps void @raw_buffer_load_v3i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b96 v[0:1], v[4:6], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v7, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <3 x i32>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v3i32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <3 x i32>, i32 } %res, 0
@@ -590,6 +618,8 @@ define amdgpu_ps void @raw_buffer_load_v3f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b96 v[0:1], v[4:6], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v7, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v3f32_tfe:
@@ -602,6 +632,8 @@ define amdgpu_ps void @raw_buffer_load_v3f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b96 v[0:1], v[4:6], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v7, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <3 x float>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v3f32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <3 x float>, i32 } %res, 0
@@ -667,6 +699,8 @@ define amdgpu_ps void @raw_buffer_load_v4i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b128 v[0:1], v[4:7], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v8, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v4i32_tfe:
@@ -679,6 +713,8 @@ define amdgpu_ps void @raw_buffer_load_v4i32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b128 v[0:1], v[4:7], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v8, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <4 x i32>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v4i32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <4 x i32>, i32 } %res, 0
@@ -744,6 +780,8 @@ define amdgpu_ps void @raw_buffer_load_v4f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX11-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-NEXT:    global_store_b128 v[0:1], v[4:7], off
 ; GFX11-NEXT:    global_store_b32 v[2:3], v8, off
+; GFX11-NEXT:    s_nop 0
+; GFX11-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX11-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: raw_buffer_load_v4f32_tfe:
@@ -756,6 +794,8 @@ define amdgpu_ps void @raw_buffer_load_v4f32_tfe(<4 x i32> inreg %rsrc, ptr addr
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    global_store_b128 v[0:1], v[4:7], off
 ; GFX12-NEXT:    global_store_b32 v[2:3], v8, off
+; GFX12-NEXT:    s_nop 0
+; GFX12-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GFX12-NEXT:    s_endpgm
   %res = call { <4 x float>, i32 } @llvm.amdgcn.raw.buffer.load.sl_v4f32i32s(<4 x i32> %rsrc, i32 0, i32 0, i32 0)
   %data = extractvalue { <4 x float>, i32 } %res, 0

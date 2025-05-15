@@ -192,197 +192,197 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xec,0x8a,0x00,0xfc,0xff,0xff]
           cmplxadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpaxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpnbexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe7,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpnbexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpaxadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpnbexadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe7,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaxadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpnbexadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpaxadd dword ptr [rip], ecx, eax
+// CHECK: cmpnbexadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x0d,0x00,0x00,0x00,0x00]
-          cmpaxadd dword ptr [rip], ecx, eax
+          cmpnbexadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpaxadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpnbexadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpaxadd dword ptr [2*rbp - 128], ecx, eax
+          cmpnbexadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpaxadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpnbexadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x89,0xfc,0x01,0x00,0x00]
-          cmpaxadd dword ptr [rcx + 508], ecx, eax
+          cmpnbexadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpaxadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpnbexadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe7,0x8a,0x00,0xfe,0xff,0xff]
-          cmpaxadd dword ptr [rdx - 512], ecx, eax
+          cmpnbexadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpaxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpnbexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe7,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpnbexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpaxadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpnbexadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe7,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaxadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpnbexadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpaxadd qword ptr [rip], r9, r10
+// CHECK: cmpnbexadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x0d,0x00,0x00,0x00,0x00]
-          cmpaxadd qword ptr [rip], r9, r10
+          cmpnbexadd qword ptr [rip], r9, r10
 
-// CHECK: cmpaxadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpnbexadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpaxadd qword ptr [2*rbp - 256], r9, r10
+          cmpnbexadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpaxadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpnbexadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x89,0xf8,0x03,0x00,0x00]
-          cmpaxadd qword ptr [rcx + 1016], r9, r10
+          cmpnbexadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpaxadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpnbexadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe7,0x8a,0x00,0xfc,0xff,0xff]
-          cmpaxadd qword ptr [rdx - 1024], r9, r10
+          cmpnbexadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpaexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpnbxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe3,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpnbxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpaexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpnbxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe3,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpnbxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpaexadd dword ptr [rip], ecx, eax
+// CHECK: cmpnbxadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x0d,0x00,0x00,0x00,0x00]
-          cmpaexadd dword ptr [rip], ecx, eax
+          cmpnbxadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpaexadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpnbxadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpaexadd dword ptr [2*rbp - 128], ecx, eax
+          cmpnbxadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpaexadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpnbxadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x89,0xfc,0x01,0x00,0x00]
-          cmpaexadd dword ptr [rcx + 508], ecx, eax
+          cmpnbxadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpaexadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpnbxadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe3,0x8a,0x00,0xfe,0xff,0xff]
-          cmpaexadd dword ptr [rdx - 512], ecx, eax
+          cmpnbxadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpaexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpnbxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe3,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpaexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpnbxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpaexadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpnbxadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe3,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpaexadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpnbxadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpaexadd qword ptr [rip], r9, r10
+// CHECK: cmpnbxadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x0d,0x00,0x00,0x00,0x00]
-          cmpaexadd qword ptr [rip], r9, r10
+          cmpnbxadd qword ptr [rip], r9, r10
 
-// CHECK: cmpaexadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpnbxadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpaexadd qword ptr [2*rbp - 256], r9, r10
+          cmpnbxadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpaexadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpnbxadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x89,0xf8,0x03,0x00,0x00]
-          cmpaexadd qword ptr [rcx + 1016], r9, r10
+          cmpnbxadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpaexadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpnbxadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe3,0x8a,0x00,0xfc,0xff,0xff]
-          cmpaexadd qword ptr [rdx - 1024], r9, r10
+          cmpnbxadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpgxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpnlexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xef,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpnlexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpgxadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpnlexadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xef,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgxadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpnlexadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpgxadd dword ptr [rip], ecx, eax
+// CHECK: cmpnlexadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x0d,0x00,0x00,0x00,0x00]
-          cmpgxadd dword ptr [rip], ecx, eax
+          cmpnlexadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpgxadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpnlexadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpgxadd dword ptr [2*rbp - 128], ecx, eax
+          cmpnlexadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpgxadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpnlexadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x89,0xfc,0x01,0x00,0x00]
-          cmpgxadd dword ptr [rcx + 508], ecx, eax
+          cmpnlexadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpgxadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpnlexadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xef,0x8a,0x00,0xfe,0xff,0xff]
-          cmpgxadd dword ptr [rdx - 512], ecx, eax
+          cmpnlexadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpgxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpnlexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xef,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpnlexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpgxadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpnlexadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xef,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgxadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpnlexadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpgxadd qword ptr [rip], r9, r10
+// CHECK: cmpnlexadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x0d,0x00,0x00,0x00,0x00]
-          cmpgxadd qword ptr [rip], r9, r10
+          cmpnlexadd qword ptr [rip], r9, r10
 
-// CHECK: cmpgxadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpnlexadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpgxadd qword ptr [2*rbp - 256], r9, r10
+          cmpnlexadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpgxadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpnlexadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x89,0xf8,0x03,0x00,0x00]
-          cmpgxadd qword ptr [rcx + 1016], r9, r10
+          cmpnlexadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpgxadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpnlexadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xef,0x8a,0x00,0xfc,0xff,0xff]
-          cmpgxadd qword ptr [rdx - 1024], r9, r10
+          cmpnlexadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpgexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpnlxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xed,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpnlxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpgexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpnlxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xed,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpnlxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpgexadd dword ptr [rip], ecx, eax
+// CHECK: cmpnlxadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x0d,0x00,0x00,0x00,0x00]
-          cmpgexadd dword ptr [rip], ecx, eax
+          cmpnlxadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpgexadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpnlxadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpgexadd dword ptr [2*rbp - 128], ecx, eax
+          cmpnlxadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpgexadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpnlxadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x89,0xfc,0x01,0x00,0x00]
-          cmpgexadd dword ptr [rcx + 508], ecx, eax
+          cmpnlxadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpgexadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpnlxadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xed,0x8a,0x00,0xfe,0xff,0xff]
-          cmpgexadd dword ptr [rdx - 512], ecx, eax
+          cmpnlxadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpgexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpnlxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xed,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpgexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpnlxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpgexadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpnlxadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xed,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpgexadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpnlxadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpgexadd qword ptr [rip], r9, r10
+// CHECK: cmpnlxadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x0d,0x00,0x00,0x00,0x00]
-          cmpgexadd qword ptr [rip], r9, r10
+          cmpnlxadd qword ptr [rip], r9, r10
 
-// CHECK: cmpgexadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpnlxadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpgexadd qword ptr [2*rbp - 256], r9, r10
+          cmpnlxadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpgexadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpnlxadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x89,0xf8,0x03,0x00,0x00]
-          cmpgexadd qword ptr [rcx + 1016], r9, r10
+          cmpnlxadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpgexadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpnlxadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xed,0x8a,0x00,0xfc,0xff,0xff]
-          cmpgexadd qword ptr [rdx - 1024], r9, r10
+          cmpnlxadd qword ptr [rdx - 1024], r9, r10
 
 // CHECK: cmpnoxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe1,0x8c,0xf5,0x00,0x00,0x00,0x10]
@@ -528,53 +528,53 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe9,0x8a,0x00,0xfc,0xff,0xff]
           cmpnsxadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpnexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpnzxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe5,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpnexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpnzxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpnexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpnzxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe5,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpnexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpnzxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpnexadd dword ptr [rip], ecx, eax
+// CHECK: cmpnzxadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x0d,0x00,0x00,0x00,0x00]
-          cmpnexadd dword ptr [rip], ecx, eax
+          cmpnzxadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpnexadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpnzxadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpnexadd dword ptr [2*rbp - 128], ecx, eax
+          cmpnzxadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpnexadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpnzxadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x89,0xfc,0x01,0x00,0x00]
-          cmpnexadd dword ptr [rcx + 508], ecx, eax
+          cmpnzxadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpnexadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpnzxadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe5,0x8a,0x00,0xfe,0xff,0xff]
-          cmpnexadd dword ptr [rdx - 512], ecx, eax
+          cmpnzxadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpnexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpnzxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe5,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpnexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpnzxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpnexadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpnzxadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe5,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpnexadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpnzxadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpnexadd qword ptr [rip], r9, r10
+// CHECK: cmpnzxadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x0d,0x00,0x00,0x00,0x00]
-          cmpnexadd qword ptr [rip], r9, r10
+          cmpnzxadd qword ptr [rip], r9, r10
 
-// CHECK: cmpnexadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpnzxadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpnexadd qword ptr [2*rbp - 256], r9, r10
+          cmpnzxadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpnexadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpnzxadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x89,0xf8,0x03,0x00,0x00]
-          cmpnexadd qword ptr [rcx + 1016], r9, r10
+          cmpnzxadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpnexadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpnzxadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe5,0x8a,0x00,0xfc,0xff,0xff]
-          cmpnexadd qword ptr [rdx - 1024], r9, r10
+          cmpnzxadd qword ptr [rdx - 1024], r9, r10
 
 // CHECK: cmpoxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe0,0x8c,0xf5,0x00,0x00,0x00,0x10]
@@ -720,53 +720,53 @@
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe8,0x8a,0x00,0xfc,0xff,0xff]
           cmpsxadd qword ptr [rdx - 1024], r9, r10
 
-// CHECK: cmpexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+// CHECK: cmpzxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 // CHECK: encoding: [0xc4,0xa2,0x79,0xe4,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpexadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
+          cmpzxadd dword ptr [rbp + 8*r14 + 268435456], ecx, eax
 
-// CHECK: cmpexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+// CHECK: cmpzxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 // CHECK: encoding: [0xc4,0xc2,0x79,0xe4,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpexadd dword ptr [r8 + 4*rax + 291], ecx, eax
+          cmpzxadd dword ptr [r8 + 4*rax + 291], ecx, eax
 
-// CHECK: cmpexadd dword ptr [rip], ecx, eax
+// CHECK: cmpzxadd dword ptr [rip], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x0d,0x00,0x00,0x00,0x00]
-          cmpexadd dword ptr [rip], ecx, eax
+          cmpzxadd dword ptr [rip], ecx, eax
 
-// CHECK: cmpexadd dword ptr [2*rbp - 128], ecx, eax
+// CHECK: cmpzxadd dword ptr [2*rbp - 128], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x0c,0x6d,0x80,0xff,0xff,0xff]
-          cmpexadd dword ptr [2*rbp - 128], ecx, eax
+          cmpzxadd dword ptr [2*rbp - 128], ecx, eax
 
-// CHECK: cmpexadd dword ptr [rcx + 508], ecx, eax
+// CHECK: cmpzxadd dword ptr [rcx + 508], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x89,0xfc,0x01,0x00,0x00]
-          cmpexadd dword ptr [rcx + 508], ecx, eax
+          cmpzxadd dword ptr [rcx + 508], ecx, eax
 
-// CHECK: cmpexadd dword ptr [rdx - 512], ecx, eax
+// CHECK: cmpzxadd dword ptr [rdx - 512], ecx, eax
 // CHECK: encoding: [0xc4,0xe2,0x79,0xe4,0x8a,0x00,0xfe,0xff,0xff]
-          cmpexadd dword ptr [rdx - 512], ecx, eax
+          cmpzxadd dword ptr [rdx - 512], ecx, eax
 
-// CHECK: cmpexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+// CHECK: cmpzxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 // CHECK: encoding: [0xc4,0x22,0xa9,0xe4,0x8c,0xf5,0x00,0x00,0x00,0x10]
-          cmpexadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
+          cmpzxadd qword ptr [rbp + 8*r14 + 268435456], r9, r10
 
-// CHECK: cmpexadd qword ptr [r8 + 4*rax + 291], r9, r10
+// CHECK: cmpzxadd qword ptr [r8 + 4*rax + 291], r9, r10
 // CHECK: encoding: [0xc4,0x42,0xa9,0xe4,0x8c,0x80,0x23,0x01,0x00,0x00]
-          cmpexadd qword ptr [r8 + 4*rax + 291], r9, r10
+          cmpzxadd qword ptr [r8 + 4*rax + 291], r9, r10
 
-// CHECK: cmpexadd qword ptr [rip], r9, r10
+// CHECK: cmpzxadd qword ptr [rip], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x0d,0x00,0x00,0x00,0x00]
-          cmpexadd qword ptr [rip], r9, r10
+          cmpzxadd qword ptr [rip], r9, r10
 
-// CHECK: cmpexadd qword ptr [2*rbp - 256], r9, r10
+// CHECK: cmpzxadd qword ptr [2*rbp - 256], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x0c,0x6d,0x00,0xff,0xff,0xff]
-          cmpexadd qword ptr [2*rbp - 256], r9, r10
+          cmpzxadd qword ptr [2*rbp - 256], r9, r10
 
-// CHECK: cmpexadd qword ptr [rcx + 1016], r9, r10
+// CHECK: cmpzxadd qword ptr [rcx + 1016], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x89,0xf8,0x03,0x00,0x00]
-          cmpexadd qword ptr [rcx + 1016], r9, r10
+          cmpzxadd qword ptr [rcx + 1016], r9, r10
 
-// CHECK: cmpexadd qword ptr [rdx - 1024], r9, r10
+// CHECK: cmpzxadd qword ptr [rdx - 1024], r9, r10
 // CHECK: encoding: [0xc4,0x62,0xa9,0xe4,0x8a,0x00,0xfc,0xff,0xff]
-          cmpexadd qword ptr [rdx - 1024], r9, r10
+          cmpzxadd qword ptr [rdx - 1024], r9, r10
 
 // CHECK: cmpbexadd dword ptr [rip], r8d, ecx
 // CHECK: encoding: [0xc4,0x62,0x71,0xe6,0x05,0x00,0x00,0x00,0x00]

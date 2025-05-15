@@ -18,7 +18,6 @@
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
 namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
-using LIBC_NAMESPACE::Sign;
 
 template <typename T>
 class RemQuoTestTemplate : public LIBC_NAMESPACE::testing::FEnvSafeTest {
@@ -128,7 +127,7 @@ public:
 
       // In normal range on x86 platforms, the long double implicit 1 bit can be
       // zero making the numbers NaN. Hence we test for them separately.
-      if (FPBits(v).is_nan() || FPBits(w).is_nan()) {
+      if (isnan(x) || isnan(y)) {
         ASSERT_FP_EQ(result.f, nan);
         continue;
       }

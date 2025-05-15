@@ -363,3 +363,8 @@ those as well).
 
 These commands use the file paths shown in the diff output
 so they will only work from the root of the repository.
+
+Current State of Clang Format for LLVM
+======================================
+
+The following table :doc:`ClangFormattedStatus` shows the current status of clang-formatting for the entire LLVM source tree.

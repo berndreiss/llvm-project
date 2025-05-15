@@ -22,7 +22,7 @@ namespace {
 class ValueLatticeTest : public testing::Test {
 protected:
   LLVMContext Context;
-  DataLayout DL;
+  DataLayout DL = DataLayout("");
 };
 
 TEST_F(ValueLatticeTest, ValueLatticeGetters) {

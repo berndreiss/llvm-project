@@ -97,7 +97,6 @@ using namespace lld::elf;
 namespace {
 template <class ELFT> class ICF {
 public:
-  ICF(Ctx &ctx) : ctx(ctx) {}
   void run();
 
 private:
@@ -121,7 +120,6 @@ private:
 
   void forEachClass(llvm::function_ref<void(size_t, size_t)> fn);
 
-  Ctx &ctx;
   SmallVector<InputSection *, 0> sections;
 
   // We repeat the main loop while `Repeat` is true.
@@ -244,7 +242,7 @@ bool ICF<ELFT>::constantEq(const InputSection *secA, Relocs<RelTy> ra,
   auto rai = ra.begin(), rae = ra.end(), rbi = rb.begin();
   for (; rai != rae; ++rai, ++rbi) {
     if (rai->r_offset != rbi->r_offset ||
-        rai->getType(ctx.arg.isMips64EL) != rbi->getType(ctx.arg.isMips64EL))
+        rai->getType(config->isMips64EL) != rbi->getType(config->isMips64EL))
       return false;
 
     uint64_t addA = getAddend<ELFT>(*rai);
@@ -459,8 +457,8 @@ static void combineRelocHashes(unsigned cnt, InputSection *isec,
   isec->eqClass[(cnt + 1) % 2] = hash | (1U << 31);
 }
 
-static void print(Ctx &ctx, const Twine &s) {
-  if (ctx.arg.printIcfSections)
+static void print(const Twine &s) {
+  if (config->printIcfSections)
     message(s);
 }
 
@@ -469,9 +467,9 @@ template <class ELFT> void ICF<ELFT>::run() {
   // Compute isPreemptible early. We may add more symbols later, so this loop
   // cannot be merged with the later computeIsPreemptible() pass which is used
   // by scanRelocations().
-  if (ctx.arg.hasDynSymTab)
-    for (Symbol *sym : ctx.symtab->getSymbols())
-      sym->isPreemptible = computeIsPreemptible(ctx, *sym);
+  if (config->hasDynSymTab)
+    for (Symbol *sym : symtab.getSymbols())
+      sym->isPreemptible = computeIsPreemptible(*sym);
 
   // Two text sections may have identical content and relocations but different
   // LSDA, e.g. the two functions may have catch blocks of different types. If a
@@ -482,7 +480,7 @@ template <class ELFT> void ICF<ELFT>::run() {
   // If two .gcc_except_table have identical semantics (usually identical
   // content with PC-relative encoding), we will lose folding opportunity.
   uint32_t uniqueId = 0;
-  for (Partition &part : ctx.partitions)
+  for (Partition &part : partitions)
     part.ehFrame->iterateFDEWithLSDA<ELFT>(
         [&](InputSection &s) { s.eqClass[0] = s.eqClass[1] = ++uniqueId; });
 
@@ -542,15 +540,15 @@ template <class ELFT> void ICF<ELFT>::run() {
     });
   } while (repeat);
 
-  Log(ctx) << "ICF needed " << Twine(cnt) << " iterations";
+  log("ICF needed " + Twine(cnt) + " iterations");
 
   // Merge sections by the equivalence class.
   forEachClassRange(0, sections.size(), [&](size_t begin, size_t end) {
     if (end - begin == 1)
       return;
-    print(ctx, "selected section " + toString(sections[begin]));
+    print("selected section " + toString(sections[begin]));
     for (size_t i = begin + 1; i < end; ++i) {
-      print(ctx, "  removing identical section " + toString(sections[i]));
+      print("  removing identical section " + toString(sections[i]));
       sections[begin]->replace(sections[i]);
 
       // At this point we know sections merged are fully identical and hence
@@ -570,7 +568,7 @@ template <class ELFT> void ICF<ELFT>::run() {
           d->folded = true;
         }
   };
-  for (Symbol *sym : ctx.symtab->getSymbols())
+  for (Symbol *sym : symtab.getSymbols())
     fold(sym);
   parallelForEach(ctx.objectFiles, [&](ELFFileBase *file) {
     for (Symbol *sym : file->getLocalSymbols())
@@ -579,7 +577,7 @@ template <class ELFT> void ICF<ELFT>::run() {
 
   // InputSectionDescription::sections is populated by processSectionCommands().
   // ICF may fold some input sections assigned to output sections. Remove them.
-  for (SectionCommand *cmd : ctx.script->sectionCommands)
+  for (SectionCommand *cmd : script->sectionCommands)
     if (auto *osd = dyn_cast<OutputDesc>(cmd))
       for (SectionCommand *subCmd : osd->osec.commands)
         if (auto *isd = dyn_cast<InputSectionDescription>(subCmd))
@@ -588,12 +586,12 @@ template <class ELFT> void ICF<ELFT>::run() {
 }
 
 // ICF entry point function.
-template <class ELFT> void elf::doIcf(Ctx &ctx) {
+template <class ELFT> void elf::doIcf() {
   llvm::TimeTraceScope timeScope("ICF");
-  ICF<ELFT>(ctx).run();
+  ICF<ELFT>().run();
 }
 
-template void elf::doIcf<ELF32LE>(Ctx &);
-template void elf::doIcf<ELF32BE>(Ctx &);
-template void elf::doIcf<ELF64LE>(Ctx &);
-template void elf::doIcf<ELF64BE>(Ctx &);
+template void elf::doIcf<ELF32LE>();
+template void elf::doIcf<ELF32BE>();
+template void elf::doIcf<ELF64LE>();
+template void elf::doIcf<ELF64BE>();

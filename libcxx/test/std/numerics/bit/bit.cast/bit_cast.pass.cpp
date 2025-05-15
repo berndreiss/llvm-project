@@ -229,7 +229,7 @@ bool tests() {
         test_roundtrip_through_nested_T<false>(i);
         test_roundtrip_through_buffer<false>(i);
 
-#ifdef TEST_LONG_DOUBLE_IS_DOUBLE
+#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
         test_roundtrip_through<double, false>(i);
 #endif
 #if defined(__SIZEOF_INT128__) && __SIZEOF_LONG_DOUBLE__ == __SIZEOF_INT128__ &&                                       \

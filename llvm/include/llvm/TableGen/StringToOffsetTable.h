@@ -12,9 +12,8 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringMap.h"
-#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
-#include <optional>
+#include <cctype>
 
 namespace llvm {
 
@@ -27,84 +26,52 @@ class StringToOffsetTable {
   std::string AggregateString;
 
 public:
-  bool empty() const { return StringOffset.empty(); }
-  size_t size() const { return AggregateString.size(); }
+  bool Empty() const { return StringOffset.empty(); }
 
   unsigned GetOrAddStringOffset(StringRef Str, bool appendZero = true) {
-    auto [II, Inserted] = StringOffset.insert({Str, size()});
-    if (Inserted) {
+    auto IterBool =
+        StringOffset.insert(std::make_pair(Str, AggregateString.size()));
+    if (IterBool.second) {
       // Add the string to the aggregate if this is the first time found.
       AggregateString.append(Str.begin(), Str.end());
       if (appendZero)
         AggregateString += '\0';
     }
 
-    return II->second;
+    return IterBool.first->second;
   }
 
-  // Returns the offset of `Str` in the table if its preset, else return
-  // std::nullopt.
-  std::optional<unsigned> GetStringOffset(StringRef Str) const {
-    auto II = StringOffset.find(Str);
-    if (II == StringOffset.end())
-      return std::nullopt;
-    return II->second;
-  }
-
-  // Emit the string using string literal concatenation, for better readability
-  // and searchability.
-  void EmitStringLiteralDef(raw_ostream &OS, const Twine &Decl,
-                            const Twine &Indent = "  ") const {
-    OS << formatv(R"(
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverlength-strings"
-#endif
-{0}{1} = )",
-                  Indent, Decl);
-
-    for (StringRef Str : split(AggregateString, '\0')) {
-      OS << "\n" << Indent << "  \"";
-      OS.write_escaped(Str);
-      OS << "\\0\"";
-    }
-    OS << R"(;
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-)";
-  }
-
-  // Emit the string as one single string.
-  void EmitString(raw_ostream &O) const {
+  void EmitString(raw_ostream &O) {
     // Escape the string.
-    SmallString<256> EscapedStr;
-    raw_svector_ostream(EscapedStr).write_escaped(AggregateString);
+    SmallString<256> Str;
+    raw_svector_ostream(Str).write_escaped(AggregateString);
+    AggregateString = std::string(Str);
 
     O << "    \"";
     unsigned CharsPrinted = 0;
-    for (unsigned i = 0, e = EscapedStr.size(); i != e; ++i) {
+    for (unsigned i = 0, e = AggregateString.size(); i != e; ++i) {
       if (CharsPrinted > 70) {
         O << "\"\n    \"";
         CharsPrinted = 0;
       }
-      O << EscapedStr[i];
+      O << AggregateString[i];
       ++CharsPrinted;
 
       // Print escape sequences all together.
-      if (EscapedStr[i] != '\\')
+      if (AggregateString[i] != '\\')
         continue;
 
-      assert(i + 1 < EscapedStr.size() && "Incomplete escape sequence!");
-      if (isDigit(EscapedStr[i + 1])) {
-        assert(isDigit(EscapedStr[i + 2]) && isDigit(EscapedStr[i + 3]) &&
+      assert(i + 1 < AggregateString.size() && "Incomplete escape sequence!");
+      if (isdigit(AggregateString[i + 1])) {
+        assert(isdigit(AggregateString[i + 2]) &&
+               isdigit(AggregateString[i + 3]) &&
                "Expected 3 digit octal escape!");
-        O << EscapedStr[++i];
-        O << EscapedStr[++i];
-        O << EscapedStr[++i];
+        O << AggregateString[++i];
+        O << AggregateString[++i];
+        O << AggregateString[++i];
         CharsPrinted += 3;
       } else {
-        O << EscapedStr[++i];
+        O << AggregateString[++i];
         ++CharsPrinted;
       }
     }

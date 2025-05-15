@@ -1,4 +1,5 @@
 #include "test_binary_properties.h"
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 

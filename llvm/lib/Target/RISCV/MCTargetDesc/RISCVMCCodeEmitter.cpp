@@ -77,7 +77,7 @@ public:
 
   /// Return binary encoding of operand. If the machine operand requires
   /// relocation, record the relocation and return zero.
-  uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
+  unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
 
@@ -172,7 +172,7 @@ void RISCVMCCodeEmitter::expandTLSDESCCall(const MCInst &MI,
   const RISCVMCExpr *Expr = dyn_cast<RISCVMCExpr>(SrcSymbol.getExpr());
   MCRegister Link = MI.getOperand(0).getReg();
   MCRegister Dest = MI.getOperand(1).getReg();
-  int64_t Imm = MI.getOperand(2).getImm();
+  MCRegister Imm = MI.getOperand(2).getImm();
   Fixups.push_back(MCFixup::create(
       0, Expr, MCFixupKind(RISCV::fixup_riscv_tlsdesc_call), MI.getLoc()));
   MCInst Call =
@@ -355,27 +355,12 @@ void RISCVMCCodeEmitter::encodeInstruction(const MCInst &MI,
     support::endian::write(CB, Bits, llvm::endianness::little);
     break;
   }
-  case 6: {
-    uint64_t Bits = getBinaryCodeForInstr(MI, Fixups, STI) & 0xffff'ffff'ffffu;
-    SmallVector<char, 8> Encoding;
-    support::endian::write(Encoding, Bits, llvm::endianness::little);
-    assert(Encoding[6] == 0 && Encoding[7] == 0 &&
-           "Unexpected encoding for 48-bit instruction");
-    Encoding.truncate(6);
-    CB.append(Encoding);
-    break;
-  }
-  case 8: {
-    uint64_t Bits = getBinaryCodeForInstr(MI, Fixups, STI);
-    support::endian::write(CB, Bits, llvm::endianness::little);
-    break;
-  }
   }
 
   ++MCNumEmitted; // Keep track of the # of mi's emitted.
 }
 
-uint64_t
+unsigned
 RISCVMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const {
@@ -384,7 +369,7 @@ RISCVMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
 
   if (MO.isImm())
-    return MO.getImm();
+    return static_cast<unsigned>(MO.getImm());
 
   llvm_unreachable("Unhandled expression!");
   return 0;

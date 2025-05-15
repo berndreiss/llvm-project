@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyUtils STATIC
+add_clang_library(clangTidyUtils
   Aliasing.cpp
   ASTUtils.cpp
   BracesAroundStatement.cpp

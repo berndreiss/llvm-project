@@ -596,7 +596,7 @@ bool MigrationProcess::applyTransform(TransformFn trans,
   for (Rewriter::buffer_iterator
         I = rewriter.buffer_begin(), E = rewriter.buffer_end(); I != E; ++I) {
     FileID FID = I->first;
-    llvm::RewriteBuffer &buf = I->second;
+    RewriteBuffer &buf = I->second;
     OptionalFileEntryRef file =
         Ctx.getSourceManager().getFileEntryRefForID(FID);
     assert(file);

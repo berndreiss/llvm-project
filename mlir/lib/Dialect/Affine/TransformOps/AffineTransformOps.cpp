@@ -157,8 +157,6 @@ class AffineTransformDialectExtension
     : public transform::TransformDialectExtension<
           AffineTransformDialectExtension> {
 public:
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineTransformDialectExtension)
-
   using Base::Base;
 
   void init() {

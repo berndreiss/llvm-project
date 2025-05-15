@@ -325,13 +325,12 @@ static bool importFunctions(const char *argv0, Module &DestModule) {
       ExitOnErr(llvm::getModuleSummaryIndexForFile(SummaryIndex));
 
   // Map of Module -> List of globals to import from the Module
-  FunctionImporter::ImportIDTable ImportIDs;
-  FunctionImporter::ImportMapTy ImportList(ImportIDs);
+  FunctionImporter::ImportMapTy ImportList;
 
   auto ModuleLoader = [&DestModule](const char *argv0,
                                     const std::string &Identifier) {
-    std::unique_ptr<MemoryBuffer> Buffer = ExitOnErr(errorOrToExpected(
-        MemoryBuffer::getFileOrSTDIN(Identifier, /*IsText=*/true)));
+    std::unique_ptr<MemoryBuffer> Buffer =
+        ExitOnErr(errorOrToExpected(MemoryBuffer::getFileOrSTDIN(Identifier)));
     return loadFile(argv0, std::move(Buffer), DestModule.getContext(), false);
   };
 
@@ -382,8 +381,9 @@ static bool importFunctions(const char *argv0, Module &DestModule) {
     // definition, so make the import type definition directly.
     // FIXME: A follow-up patch should add test coverage for import declaration
     // in `llvm-link` CLI (e.g., by introducing a new command line option).
-    ImportList.addDefinition(
-        FileNameStringCache.insert(FileName).first->getKey(), F->getGUID());
+    auto &Entry =
+        ImportList[FileNameStringCache.insert(FileName).first->getKey()];
+    Entry[F->getGUID()] = GlobalValueSummary::Definition;
   }
   auto CachedModuleLoader = [&](StringRef Identifier) {
     return ModuleLoaderCache.takeModule(std::string(Identifier));
@@ -402,7 +402,7 @@ static bool linkFiles(const char *argv0, LLVMContext &Context, Linker &L,
   // Similar to some flags, internalization doesn't apply to the first file.
   bool InternalizeLinkedSymbols = false;
   for (const auto &File : Files) {
-    auto BufferOrErr = MemoryBuffer::getFileOrSTDIN(File, /*IsText=*/true);
+    auto BufferOrErr = MemoryBuffer::getFileOrSTDIN(File);
 
     // When we encounter a missing file, make sure we expose its name.
     if (auto EC = BufferOrErr.getError())

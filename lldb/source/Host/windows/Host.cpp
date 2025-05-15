@@ -206,14 +206,13 @@ Status Host::ShellExpandArguments(ProcessLaunchInfo &launch_info) {
   if (launch_info.GetFlags().Test(eLaunchFlagShellExpandArguments)) {
     FileSpec expand_tool_spec = HostInfo::GetSupportExeDir();
     if (!expand_tool_spec) {
-      error = Status::FromErrorString(
-          "could not find support executable directory for "
-          "the lldb-argdumper tool");
+      error.SetErrorString("could not find support executable directory for "
+                           "the lldb-argdumper tool");
       return error;
     }
     expand_tool_spec.AppendPathComponent("lldb-argdumper.exe");
     if (!FileSystem::Instance().Exists(expand_tool_spec)) {
-      error = Status::FromErrorString("could not find the lldb-argdumper tool");
+      error.SetErrorString("could not find the lldb-argdumper tool");
       return error;
     }
 
@@ -236,32 +235,32 @@ Status Host::ShellExpandArguments(ProcessLaunchInfo &launch_info) {
       return e;
 
     if (status != 0) {
-      error = Status::FromErrorStringWithFormat(
-          "lldb-argdumper exited with error %d", status);
+      error.SetErrorStringWithFormat("lldb-argdumper exited with error %d",
+                                     status);
       return error;
     }
 
     auto data_sp = StructuredData::ParseJSON(output);
     if (!data_sp) {
-      error = Status::FromErrorString("invalid JSON");
+      error.SetErrorString("invalid JSON");
       return error;
     }
 
     auto dict_sp = data_sp->GetAsDictionary();
     if (!dict_sp) {
-      error = Status::FromErrorString("invalid JSON");
+      error.SetErrorString("invalid JSON");
       return error;
     }
 
     auto args_sp = dict_sp->GetObjectForDotSeparatedPath("arguments");
     if (!args_sp) {
-      error = Status::FromErrorString("invalid JSON");
+      error.SetErrorString("invalid JSON");
       return error;
     }
 
     auto args_array_sp = args_sp->GetAsArray();
     if (!args_array_sp) {
-      error = Status::FromErrorString("invalid JSON");
+      error.SetErrorString("invalid JSON");
       return error;
     }
 

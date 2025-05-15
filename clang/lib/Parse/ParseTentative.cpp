@@ -1807,8 +1807,6 @@ Parser::isCXXDeclarationSpecifier(ImplicitTypenameContext AllowImplicitTypename,
   case tok::annot_pack_indexing_type:
 #define GENERIC_IMAGE_TYPE(ImgType, Id) case tok::kw_##ImgType##_t:
 #include "clang/Basic/OpenCLImageTypes.def"
-#define HLSL_INTANGIBLE_TYPE(Name, Id, SingletonId) case tok::kw_##Name:
-#include "clang/Basic/HLSLIntangibleTypes.def"
     if (NextToken().is(tok::l_paren))
       return TPResult::Ambiguous;
 
@@ -1935,8 +1933,6 @@ bool Parser::isCXXDeclarationSpecifierAType() {
   case tok::kw__Sat:
 #define GENERIC_IMAGE_TYPE(ImgType, Id) case tok::kw_##ImgType##_t:
 #include "clang/Basic/OpenCLImageTypes.def"
-#define HLSL_INTANGIBLE_TYPE(Name, Id, SingletonId) case tok::kw_##Name:
-#include "clang/Basic/HLSLIntangibleTypes.def"
     return true;
 
   case tok::kw_auto:

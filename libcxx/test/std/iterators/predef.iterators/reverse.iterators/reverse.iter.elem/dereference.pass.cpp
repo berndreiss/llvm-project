@@ -21,7 +21,6 @@
 #include <cassert>
 
 #include "test_macros.h"
-#include "test_iterators.h"
 
 class A
 {
@@ -48,10 +47,6 @@ int main(int, char**)
 {
     A a;
     test(&a+1, A());
-    test(random_access_iterator<A*>(&a + 1), A());
-#if TEST_STD_VER >= 20
-    test(cpp20_random_access_iterator<A*>(&a + 1), A());
-#endif
 
 #if TEST_STD_VER > 14
     {

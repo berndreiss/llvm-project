@@ -41,12 +41,7 @@ TEST(VPDominatorTreeTest, DominanceNoRegionsTest) {
   VPBlockUtils::connectBlocks(VPBB3, VPBB4);
 
   auto TC = std::make_unique<VPValue>();
-  LLVMContext C;
-  auto *ScalarHeader = BasicBlock::Create(C, "");
-  VPIRBasicBlock *ScalarHeaderVPBB = new VPIRBasicBlock(ScalarHeader);
-  VPBlockUtils::connectBlocks(R1, ScalarHeaderVPBB);
-  VPlan Plan(VPPH, &*TC, VPBB0, ScalarHeaderVPBB);
-
+  VPlan Plan(VPPH, &*TC, VPBB0);
   VPDominatorTree VPDT;
   VPDT.recalculate(Plan);
 
@@ -62,7 +57,6 @@ TEST(VPDominatorTreeTest, DominanceNoRegionsTest) {
   EXPECT_EQ(VPDT.findNearestCommonDominator(VPBB2, VPBB3), VPBB1);
   EXPECT_EQ(VPDT.findNearestCommonDominator(VPBB2, VPBB4), VPBB1);
   EXPECT_EQ(VPDT.findNearestCommonDominator(VPBB4, VPBB4), VPBB4);
-  delete ScalarHeader;
 }
 
 static void
@@ -77,8 +71,6 @@ checkDomChildren(VPDominatorTree &VPDT, VPBlockBase *Src,
 }
 
 TEST(VPDominatorTreeTest, DominanceRegionsTest) {
-  LLVMContext C;
-  auto *ScalarHeader = BasicBlock::Create(C, "");
   {
     // 2 consecutive regions.
     // VPBB0
@@ -123,9 +115,7 @@ TEST(VPDominatorTreeTest, DominanceRegionsTest) {
     VPBlockUtils::connectBlocks(R1, R2);
 
     auto TC = std::make_unique<VPValue>();
-    VPIRBasicBlock *ScalarHeaderVPBB = new VPIRBasicBlock(ScalarHeader);
-    VPBlockUtils::connectBlocks(R2, ScalarHeaderVPBB);
-    VPlan Plan(VPPH, &*TC, VPBB0, ScalarHeaderVPBB);
+    VPlan Plan(VPPH, &*TC, VPBB0);
     VPDominatorTree VPDT;
     VPDT.recalculate(Plan);
 
@@ -205,9 +195,7 @@ TEST(VPDominatorTreeTest, DominanceRegionsTest) {
     VPBlockUtils::connectBlocks(R1, VPBB2);
 
     auto TC = std::make_unique<VPValue>();
-    VPIRBasicBlock *ScalarHeaderVPBB = new VPIRBasicBlock(ScalarHeader);
-    VPBlockUtils::connectBlocks(VPBB2, ScalarHeaderVPBB);
-    VPlan Plan(VPPH, &*TC, VPBB1, ScalarHeaderVPBB);
+    VPlan Plan(VPPH, &*TC, VPBB1);
     VPDominatorTree VPDT;
     VPDT.recalculate(Plan);
 
@@ -220,9 +208,8 @@ TEST(VPDominatorTreeTest, DominanceRegionsTest) {
     checkDomChildren(VPDT, R2BB2, {R2BB3});
     checkDomChildren(VPDT, R2BB3, {});
     checkDomChildren(VPDT, R1BB3, {VPBB2});
-    checkDomChildren(VPDT, VPBB2, {ScalarHeaderVPBB});
+    checkDomChildren(VPDT, VPBB2, {});
   }
-  delete ScalarHeader;
 }
 
 } // namespace

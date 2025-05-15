@@ -1320,7 +1320,7 @@ bool RegisterCoalescer::reMaterializeTrivialDef(const CoalescerPair &CP,
   if (!definesFullReg(*DefMI, SrcReg))
     return false;
   bool SawStore = false;
-  if (!DefMI->isSafeToMove(SawStore))
+  if (!DefMI->isSafeToMove(AA, SawStore))
     return false;
   const MCInstrDesc &MCID = DefMI->getDesc();
   if (MCID.getNumDefs() != 1)
@@ -3230,8 +3230,8 @@ void JoinVals::pruneValues(JoinVals &Other,
           // Also remove dead flags since the joined live range will
           // continue past this instruction.
           for (MachineOperand &MO :
-               Indexes->getInstructionFromIndex(Def)->all_defs()) {
-            if (MO.getReg() == Reg) {
+               Indexes->getInstructionFromIndex(Def)->operands()) {
+            if (MO.isReg() && MO.isDef() && MO.getReg() == Reg) {
               if (MO.getSubReg() != 0 && MO.isUndef() && !EraseImpDef)
                 MO.setIsUndef(false);
               MO.setIsDead(false);
@@ -3548,7 +3548,8 @@ void RegisterCoalescer::joinSubRegRanges(LiveRange &LRange, LiveRange &RRange,
   LHSVals.removeImplicitDefs();
   RHSVals.removeImplicitDefs();
 
-  assert(LRange.verify() && RRange.verify());
+  LRange.verify();
+  RRange.verify();
 
   // Join RRange into LHS.
   LRange.join(RRange, LHSVals.getAssignments(), RHSVals.getAssignments(),
@@ -4239,7 +4240,7 @@ bool RegisterCoalescer::runOnMachineFunction(MachineFunction &fn) {
   JoinSplitEdges = EnableJoinSplits;
 
   if (VerifyCoalescing)
-    MF->verify(this, "Before register coalescing", &errs());
+    MF->verify(this, "Before register coalescing");
 
   DbgVRegToValues.clear();
   buildVRegToDbgValueMap(fn);
@@ -4299,7 +4300,7 @@ bool RegisterCoalescer::runOnMachineFunction(MachineFunction &fn) {
 
   LLVM_DEBUG(dump());
   if (VerifyCoalescing)
-    MF->verify(this, "After register coalescing", &errs());
+    MF->verify(this, "After register coalescing");
   return true;
 }
 

@@ -197,7 +197,7 @@ def executeShCmd(cmd, shenv, results, timeout=0):
     timeout
     """
     # Use the helper even when no timeout is required to make
-    # other code simpler (i.e. avoid bunch of ``is not None`` checks)
+    # other code simpler (i.e. avoid bunch of ``!= None`` checks)
     timeoutHelper = TimeoutHelper(timeout)
     if timeout > 0:
         timeoutHelper.startTimer()
@@ -356,7 +356,7 @@ def executeBuiltinPopd(cmd, shenv):
 def executeBuiltinExport(cmd, shenv):
     """executeBuiltinExport - Set an environment variable."""
     if len(cmd.args) != 2:
-        raise InternalShellError(cmd, "'export' supports only one argument")
+        raise InternalShellError("'export' supports only one argument")
     updateEnv(shenv, cmd.args)
     return ShellCommandResult(cmd, "", "", 0, False)
 
@@ -406,7 +406,8 @@ def executeBuiltinEcho(cmd, shenv):
             return arg
 
         arg = lit.util.to_bytes(arg)
-        return arg.decode("unicode_escape")
+        codec = "string_escape" if sys.version_info < (3, 0) else "unicode_escape"
+        return arg.decode(codec)
 
     if args:
         for arg in args[:-1]:
@@ -742,16 +743,7 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
                     cmd_shenv = ShellEnvironment(shenv.cwd, shenv.env)
                 args = updateEnv(cmd_shenv, args)
                 if not args:
-                    # Return the environment variables if no argument is provided.
-                    env_str = "\n".join(
-                        f"{key}={value}" for key, value in sorted(cmd_shenv.env.items())
-                    )
-                    results.append(
-                        ShellCommandResult(
-                            j, env_str, "", 0, timeoutHelper.timeoutReached(), []
-                        )
-                    )
-                    return 0
+                    raise InternalShellError(j, "Error: 'env' requires a" " subcommand")
             elif args[0] == "not":
                 not_args.append(args.pop(0))
                 not_count += 1
@@ -775,10 +767,6 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
         # echo-appending to a file.
         # FIXME: Standardize on the builtin echo implementation. We can use a
         # temporary file to sidestep blocking pipe write issues.
-
-        # Ensure args[0] is hashable.
-        args[0] = expand_glob(args[0], cmd_shenv.cwd)[0]
-
         inproc_builtin = inproc_builtins.get(args[0], None)
         if inproc_builtin and (args[0] != "echo" or len(cmd.commands) == 1):
             # env calling an in-process builtin is useless, so we take the safe
@@ -1017,20 +1005,6 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
     return exitCode
 
 
-def findColor(line, curr_color):
-    start = line.rfind("\33[")
-    if start == -1:
-        return curr_color
-    end = line.find("m", start + 2)
-    if end == -1:
-        return curr_color
-    match = line[start : end + 1]
-    # "\33[0m" means "reset all formatting". Sometimes the 0 is skipped.
-    if match == "\33[m" or match == "\33[0m":
-        return None
-    return match
-
-
 def formatOutput(title, data, limit=None):
     if not data.strip():
         return ""
@@ -1041,18 +1015,8 @@ def formatOutput(title, data, limit=None):
         msg = ""
     ndashes = 30
     # fmt: off
-    out = f"# .---{title}{'-' * (ndashes - 4 - len(title))}\n"
-    curr_color = None
-    for line in data.splitlines():
-        if curr_color:
-            out += "\33[0m"
-        out += "# | "
-        if curr_color:
-            out += curr_color
-        out += line + "\n"
-        curr_color = findColor(line, curr_color)
-    if curr_color:
-        out += "\33[0m"  # prevent unterminated formatting from leaking
+    out =  f"# .---{title}{'-' * (ndashes - 4 - len(title))}\n"
+    out += f"# | " + "\n# | ".join(data.splitlines()) + "\n"
     out += f"# `---{msg}{'-' * (ndashes - 4 - len(msg))}\n"
     # fmt: on
     return out
@@ -1205,7 +1169,7 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
     open_kwargs = {}
     if litConfig.isWindows and not isWin32CMDEXE:
         mode += "b"  # Avoid CRLFs when writing bash scripts.
-    else:
+    elif sys.version_info > (3, 0):
         open_kwargs["encoding"] = "utf-8"
     f = open(script, mode, **open_kwargs)
     if isWin32CMDEXE:
@@ -1258,18 +1222,8 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
                     commands[i] += f" && {{ {command}; }}"
         if test.config.pipefail:
             f.write(b"set -o pipefail;" if mode == "wb" else "set -o pipefail;")
-
-        # Manually export any DYLD_* variables used by dyld on macOS because
-        # otherwise they are lost when the shell executable is run, before the
-        # lit test is executed.
-        env_str = "\n".join(
-            "export {}={};".format(k, shlex.quote(v))
-            for k, v in test.config.environment.items()
-            if k.startswith("DYLD_")
-        )
-        f.write(bytes(env_str, "utf-8") if mode == "wb" else env_str)
         f.write(b"set -x;" if mode == "wb" else "set -x;")
-        if mode == "wb":
+        if sys.version_info > (3, 0) and mode == "wb":
             f.write(bytes("{ " + "; } &&\n{ ".join(commands) + "; }", "utf-8"))
         else:
             f.write("{ " + "; } &&\n{ ".join(commands) + "; }")
@@ -1394,14 +1348,10 @@ def getDefaultSubstitutions(test, tmpDir, tmpBase, normalize_slashes=False):
     substitutions = []
     substitutions.extend(test.config.substitutions)
     tmpName = tmpBase + ".tmp"
-    tmpBaseName = os.path.basename(tmpBase)
-    sourceBaseName = os.path.basename(sourcepath)
+    baseName = os.path.basename(tmpBase)
 
     substitutions.append(("%{pathsep}", os.pathsep))
-    substitutions.append(("%basename_t", tmpBaseName))
-
-    substitutions.append(("%{s:basename}", sourceBaseName))
-    substitutions.append(("%{t:stem}", tmpBaseName))
+    substitutions.append(("%basename_t", baseName))
 
     substitutions.extend(
         [
@@ -1637,6 +1587,7 @@ class SubstDirective(ExpandableScriptDirective):
         assert (
             not self.needs_continuation()
         ), "expected directive continuations to be parsed before applying"
+        value_repl = self.value.replace("\\", "\\\\")
         existing = [i for i, subst in enumerate(substitutions) if self.name in subst[0]]
         existing_res = "".join(
             "\nExisting pattern: " + substitutions[i][0] for i in existing
@@ -1649,7 +1600,7 @@ class SubstDirective(ExpandableScriptDirective):
                     f"{self.get_location()}"
                     f"{existing_res}"
                 )
-            substitutions.insert(0, (self.name, self.value))
+            substitutions.insert(0, (self.name, value_repl))
             return
         if len(existing) > 1:
             raise ValueError(
@@ -1671,7 +1622,7 @@ class SubstDirective(ExpandableScriptDirective):
                 f"Expected pattern: {self.name}"
                 f"{existing_res}"
             )
-        substitutions[existing[0]] = (self.name, self.value)
+        substitutions[existing[0]] = (self.name, value_repl)
 
 
 def applySubstitutions(script, substitutions, conditions={}, recursion_limit=None):
@@ -1787,7 +1738,8 @@ def applySubstitutions(script, substitutions, conditions={}, recursion_limit=Non
         # Apply substitutions
         ln = substituteIfElse(escapePercents(ln))
         for a, b in substitutions:
-            b = b.replace("\\", "\\\\")
+            if kIsWindows:
+                b = b.replace("\\", "\\\\")
             # re.compile() has a built-in LRU cache with 512 entries. In some
             # test suites lit ends up thrashing that cache, which made e.g.
             # check-llvm run 50% slower.  Use an explicit, unbounded cache

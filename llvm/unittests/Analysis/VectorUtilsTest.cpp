@@ -35,7 +35,7 @@ protected:
 
     // A failure here means that the test itself is buggy.
     if (!M)
-      report_fatal_error(Twine(errMsg));
+      report_fatal_error(Twine(os.str()));
 
     Function *F = M->getFunction("test");
     if (F == nullptr)
@@ -607,7 +607,8 @@ protected:
   }
 
   bool validParams(ArrayRef<VFParameter> Parameters) {
-    Shape.Parameters = SmallVector<VFParameter, 8>(Parameters);
+    Shape.Parameters =
+        SmallVector<VFParameter, 8>(Parameters.begin(), Parameters.end());
     return Shape.hasValidParameterList();
   }
 };

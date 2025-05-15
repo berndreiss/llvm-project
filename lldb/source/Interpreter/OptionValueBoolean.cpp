@@ -49,10 +49,10 @@ Status OptionValueBoolean::SetValueFromString(llvm::StringRef value_str,
       NotifyValueChanged();
     } else {
       if (value_str.size() == 0)
-        error = Status::FromErrorString("invalid boolean string value <empty>");
+        error.SetErrorString("invalid boolean string value <empty>");
       else
-        error = Status::FromErrorStringWithFormat(
-            "invalid boolean string value: '%s'", value_str.str().c_str());
+        error.SetErrorStringWithFormat("invalid boolean string value: '%s'",
+                                       value_str.str().c_str());
     }
   } break;
 

@@ -195,8 +195,6 @@ bool UnreachableMachineBlockElim::runOnMachineFunction(MachineFunction &F) {
   }
 
   F.RenumberBlocks();
-  if (MDT)
-    MDT->updateBlockNumbers();
 
   return (!DeadBlocks.empty() || ModifiedPHI);
 }

@@ -35,6 +35,7 @@ static StringRef getTypeKeyword(Type type) {
   return TypeSwitch<Type, StringRef>(type)
       .Case<LLVMVoidType>([&](Type) { return "void"; })
       .Case<LLVMPPCFP128Type>([&](Type) { return "ppc_fp128"; })
+      .Case<LLVMX86MMXType>([&](Type) { return "x86_mmx"; })
       .Case<LLVMTokenType>([&](Type) { return "token"; })
       .Case<LLVMLabelType>([&](Type) { return "label"; })
       .Case<LLVMMetadataType>([&](Type) { return "metadata"; })
@@ -45,7 +46,6 @@ static StringRef getTypeKeyword(Type type) {
       .Case<LLVMArrayType>([&](Type) { return "array"; })
       .Case<LLVMStructType>([&](Type) { return "struct"; })
       .Case<LLVMTargetExtType>([&](Type) { return "target"; })
-      .Case<LLVMX86AMXType>([&](Type) { return "x86_amx"; })
       .Default([](Type) -> StringRef {
         llvm_unreachable("unexpected 'llvm' type kind");
       });
@@ -309,6 +309,7 @@ static Type dispatchParse(AsmParser &parser, bool allowAny = true) {
   return StringSwitch<function_ref<Type()>>(key)
       .Case("void", [&] { return LLVMVoidType::get(ctx); })
       .Case("ppc_fp128", [&] { return LLVMPPCFP128Type::get(ctx); })
+      .Case("x86_mmx", [&] { return LLVMX86MMXType::get(ctx); })
       .Case("token", [&] { return LLVMTokenType::get(ctx); })
       .Case("label", [&] { return LLVMLabelType::get(ctx); })
       .Case("metadata", [&] { return LLVMMetadataType::get(ctx); })
@@ -318,7 +319,6 @@ static Type dispatchParse(AsmParser &parser, bool allowAny = true) {
       .Case("array", [&] { return LLVMArrayType::parse(parser); })
       .Case("struct", [&] { return parseStructType(parser); })
       .Case("target", [&] { return LLVMTargetExtType::parse(parser); })
-      .Case("x86_amx", [&] { return LLVMX86AMXType::get(ctx); })
       .Default([&] {
         parser.emitError(keyLoc) << "unknown LLVM type: " << key;
         return Type();

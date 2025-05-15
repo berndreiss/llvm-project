@@ -1010,7 +1010,7 @@ RVVIntrinsic::RVVIntrinsic(
       (!IsMasked && hasPassthruOperand())) {
     for (auto &I : IntrinsicTypes) {
       if (I >= 0)
-        I += 1;
+        I += NF;
     }
   }
 }
@@ -1039,7 +1039,8 @@ llvm::SmallVector<PrototypeDescriptor> RVVIntrinsic::computeBuiltinTypes(
     llvm::ArrayRef<PrototypeDescriptor> Prototype, bool IsMasked,
     bool HasMaskedOffOperand, bool HasVL, unsigned NF,
     PolicyScheme DefaultScheme, Policy PolicyAttrs, bool IsTuple) {
-  SmallVector<PrototypeDescriptor> NewPrototype(Prototype);
+  SmallVector<PrototypeDescriptor> NewPrototype(Prototype.begin(),
+                                                Prototype.end());
   bool HasPassthruOp = DefaultScheme == PolicyScheme::HasPassthruOperand;
   if (IsMasked) {
     // If HasMaskedOffOperand, insert result type as first input operand if

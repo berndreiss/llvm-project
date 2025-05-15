@@ -406,16 +406,11 @@ void LTOModule::addDefinedFunctionSymbol(ModuleSymbolTable::Symbol Sym) {
     Buffer.c_str();
   }
 
-  auto *GV = cast<GlobalValue *>(Sym);
-  assert((isa<Function>(GV) ||
-          (isa<GlobalAlias>(GV) &&
-           isa<Function>(cast<GlobalAlias>(GV)->getAliasee()))) &&
-         "Not function or function alias");
-
-  addDefinedFunctionSymbol(Buffer, GV);
+  const Function *F = cast<Function>(cast<GlobalValue *>(Sym));
+  addDefinedFunctionSymbol(Buffer, F);
 }
 
-void LTOModule::addDefinedFunctionSymbol(StringRef Name, const GlobalValue *F) {
+void LTOModule::addDefinedFunctionSymbol(StringRef Name, const Function *F) {
   // add to list of defined symbols
   addDefinedSymbol(Name, F, true);
 }
@@ -616,11 +611,7 @@ void LTOModule::parseSymbols() {
     }
 
     assert(isa<GlobalAlias>(GV));
-
-    if (isa<Function>(cast<GlobalAlias>(GV)->getAliasee()))
-      addDefinedFunctionSymbol(Sym);
-    else
-      addDefinedDataSymbol(Sym);
+    addDefinedDataSymbol(Sym);
   }
 
   // make symbols for all undefines

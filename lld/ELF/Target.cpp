@@ -38,61 +38,65 @@ using namespace llvm::ELF;
 using namespace lld;
 using namespace lld::elf;
 
+const TargetInfo *elf::target;
+
 std::string lld::toString(RelType type) {
-  StringRef s = getELFRelocationTypeName(elf::ctx.arg.emachine, type);
+  StringRef s = getELFRelocationTypeName(elf::config->emachine, type);
   if (s == "Unknown")
     return ("Unknown (" + Twine(type) + ")").str();
   return std::string(s);
 }
 
-const ELFSyncStream &elf::operator<<(const ELFSyncStream &s, RelType type) {
-  StringRef buf = getELFRelocationTypeName(s.ctx.arg.emachine, type);
-  if (buf == "Unknown")
-    s << "Unknown (" << type << ')';
-  else
-    s << buf;
-  return s;
-}
-
-void elf::setTarget(Ctx &ctx) {
-  switch (ctx.arg.emachine) {
+TargetInfo *elf::getTarget() {
+  switch (config->emachine) {
   case EM_386:
   case EM_IAMCU:
-    return setX86TargetInfo(ctx);
+    return getX86TargetInfo();
   case EM_AARCH64:
-    return setAArch64TargetInfo(ctx);
+    return getAArch64TargetInfo();
   case EM_AMDGPU:
-    return setAMDGPUTargetInfo(ctx);
+    return getAMDGPUTargetInfo();
   case EM_ARM:
-    return setARMTargetInfo(ctx);
+    return getARMTargetInfo();
   case EM_AVR:
-    return setAVRTargetInfo(ctx);
+    return getAVRTargetInfo();
   case EM_HEXAGON:
-    return setHexagonTargetInfo(ctx);
+    return getHexagonTargetInfo();
   case EM_LOONGARCH:
-    return setLoongArchTargetInfo(ctx);
+    return getLoongArchTargetInfo();
   case EM_MIPS:
-    return setMipsTargetInfo(ctx);
+    switch (config->ekind) {
+    case ELF32LEKind:
+      return getMipsTargetInfo<ELF32LE>();
+    case ELF32BEKind:
+      return getMipsTargetInfo<ELF32BE>();
+    case ELF64LEKind:
+      return getMipsTargetInfo<ELF64LE>();
+    case ELF64BEKind:
+      return getMipsTargetInfo<ELF64BE>();
+    default:
+      llvm_unreachable("unsupported MIPS target");
+    }
   case EM_MSP430:
-    return setMSP430TargetInfo(ctx);
+    return getMSP430TargetInfo();
   case EM_PPC:
-    return setPPCTargetInfo(ctx);
+    return getPPCTargetInfo();
   case EM_PPC64:
-    return setPPC64TargetInfo(ctx);
+    return getPPC64TargetInfo();
   case EM_RISCV:
-    return setRISCVTargetInfo(ctx);
+    return getRISCVTargetInfo();
   case EM_SPARCV9:
-    return setSPARCV9TargetInfo(ctx);
+    return getSPARCV9TargetInfo();
   case EM_S390:
-    return setSystemZTargetInfo(ctx);
+    return getSystemZTargetInfo();
   case EM_X86_64:
-    return setX86_64TargetInfo(ctx);
+    return getX86_64TargetInfo();
   default:
-    Fatal(ctx) << "unsupported e_machine value: " << Twine(ctx.arg.emachine);
+    fatal("unsupported e_machine value: " + Twine(config->emachine));
   }
 }
 
-ErrorPlace elf::getErrorPlace(Ctx &ctx, const uint8_t *loc) {
+ErrorPlace elf::getErrorPlace(const uint8_t *loc) {
   assert(loc != nullptr);
   for (InputSectionBase *d : ctx.inputSections) {
     auto *isec = dyn_cast<InputSection>(d);
@@ -100,8 +104,8 @@ ErrorPlace elf::getErrorPlace(Ctx &ctx, const uint8_t *loc) {
       continue;
 
     const uint8_t *isecLoc =
-        ctx.bufferStart
-            ? (ctx.bufferStart + isec->getParent()->offset + isec->outSecOff)
+        Out::bufferStart
+            ? (Out::bufferStart + isec->getParent()->offset + isec->outSecOff)
             : isec->contentMaybeDecompress().data();
     if (isecLoc == nullptr) {
       assert(isa<SyntheticSection>(isec) && "No data but not synthetic?");
@@ -122,7 +126,7 @@ ErrorPlace elf::getErrorPlace(Ctx &ctx, const uint8_t *loc) {
 TargetInfo::~TargetInfo() {}
 
 int64_t TargetInfo::getImplicitAddend(const uint8_t *buf, RelType type) const {
-  internalLinkerError(getErrorLoc(ctx, buf),
+  internalLinkerError(getErrorLocation(buf),
                       "cannot read addend for relocation " + toString(type));
   return 0;
 }
@@ -137,8 +141,7 @@ bool TargetInfo::needsThunk(RelExpr expr, RelType type, const InputFile *file,
 
 bool TargetInfo::adjustPrologueForCrossSplitStack(uint8_t *loc, uint8_t *end,
                                                   uint8_t stOther) const {
-  Err(ctx) << "target doesn't support split stacks";
-  return false;
+  fatal("target doesn't support split stacks");
 }
 
 bool TargetInfo::inBranchRange(RelType type, uint64_t src, uint64_t dst) const {
@@ -155,7 +158,7 @@ RelExpr TargetInfo::adjustGotPcExpr(RelType type, int64_t addend,
 }
 
 void TargetInfo::relocateAlloc(InputSectionBase &sec, uint8_t *buf) const {
-  const unsigned bits = ctx.arg.is64 ? 64 : 32;
+  const unsigned bits = config->is64 ? 64 : 32;
   uint64_t secAddr = sec.getOutputSection()->addr;
   if (auto *s = dyn_cast<InputSection>(&sec))
     secAddr += s->outSecOff;
@@ -164,7 +167,9 @@ void TargetInfo::relocateAlloc(InputSectionBase &sec, uint8_t *buf) const {
   for (const Relocation &rel : sec.relocs()) {
     uint8_t *loc = buf + rel.offset;
     const uint64_t val = SignExtend64(
-        sec.getRelocTargetVA(ctx, rel, secAddr + rel.offset), bits);
+        sec.getRelocTargetVA(sec.file, rel.type, rel.addend,
+                             secAddr + rel.offset, *rel.sym, rel.expr),
+        bits);
     if (rel.expr != R_RELAX_HINT)
       relocate(loc, rel, val);
   }
@@ -172,7 +177,7 @@ void TargetInfo::relocateAlloc(InputSectionBase &sec, uint8_t *buf) const {
 
 uint64_t TargetInfo::getImageBase() const {
   // Use --image-base if set. Fall back to the target default if not.
-  if (ctx.arg.imageBase)
-    return *ctx.arg.imageBase;
-  return ctx.arg.isPic ? 0 : defaultImageBase;
+  if (config->imageBase)
+    return *config->imageBase;
+  return config->isPic ? 0 : defaultImageBase;
 }

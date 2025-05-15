@@ -14,8 +14,10 @@ define <vscale x 4 x i32>  @adr_32bit_lsl1(<vscale x 4 x i32>  %base, <vscale x 
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adr z0.s, [z0.s, z1.s, lsl #1]
 ; CHECK-NEXT:    ret
-  %offset = shl <vscale x 4 x i32> %idx, splat (i32 1)
-  %address = add <vscale x 4 x i32> %base, %offset
+  %splat_insert = insertelement <vscale x 4 x i32> poison, i32 1, i32 0
+  %one = shufflevector <vscale x 4 x i32> %splat_insert, <vscale x 4 x i32> poison, <vscale x 4 x i32> zeroinitializer
+  %shiftedOffset = shl <vscale x 4 x i32> %idx, %one
+  %address = add <vscale x 4 x i32> %base, %shiftedOffset
   ret <vscale x 4 x i32>  %address
 }
 
@@ -24,8 +26,10 @@ define <vscale x 4 x i32>  @adr_32bit_lsl2(<vscale x 4 x i32>  %base, <vscale x 
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adr z0.s, [z0.s, z1.s, lsl #2]
 ; CHECK-NEXT:    ret
-  %offset = shl <vscale x 4 x i32> %idx, splat (i32 2)
-  %address = add <vscale x 4 x i32> %base, %offset
+  %splat_insert = insertelement <vscale x 4 x i32> poison, i32 2, i32 0
+  %two = shufflevector <vscale x 4 x i32> %splat_insert, <vscale x 4 x i32> poison, <vscale x 4 x i32> zeroinitializer
+  %shiftedOffset = shl <vscale x 4 x i32> %idx, %two
+  %address = add <vscale x 4 x i32> %base, %shiftedOffset
   ret <vscale x 4 x i32>  %address
 }
 
@@ -34,8 +38,10 @@ define <vscale x 4 x i32>  @adr_32bit_lsl3(<vscale x 4 x i32>  %base, <vscale x 
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adr z0.s, [z0.s, z1.s, lsl #3]
 ; CHECK-NEXT:    ret
-  %offset = shl <vscale x 4 x i32> %idx, splat (i32 3)
-  %address = add <vscale x 4 x i32> %base, %offset
+  %splat_insert = insertelement <vscale x 4 x i32> poison, i32 3, i32 0
+  %three = shufflevector <vscale x 4 x i32> %splat_insert, <vscale x 4 x i32> poison, <vscale x 4 x i32> zeroinitializer
+  %shiftedOffset = shl <vscale x 4 x i32> %idx, %three
+  %address = add <vscale x 4 x i32> %base, %shiftedOffset
   ret <vscale x 4 x i32>  %address
 }
 

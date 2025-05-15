@@ -162,7 +162,7 @@ struct SparsifierOptions : public PassPipelineOptions<SparsifierOptions> {
   }
 
   /// Projects out the options for `createConvertVectorToLLVMPass`.
-  ConvertVectorToLLVMPassOptions convertVectorToLLVMOptions() const {
+  ConvertVectorToLLVMPassOptions lowerVectorToLLVMOptions() const {
     ConvertVectorToLLVMPassOptions opts{};
     opts.reassociateFPReductions = reassociateFPReductions;
     opts.force32BitVectorIndices = force32BitVectorIndices;

@@ -38,15 +38,8 @@ class BinaryHolder {
 public:
   using TimestampTy = sys::TimePoint<std::chrono::seconds>;
 
-  struct Options {
-    Options(bool Verbose = false, bool Warn = true)
-        : Verbose(Verbose), Warn(Warn) {}
-    bool Verbose;
-    bool Warn;
-  };
-
-  BinaryHolder(IntrusiveRefCntPtr<vfs::FileSystem> VFS,
-               BinaryHolder::Options Opts = {});
+  BinaryHolder(IntrusiveRefCntPtr<vfs::FileSystem> VFS, bool Verbose = false)
+      : VFS(VFS), Verbose(Verbose) {}
 
   // Forward declarations for friend declaration.
   class ObjectEntry;
@@ -65,7 +58,7 @@ public:
   public:
     /// Load the given object binary in memory.
     Error load(IntrusiveRefCntPtr<vfs::FileSystem> VFS, StringRef Filename,
-               TimestampTy Timestamp, BinaryHolder::Options = {});
+               TimestampTy Timestamp, bool Verbose = false);
 
     /// Access all owned ObjectFiles.
     std::vector<const object::ObjectFile *> getObjects() const;
@@ -117,11 +110,11 @@ public:
 
     /// Load the given object binary in memory.
     Error load(IntrusiveRefCntPtr<vfs::FileSystem> VFS, StringRef Filename,
-               TimestampTy Timestamp, BinaryHolder::Options = {});
+               TimestampTy Timestamp, bool Verbose = false);
 
     Expected<const ObjectEntry &> getObjectEntry(StringRef Filename,
                                                  TimestampTy Timestamp,
-                                                 BinaryHolder::Options = {});
+                                                 bool Verbose = false);
 
   private:
     std::vector<std::unique_ptr<object::Archive>> Archives;
@@ -150,7 +143,7 @@ private:
   /// Virtual File System instance.
   IntrusiveRefCntPtr<vfs::FileSystem> VFS;
 
-  Options Opts;
+  bool Verbose;
 };
 
 } // namespace dsymutil

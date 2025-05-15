@@ -17,6 +17,9 @@
 #include "src/__support/macros/attributes.h"
 
 namespace LIBC_NAMESPACE_DECL {
+
+LIBC_THREAD_LOCAL Thread self;
+
 namespace {
 
 using AtExitCallback = void(void *);

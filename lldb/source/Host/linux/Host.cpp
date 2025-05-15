@@ -51,9 +51,11 @@ enum class ProcessState {
   Zombie,
 };
 
+constexpr int task_comm_len = 16;
+
 struct StatFields {
   ::pid_t pid = LLDB_INVALID_PROCESS_ID;
-  // comm
+  char comm[task_comm_len];
   char state;
   ::pid_t ppid = LLDB_INVALID_PROCESS_ID;
   ::pid_t pgrp = LLDB_INVALID_PROCESS_ID;
@@ -98,8 +100,8 @@ static bool GetStatusInfo(::pid_t Pid, ProcessInstanceInfo &ProcessInfo,
   StatFields stat_fields;
   if (sscanf(
           Rest.data(),
-          "%d %*s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld",
-          &stat_fields.pid, /* comm, */ &stat_fields.state,
+          "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld",
+          &stat_fields.pid, stat_fields.comm, &stat_fields.state,
           &stat_fields.ppid, &stat_fields.pgrp, &stat_fields.session,
           &stat_fields.tty_nr, &stat_fields.tpgid, &stat_fields.flags,
           &stat_fields.minflt, &stat_fields.cminflt, &stat_fields.majflt,
@@ -414,7 +416,7 @@ bool Host::GetProcessInfo(lldb::pid_t pid, ProcessInstanceInfo &process_info) {
 Environment Host::GetEnvironment() { return Environment(environ); }
 
 Status Host::ShellExpandArguments(ProcessLaunchInfo &launch_info) {
-  return Status::FromErrorString("unimplemented");
+  return Status("unimplemented");
 }
 
 std::optional<lldb::pid_t> lldb_private::getPIDForTID(lldb::pid_t tid) {

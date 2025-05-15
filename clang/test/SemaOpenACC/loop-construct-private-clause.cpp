@@ -24,92 +24,92 @@ void uses(int IntParam, char *PointerParam, float ArrayParam[5], Complete Compos
   // Check Appertainment:
 
 #pragma acc loop private(LocalInt)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
   // Valid cases:
 #pragma acc loop private(LocalInt, LocalPointer, LocalArray)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalArray)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalArray[2])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite.EnumMember)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite.ScalarMember)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite.ArrayMember)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite.ArrayMember[5])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite.PointerMember)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(GlobalInt, GlobalArray, GlobalPointer, GlobalComposite)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(GlobalArray[2], GlobalPointer[2], GlobalComposite.CompositeMember.A)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(LocalComposite, GlobalComposite)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(IntParam, PointerParam, ArrayParam, CompositeParam) private(IntParamRef)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(PointerParam[IntParam], ArrayParam[IntParam], CompositeParam.CompositeMember.A)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 
   // Invalid cases, arbitrary expressions.
   Incomplete *I;
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(*I)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(GlobalInt + IntParam)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(+GlobalInt)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 }
 
 template<typename T, unsigned I, typename V>
 void TemplUses(T t, T (&arrayT)[I], V TemplComp) {
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(+t)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(+I)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
   // NTTP's are only valid if it is a reference to something.
   // expected-error@+2{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
   // expected-note@#TEMPL_USES_INST{{in instantiation of}}
 #pragma acc loop private(I)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
   // expected-error@+1{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
 #pragma acc loop private(t, I)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(arrayT)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(TemplComp)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(TemplComp.PointerMember[5])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(TemplComp.PointerMember[5]) private(TemplComp)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
  int *Pointer;
 #pragma acc loop private(Pointer[:I])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 #pragma acc loop private(Pointer[:t])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
   // expected-error@+1{{OpenACC sub-array length is unspecified and cannot be inferred because the subscripted value is not an array}}
 #pragma acc loop private(Pointer[1:])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 }
 
 template<unsigned I, auto &NTTP_REF>
@@ -118,10 +118,10 @@ void NTTP() {
   // expected-error@+2{{OpenACC variable is not a valid variable name, sub-array, array element, member of a composite variable, or composite variable member}}
   // expected-note@#NTTP_INST{{in instantiation of}}
 #pragma acc loop private(I)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(NTTP_REF)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 }
 
 struct S {
@@ -133,16 +133,16 @@ struct S {
 
 void S::foo() {
 #pragma acc loop private(ThisMember, this->ThisMemberArray[1])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(ThisMemberArray[1:2])
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(this)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 
 #pragma acc loop private(ThisMember, this->ThisMember)
-  for(int i = 0; i < 5; ++i);
+  for(;;);
 }
 
 void Inst() {

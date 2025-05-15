@@ -62,6 +62,7 @@
 #include "llvm/Transforms/Utils/LoopVersioning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <cassert>
+#include <functional>
 #include <list>
 #include <tuple>
 #include <utility>

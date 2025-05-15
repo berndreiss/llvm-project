@@ -576,6 +576,14 @@ let UnMaskedPolicyScheme = HasPassthruOperand,
   }
 }
 
+class RVVFloatingUnaryBuiltin<string builtin_suffix, string ir_suffix,
+                              string prototype>
+    : RVVOutBuiltin<ir_suffix, prototype, "xfd"> {
+  let Name = NAME # "_" # builtin_suffix;
+}
+
+class RVVFloatingUnaryVVBuiltin : RVVFloatingUnaryBuiltin<"v", "v", "vv">;
+
 class RVVConvBuiltin<string suffix, string prototype, string type_range,
                      string overloaded_name>
     : RVVBuiltin<suffix, prototype, type_range> {
@@ -596,10 +604,10 @@ class RVVConvToWidenUnsignedBuiltin<string overloaded_name>
     : RVVConvBuiltin<"Uw", "Uwv", "xf", overloaded_name>;
 
 class RVVConvToNarrowingSignedBuiltin<string overloaded_name>
-    : RVVConvBuiltin<"Iv", "IvFw", "si", overloaded_name>;
+    : RVVConvBuiltin<"Iv", "IvFw", "csi", overloaded_name>;
 
 class RVVConvToNarrowingUnsignedBuiltin<string overloaded_name>
-    : RVVConvBuiltin<"Uv", "UvFw", "si", overloaded_name>;
+    : RVVConvBuiltin<"Uv", "UvFw", "csi", overloaded_name>;
 
 let HasMaskedOffOperand = true in {
   multiclass RVVSignedReductionBuiltin {

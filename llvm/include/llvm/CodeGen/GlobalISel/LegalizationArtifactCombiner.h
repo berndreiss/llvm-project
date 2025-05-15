@@ -1090,11 +1090,6 @@ public:
       LegalizeActionStep ActionStep = LI.getAction(
           {TargetOpcode::G_UNMERGE_VALUES, {OpTy, SrcUnmergeSrcTy}});
       switch (ActionStep.Action) {
-      case LegalizeActions::Legal:
-        if (!OpTy.isVector() || !LI.isLegal({TargetOpcode::G_UNMERGE_VALUES,
-                                             {DestTy, SrcUnmergeSrcTy}}))
-          return false;
-        break;
       case LegalizeActions::Lower:
       case LegalizeActions::Unsupported:
         break;
@@ -1218,14 +1213,8 @@ public:
     } else {
       LLT MergeSrcTy = MRI.getType(MergeI->getOperand(1).getReg());
 
-      if (!ConvertOp && DestTy != MergeSrcTy) {
-        if (DestTy.isPointer())
-          ConvertOp = TargetOpcode::G_INTTOPTR;
-        else if (MergeSrcTy.isPointer())
-          ConvertOp = TargetOpcode::G_PTRTOINT;
-        else
-          ConvertOp = TargetOpcode::G_BITCAST;
-      }
+      if (!ConvertOp && DestTy != MergeSrcTy)
+        ConvertOp = TargetOpcode::G_BITCAST;
 
       if (ConvertOp) {
         Builder.setInstr(MI);

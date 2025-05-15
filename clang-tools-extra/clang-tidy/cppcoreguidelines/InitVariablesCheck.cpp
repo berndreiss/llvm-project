@@ -8,10 +8,9 @@
 
 #include "InitVariablesCheck.h"
 
-#include "../utils/LexerUtils.h"
 #include "clang/AST/ASTContext.h"
-#include "clang/AST/Type.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Preprocessor.h"
 #include <optional>
 
@@ -108,9 +107,8 @@ void InitVariablesCheck::check(const MatchFinder::MatchResult &Result) {
         << MatchedDecl;
     if (*InitializationString != nullptr)
       Diagnostic << FixItHint::CreateInsertion(
-          utils::lexer::findNextTerminator(MatchedDecl->getLocation(),
-                                           *Result.SourceManager,
-                                           Result.Context->getLangOpts()),
+          MatchedDecl->getLocation().getLocWithOffset(
+              MatchedDecl->getName().size()),
           *InitializationString);
     if (AddMathInclude) {
       Diagnostic << IncludeInserter.createIncludeInsertion(

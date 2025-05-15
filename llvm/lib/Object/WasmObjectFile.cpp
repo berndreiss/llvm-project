@@ -999,6 +999,7 @@ Error WasmObjectFile::parseTargetFeaturesSection(ReadContext &Ctx) {
     Feature.Prefix = readUint8(Ctx);
     switch (Feature.Prefix) {
     case wasm::WASM_FEATURE_PREFIX_USED:
+    case wasm::WASM_FEATURE_PREFIX_REQUIRED:
     case wasm::WASM_FEATURE_PREFIX_DISALLOWED:
       break;
     default:

@@ -136,6 +136,10 @@ LTOCodeGenerator::LTOCodeGenerator(LLVMContext &Context)
 
   Config.CodeModel = std::nullopt;
   Config.StatsFile = LTOStatsFile;
+  Config.PreCodeGenPassesHook = [](legacy::PassManager &PM) {
+    PM.add(createObjCARCContractPass());
+  };
+
   Config.RunCSIRInstr = LTORunCSIRInstr;
   Config.CSIRProfile = LTOCSIRProfile;
 }

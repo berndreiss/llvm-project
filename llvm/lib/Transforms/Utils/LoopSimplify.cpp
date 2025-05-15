@@ -47,6 +47,7 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -82,8 +83,10 @@ static void placeSplitBlockCarefully(BasicBlock *NewBB,
                                      Loop *L) {
   // Check to see if NewBB is already well placed.
   Function::iterator BBI = --NewBB->getIterator();
-  if (llvm::is_contained(SplitPreds, &*BBI))
-    return;
+  for (BasicBlock *Pred : SplitPreds) {
+    if (&*BBI == Pred)
+      return;
+  }
 
   // If it isn't already after an outside block, move it after one.  This is
   // always good as it makes the uncond branch from the outside block into a
@@ -656,7 +659,7 @@ ReprocessLoop:
       // The block has now been cleared of all instructions except for
       // a comparison and a conditional branch. SimplifyCFG may be able
       // to fold it now.
-      if (!foldBranchToCommonDest(BI, /*DTU=*/nullptr, MSSAU))
+      if (!FoldBranchToCommonDest(BI, /*DTU=*/nullptr, MSSAU))
         continue;
 
       // Success. The block is now dead, so remove it from the loop,
@@ -761,6 +764,7 @@ namespace {
       AU.addPreserved<ScalarEvolutionWrapperPass>();
       AU.addPreserved<SCEVAAWrapperPass>();
       AU.addPreservedID(LCSSAID);
+      AU.addPreserved<DependenceAnalysisWrapperPass>();
       AU.addPreservedID(BreakCriticalEdgesID);  // No critical edges added.
       AU.addPreserved<BranchProbabilityInfoWrapperPass>();
       AU.addPreserved<MemorySSAWrapperPass>();
@@ -847,6 +851,7 @@ PreservedAnalyses LoopSimplifyPass::run(Function &F,
   PA.preserve<DominatorTreeAnalysis>();
   PA.preserve<LoopAnalysis>();
   PA.preserve<ScalarEvolutionAnalysis>();
+  PA.preserve<DependenceAnalysis>();
   if (MSSAAnalysis)
     PA.preserve<MemorySSAAnalysis>();
   // BPI maps conditional terminators to probabilities, LoopSimplify can insert

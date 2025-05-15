@@ -44,7 +44,6 @@ class DWARFDie {
   const DWARFDebugInfoEntry *Die = nullptr;
 
 public:
-  using DWARFFormValue = llvm::DWARFFormValue;
   DWARFDie() = default;
   DWARFDie(DWARFUnit *Unit, const DWARFDebugInfoEntry *D) : U(Unit), Die(D) {}
 
@@ -184,8 +183,6 @@ public:
 
   DWARFDie resolveTypeUnitReference() const;
 
-  DWARFDie resolveReferencedType(dwarf::Attribute Attr) const;
-  DWARFDie resolveReferencedType(const DWARFFormValue &V) const;
   /// Extract the range base attribute from this DIE as absolute section offset.
   ///
   /// This is a utility function that checks for either the DW_AT_rnglists_base

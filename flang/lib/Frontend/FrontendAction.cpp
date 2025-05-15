@@ -95,10 +95,6 @@ bool FrontendAction::beginSourceFile(CompilerInstance &ci,
         getCurrentInput().getIsCUDAFortran());
   }
 
-  // -fpreprocess-include-lines
-  invoc.getFortranOpts().expandIncludeLinesInPreprocessedOutput =
-      invoc.getPreprocessorOpts().preprocessIncludeLines;
-
   // Decide between fixed and free form (if the user didn't express any
   // preference, use the file extension to decide)
   if (invoc.getFrontendOpts().fortranForm == FortranForm::Unknown) {

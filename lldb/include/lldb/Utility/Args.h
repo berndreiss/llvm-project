@@ -38,14 +38,12 @@ public:
 
     std::unique_ptr<char[]> ptr;
     char quote = '\0';
-    /// The position of the argument in the original argument string.
-    std::optional<uint16_t> column;
 
     char *data() { return ptr.get(); }
 
   public:
     ArgEntry() = default;
-    ArgEntry(llvm::StringRef str, char quote, std::optional<uint16_t> column);
+    ArgEntry(llvm::StringRef str, char quote);
 
     llvm::StringRef ref() const { return c_str(); }
     const char *c_str() const { return ptr.get(); }
@@ -53,8 +51,6 @@ public:
     /// Returns true if this argument was quoted in any way.
     bool IsQuoted() const { return quote != '\0'; }
     char GetQuoteChar() const { return quote; }
-    std::optional<uint16_t> GetPos() const { return column; }
-    size_t GetLength() const { return ref().size(); }
   };
 
   /// Construct with an option command string.

@@ -162,8 +162,6 @@ void ODRHash::AddTemplateName(TemplateName Name) {
   case TemplateName::SubstTemplateTemplateParmPack:
   case TemplateName::UsingTemplate:
     break;
-  case TemplateName::DeducedTemplate:
-    llvm_unreachable("Unexpected DeducedTemplate");
   }
 }
 
@@ -463,7 +461,6 @@ public:
     } else {
       AddDecl(D->getFriendDecl());
     }
-    Hash.AddBoolean(D->isPackExpansion());
   }
 
   void VisitTemplateTypeParmDecl(const TemplateTypeParmDecl *D) {

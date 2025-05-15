@@ -13,6 +13,7 @@
 #include "test/UnitTest/Test.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
+#include <errno.h>
 #include <stdint.h>
 
 using LlvmLibcLog10fTest = LIBC_NAMESPACE::testing::FPTest<float>;

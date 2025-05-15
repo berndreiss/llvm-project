@@ -111,7 +111,6 @@ static Function *createWrapper(Function *F, FunctionType *Ty) {
 
   Function *Wrapper = Function::Create(Ty, Function::PrivateLinkage,
                                        F->getName() + "_bitcast", M);
-  Wrapper->setAttributes(F->getAttributes());
   BasicBlock *BB = BasicBlock::Create(M->getContext(), "body", Wrapper);
   const DataLayout &DL = BB->getDataLayout();
 
@@ -202,7 +201,6 @@ static Function *createWrapper(Function *F, FunctionType *Ty) {
     Wrapper->eraseFromParent();
     Wrapper = Function::Create(Ty, Function::PrivateLinkage,
                                F->getName() + "_bitcast_invalid", M);
-    Wrapper->setAttributes(F->getAttributes());
     BasicBlock *BB = BasicBlock::Create(M->getContext(), "body", Wrapper);
     new UnreachableInst(M->getContext(), BB);
     Wrapper->setName(F->getName() + "_bitcast_invalid");

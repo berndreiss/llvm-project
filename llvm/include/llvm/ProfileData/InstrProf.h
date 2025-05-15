@@ -174,16 +174,8 @@ inline StringRef getInstrProfCounterBiasVarName() {
   return INSTR_PROF_QUOTE(INSTR_PROF_PROFILE_COUNTER_BIAS_VAR);
 }
 
-inline StringRef getInstrProfBitmapBiasVarName() {
-  return INSTR_PROF_QUOTE(INSTR_PROF_PROFILE_BITMAP_BIAS_VAR);
-}
-
 /// Return the marker used to separate PGO names during serialization.
 inline StringRef getInstrProfNameSeparator() { return "\01"; }
-
-/// Determines whether module targets a GPU eligable for PGO
-/// instrumentation
-bool isGPUProfTarget(const Module &M);
 
 /// Please use getIRPGOFuncName for LLVM IR instrumentation. This function is
 /// for front-end (Clang, etc) instrumentation.
@@ -504,8 +496,7 @@ private:
   // name-set = {PGOFuncName} union {getCanonicalName(PGOFuncName)}
   // - In MD5NameMap: <MD5Hash(name), name> for name in name-set
   // - In MD5FuncMap: <MD5Hash(name), &F> for name in name-set
-  // The canonical name is only added if \c AddCanonical is true.
-  Error addFuncWithName(Function &F, StringRef PGOFuncName, bool AddCanonical);
+  Error addFuncWithName(Function &F, StringRef PGOFuncName);
 
   // Add the vtable into the symbol table, by creating the following
   // map entries:
@@ -561,9 +552,7 @@ public:
   /// decls from module \c M. This interface is used by transformation
   /// passes such as indirect function call promotion. Variable \c InLTO
   /// indicates if this is called from LTO optimization passes.
-  /// A canonical name, removing non-__uniq suffixes, is added if
-  /// \c AddCanonical is true.
-  Error create(Module &M, bool InLTO = false, bool AddCanonical = true);
+  Error create(Module &M, bool InLTO = false);
 
   /// Create InstrProfSymtab from a set of names iteratable from
   /// \p IterRange. This interface is used by IndexedProfReader.
@@ -962,7 +951,7 @@ private:
   ArrayRef<InstrProfValueSiteRecord>
   getValueSitesForKind(uint32_t ValueKind) const {
     if (!ValueData)
-      return {};
+      return std::nullopt;
     assert(IPVK_First <= ValueKind && ValueKind <= IPVK_Last &&
            "Unknown value kind!");
     return (*ValueData)[ValueKind - IPVK_First];

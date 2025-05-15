@@ -166,20 +166,7 @@ public:
   /// \param  OS The output stream to dump to.
   ///
   /// \param FI The object to dump.
-  ///
-  /// \param Indent The indentation as number of spaces. Used when dumping as an
-  /// item within MergedFunctionsInfo.
-  void dump(raw_ostream &OS, const FunctionInfo &FI, uint32_t Indent = 0);
-
-  /// Dump a MergedFunctionsInfo object.
-  ///
-  /// This function will dump a MergedFunctionsInfo object - basically by
-  /// dumping the contained FunctionInfo objects with indentation.
-  ///
-  /// \param  OS The output stream to dump to.
-  ///
-  /// \param MFI The object to dump.
-  void dump(raw_ostream &OS, const MergedFunctionsInfo &MFI);
+  void dump(raw_ostream &OS, const FunctionInfo &FI);
 
   /// Dump a LineTable object.
   ///
@@ -190,10 +177,7 @@ public:
   /// \param  OS The output stream to dump to.
   ///
   /// \param LT The object to dump.
-  ///
-  /// \param Indent The indentation as number of spaces. Used when dumping as an
-  /// item from within MergedFunctionsInfo.
-  void dump(raw_ostream &OS, const LineTable &LT, uint32_t Indent = 0);
+  void dump(raw_ostream &OS, const LineTable &LT);
 
   /// Dump a InlineInfo object.
   ///

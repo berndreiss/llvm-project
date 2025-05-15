@@ -13,7 +13,7 @@
 using namespace llvm;
 
 SystemZMCAsmInfoELF::SystemZMCAsmInfoELF(const Triple &TT) {
-  AssemblerDialect = AD_GNU;
+  AssemblerDialect = AD_ATT;
   CalleeSaveStackSlotSize = 8;
   CodePointerSize = 8;
   Data64bitsDirective = "\t.quad\t";

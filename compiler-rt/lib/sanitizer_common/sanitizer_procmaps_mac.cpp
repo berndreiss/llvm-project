@@ -433,9 +433,7 @@ void MemoryMappingLayout::DumpListOfModules(
   MemoryMappedSegmentData data;
   segment.data_ = &data;
   while (Next(&segment)) {
-    // skip the __PAGEZERO segment, its vmsize is 0
-    if (segment.filename[0] == '\0' || (segment.start == segment.end))
-      continue;
+    if (segment.filename[0] == '\0') continue;
     LoadedModule *cur_module = nullptr;
     if (!modules->empty() &&
         0 == internal_strcmp(segment.filename, modules->back().full_name())) {

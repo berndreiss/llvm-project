@@ -196,7 +196,7 @@ bool WasmEHPrepareImpl::prepareThrows(Function &F) {
   bool Changed = false;
 
   // wasm.throw() intinsic, which will be lowered to wasm 'throw' instruction.
-  ThrowF = Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_throw);
+  ThrowF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_throw);
   // Insert an unreachable instruction after a call to @llvm.wasm.throw and
   // delete all following instructions within the BB, and delete all the dead
   // children of the BB as well.
@@ -260,21 +260,18 @@ bool WasmEHPrepareImpl::prepareEHPads(Function &F) {
                                                  0, 2, "selector_gep");
 
   // wasm.landingpad.index() intrinsic, which is to specify landingpad index
-  LPadIndexF =
-      Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_landingpad_index);
+  LPadIndexF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_landingpad_index);
   // wasm.lsda() intrinsic. Returns the address of LSDA table for the current
   // function.
-  LSDAF = Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_lsda);
+  LSDAF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_lsda);
   // wasm.get.exception() and wasm.get.ehselector() intrinsics. Calls to these
   // are generated in clang.
-  GetExnF =
-      Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_get_exception);
-  GetSelectorF =
-      Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_get_ehselector);
+  GetExnF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_get_exception);
+  GetSelectorF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_get_ehselector);
 
   // wasm.catch() will be lowered down to wasm 'catch' instruction in
   // instruction selection.
-  CatchF = Intrinsic::getOrInsertDeclaration(&M, Intrinsic::wasm_catch);
+  CatchF = Intrinsic::getDeclaration(&M, Intrinsic::wasm_catch);
 
   // _Unwind_CallPersonality() wrapper function, which calls the personality
   CallPersonalityF = M.getOrInsertFunction("_Unwind_CallPersonality",

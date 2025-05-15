@@ -19,6 +19,7 @@
 #include "X86Subtarget.h"
 #include "X86TargetObjectFile.h"
 #include "X86TargetTransformInfo.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -34,6 +35,7 @@
 #include "llvm/CodeGen/MIRYamlMapping.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/DataLayout.h"
@@ -63,7 +65,7 @@ static cl::opt<bool>
                      cl::desc("Enable the tile register allocation pass"),
                      cl::init(true), cl::Hidden);
 
-extern "C" LLVM_C_ABI void LLVMInitializeX86Target() {
+extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeX86Target() {
   // Register the target.
   RegisterTargetMachine<X86TargetMachine> X(getTheX86_32Target());
   RegisterTargetMachine<X86TargetMachine> Y(getTheX86_64Target());
@@ -104,7 +106,6 @@ extern "C" LLVM_C_ABI void LLVMInitializeX86Target() {
   initializeX86ArgumentStackSlotPassPass(PR);
   initializeX86FixupInstTuningPassPass(PR);
   initializeX86FixupVectorConstantsPassPass(PR);
-  initializeX86DynAllocaExpanderPass(PR);
 }
 
 static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
@@ -240,10 +241,7 @@ X86TargetMachine::X86TargetMachine(const Target &T, const Triple &TT,
           OL),
       TLOF(createTLOF(getTargetTriple())), IsJIT(JIT) {
   // On PS4/PS5, the "return address" of a 'noreturn' call must still be within
-  // the calling function. Note that this also includes __stack_chk_fail,
-  // so there was some target-specific logic in the instruction selectors
-  // to handle that. That code has since been generalized, so the only thing
-  // needed is to set TrapUnreachable here.
+  // the calling function, and TrapUnreachable is an easy way to get that.
   if (TT.isPS() || TT.isOSBinFormatMachO()) {
     this->Options.TrapUnreachable = true;
     this->Options.NoTrapAfterNoreturn = TT.isOSBinFormatMachO();
@@ -373,8 +371,6 @@ bool X86TargetMachine::isNoopAddrSpaceCast(unsigned SrcAS,
     return false;
   return SrcAS < 256 && DestAS < 256;
 }
-
-void X86TargetMachine::reset() { SubtargetMap.clear(); }
 
 //===----------------------------------------------------------------------===//
 // X86 TTI query.
@@ -536,7 +532,7 @@ bool X86PassConfig::addGlobalInstructionSelect() {
 }
 
 bool X86PassConfig::addILPOpts() {
-  addPass(&EarlyIfConverterLegacyID);
+  addPass(&EarlyIfConverterID);
   if (EnableMachineCombinerPass)
     addPass(&MachineCombinerID);
   addPass(createX86CmovConverterPass());

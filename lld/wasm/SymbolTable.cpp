@@ -29,7 +29,6 @@ void SymbolTable::addFile(InputFile *file, StringRef symName) {
   // Lazy object file
   if (file->lazy) {
     if (auto *f = dyn_cast<BitcodeFile>(file)) {
-      ctx.lazyBitcodeFiles.push_back(f);
       f->parseLazy();
     } else {
       cast<ObjFile>(file)->parseLazy();
@@ -81,6 +80,9 @@ void SymbolTable::addFile(InputFile *file, StringRef symName) {
 void SymbolTable::compileBitcodeFiles() {
   // Prevent further LTO objects being included
   BitcodeFile::doneLTO = true;
+
+  if (ctx.bitcodeFiles.empty())
+    return;
 
   // Compile bitcode files and replace bitcode symbols.
   lto.reset(new BitcodeCompiler);
@@ -317,12 +319,9 @@ static bool shouldReplace(const Symbol *existing, InputFile *newFile,
   }
 
   // Neither symbol is week. They conflict.
-  if (config->allowMultipleDefinition)
-    return false;
-
-  errorOrWarn("duplicate symbol: " + toString(*existing) + "\n>>> defined in " +
-              toString(existing->getFile()) + "\n>>> defined in " +
-              toString(newFile));
+  error("duplicate symbol: " + toString(*existing) + "\n>>> defined in " +
+        toString(existing->getFile()) + "\n>>> defined in " +
+        toString(newFile));
   return true;
 }
 

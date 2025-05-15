@@ -63,7 +63,6 @@ add_llvm_unittest(ADTTests
   PostOrderIteratorTest.cpp
   PriorityWorklistTest.cpp
   RangeAdapterTest.cpp
-  RewriteBufferTest.cpp
   SCCIteratorTest.cpp
   STLExtrasTest.cpp
   STLForwardCompatTest.cpp
@@ -86,7 +85,6 @@ add_llvm_unittest(ADTTests
   StringSetTest.cpp
   StringSwitchTest.cpp
   TinyPtrVectorTest.cpp
-  TrieRawHashMapTest.cpp
   TwineTest.cpp
   TypeSwitchTest.cpp
   TypeTraitsTest.cpp

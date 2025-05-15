@@ -1667,7 +1667,7 @@ public:
 } // namespace
 
 void mlir::populateFinalizeMemRefToLLVMConversionPatterns(
-    const LLVMTypeConverter &converter, RewritePatternSet &patterns) {
+    LLVMTypeConverter &converter, RewritePatternSet &patterns) {
   // clang-format off
   patterns.add<
       AllocaOpLowering,

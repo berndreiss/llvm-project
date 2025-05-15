@@ -16,7 +16,6 @@
 #include "mlir/IR/Diagnostics.h"
 #include "llvm/Support/CommandLine.h"
 #include <optional>
-#include <regex>
 
 static llvm::cl::opt<std::string> mainEntryName(
     "main-entry-name",
@@ -60,11 +59,7 @@ convertToStringRef(const std::optional<std::string> &from) {
 
 static std::string readName(llvm::StringRef uniq, std::size_t &i,
                             std::size_t init, std::size_t end) {
-  // Allow 'X' to be part of the mangled name, which
-  // can happen after the special symbols are replaced
-  // in the mangled names by CompilerGeneratedNamesConversionPass.
-  for (i = init; i < end && (uniq[i] < 'A' || uniq[i] > 'Z' || uniq[i] == 'X');
-       ++i) {
+  for (i = init; i < end && (uniq[i] < 'A' || uniq[i] > 'Z'); ++i) {
     // do nothing
   }
   return uniq.substr(init, i - init).str();
@@ -353,7 +348,7 @@ mangleTypeDescriptorKinds(llvm::ArrayRef<std::int64_t> kinds) {
     return "";
   std::string result;
   for (std::int64_t kind : kinds)
-    result += (fir::kNameSeparator + std::to_string(kind)).str();
+    result += "." + std::to_string(kind);
   return result;
 }
 
@@ -378,18 +373,12 @@ static std::string getDerivedTypeObjectName(llvm::StringRef mangledTypeName,
 
 std::string
 fir::NameUniquer::getTypeDescriptorName(llvm::StringRef mangledTypeName) {
-  return getDerivedTypeObjectName(mangledTypeName,
-                                  fir::kTypeDescriptorSeparator);
-}
-
-std::string fir::NameUniquer::getTypeDescriptorAssemblyName(
-    llvm::StringRef mangledTypeName) {
-  return replaceSpecialSymbols(getTypeDescriptorName(mangledTypeName));
+  return getDerivedTypeObjectName(mangledTypeName, typeDescriptorSeparator);
 }
 
 std::string fir::NameUniquer::getTypeDescriptorBindingTableName(
     llvm::StringRef mangledTypeName) {
-  return getDerivedTypeObjectName(mangledTypeName, fir::kBindingTableSeparator);
+  return getDerivedTypeObjectName(mangledTypeName, bindingTableSeparator);
 }
 
 std::string
@@ -397,21 +386,13 @@ fir::NameUniquer::getComponentInitName(llvm::StringRef mangledTypeName,
                                        llvm::StringRef componentName) {
 
   std::string prefix =
-      getDerivedTypeObjectName(mangledTypeName, fir::kComponentInitSeparator);
-  return (prefix + fir::kNameSeparator + componentName).str();
+      getDerivedTypeObjectName(mangledTypeName, componentInitSeparator);
+  return prefix + "." + componentName.str();
 }
 
 llvm::StringRef
 fir::NameUniquer::dropTypeConversionMarkers(llvm::StringRef mangledTypeName) {
-  if (mangledTypeName.ends_with(fir::boxprocSuffix))
-    return mangledTypeName.drop_back(fir::boxprocSuffix.size());
+  if (mangledTypeName.ends_with(boxprocSuffix))
+    return mangledTypeName.drop_back(boxprocSuffix.size());
   return mangledTypeName;
-}
-
-std::string fir::NameUniquer::replaceSpecialSymbols(const std::string &name) {
-  return std::regex_replace(name, std::regex{"\\."}, "X");
-}
-
-bool fir::NameUniquer::isSpecialSymbol(llvm::StringRef name) {
-  return !name.empty() && (name[0] == '.' || name[0] == 'X');
 }

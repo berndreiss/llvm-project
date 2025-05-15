@@ -10,12 +10,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_UTILS_TABLEGEN_BASIC_CODEGENINTRINSICS_H
-#define LLVM_UTILS_TABLEGEN_BASIC_CODEGENINTRINSICS_H
+#ifndef LLVM_UTILS_TABLEGEN_CODEGENINTRINSICS_H
+#define LLVM_UTILS_TABLEGEN_CODEGENINTRINSICS_H
 
 #include "SDNodeProperties.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/ModRef.h"
 #include <string>
@@ -26,22 +25,13 @@ namespace llvm {
 class Record;
 class RecordKeeper;
 
-// Global information needed to build intrinsics.
-struct CodeGenIntrinsicContext {
-  explicit CodeGenIntrinsicContext(const RecordKeeper &RC);
-  std::vector<const Record *> DefaultProperties;
-
-  // Maximum number of values an intrinsic can return.
-  unsigned MaxNumReturn;
-};
-
 struct CodeGenIntrinsic {
-  const Record *TheDef; // The actual record defining this intrinsic.
+  Record *TheDef;       // The actual record defining this intrinsic.
   std::string Name;     // The name of the LLVM function "llvm.bswap.i32"
-  StringRef EnumName;   // The name of the enum "bswap_i32"
-  StringRef ClangBuiltinName; // Name of the corresponding GCC builtin, or "".
-  StringRef MSBuiltinName;    // Name of the corresponding MS builtin, or "".
-  StringRef TargetPrefix;     // Target prefix, e.g. "ppc" for t-s intrinsics.
+  std::string EnumName; // The name of the enum "bswap_i32"
+  std::string ClangBuiltinName; // Name of the corresponding GCC builtin, or "".
+  std::string MSBuiltinName;    // Name of the corresponding MS builtin, or "".
+  std::string TargetPrefix;     // Target prefix, e.g. "ppc" for t-s intrinsics.
 
   /// This structure holds the return values and parameter values of an
   /// intrinsic. If the number of return values is > 1, then the intrinsic
@@ -53,13 +43,13 @@ struct CodeGenIntrinsic {
     /// only populated when in the context of a target .td file. When building
     /// Intrinsics.td, this isn't available, because we don't know the target
     /// pointer size.
-    std::vector<const Record *> RetTys;
+    std::vector<Record *> RetTys;
 
     /// The MVT::SimpleValueType for each parameter type. Note that this list is
     /// only populated when in the context of a target .td file.  When building
     /// Intrinsics.td, this isn't available, because we don't know the target
     /// pointer size.
-    std::vector<const Record *> ParamTys;
+    std::vector<Record *> ParamTys;
   };
 
   IntrinsicSignature IS;
@@ -68,54 +58,54 @@ struct CodeGenIntrinsic {
   MemoryEffects ME = MemoryEffects::unknown();
 
   /// SDPatternOperator Properties applied to the intrinsic.
-  unsigned Properties = 0;
+  unsigned Properties;
 
   /// This is set to true if the intrinsic is overloaded by its argument
   /// types.
-  bool isOverloaded = false;
+  bool isOverloaded;
 
   /// True if the intrinsic is commutative.
-  bool isCommutative = false;
+  bool isCommutative;
 
   /// True if the intrinsic can throw.
-  bool canThrow = false;
+  bool canThrow;
 
   /// True if the intrinsic is marked as noduplicate.
-  bool isNoDuplicate = false;
+  bool isNoDuplicate;
 
   /// True if the intrinsic is marked as nomerge.
-  bool isNoMerge = false;
+  bool isNoMerge;
 
   /// True if the intrinsic is no-return.
-  bool isNoReturn = false;
+  bool isNoReturn;
 
   /// True if the intrinsic is no-callback.
-  bool isNoCallback = false;
+  bool isNoCallback;
 
   /// True if the intrinsic is no-sync.
-  bool isNoSync = false;
+  bool isNoSync;
 
   /// True if the intrinsic is no-free.
-  bool isNoFree = false;
+  bool isNoFree;
 
   /// True if the intrinsic is will-return.
-  bool isWillReturn = false;
+  bool isWillReturn;
 
   /// True if the intrinsic is cold.
-  bool isCold = false;
+  bool isCold;
 
   /// True if the intrinsic is marked as convergent.
-  bool isConvergent = false;
+  bool isConvergent;
 
   /// True if the intrinsic has side effects that aren't captured by any
   /// of the other flags.
-  bool hasSideEffects = false;
+  bool hasSideEffects;
 
   // True if the intrinsic is marked as speculatable.
-  bool isSpeculatable = false;
+  bool isSpeculatable;
 
   // True if the intrinsic is marked as strictfp.
-  bool isStrictFP = false;
+  bool isStrictFP;
 
   enum ArgAttrKind {
     NoCapture,
@@ -149,12 +139,12 @@ struct CodeGenIntrinsic {
 
   bool hasProperty(enum SDNP Prop) const { return Properties & (1 << Prop); }
 
-  /// Goes through all IntrProperties that have IsDefault value set and sets
-  /// the property.
-  void setDefaultProperties(ArrayRef<const Record *> DefaultProperties);
+  /// Goes through all IntrProperties that have IsDefault
+  /// value set and sets the property.
+  void setDefaultProperties(Record *R, ArrayRef<Record *> DefaultProperties);
 
-  /// Helper function to set property \p Name to true.
-  void setProperty(const Record *R);
+  /// Helper function to set property \p Name to true;
+  void setProperty(Record *R);
 
   /// Returns true if the parameter at \p ParamIdx is a pointer type. Returns
   /// false if the parameter is not a pointer, or \p ParamIdx is greater than
@@ -165,50 +155,32 @@ struct CodeGenIntrinsic {
 
   bool isParamImmArg(unsigned ParamIdx) const;
 
-  CodeGenIntrinsic(const Record *R, const CodeGenIntrinsicContext &Ctx);
+  CodeGenIntrinsic(Record *R, ArrayRef<Record *> DefaultProperties);
 };
 
 class CodeGenIntrinsicTable {
+  std::vector<CodeGenIntrinsic> Intrinsics;
+
 public:
   struct TargetSet {
-    StringRef Name;
+    std::string Name;
     size_t Offset;
     size_t Count;
   };
+  std::vector<TargetSet> Targets;
 
   explicit CodeGenIntrinsicTable(const RecordKeeper &RC);
+  CodeGenIntrinsicTable() = default;
 
   bool empty() const { return Intrinsics.empty(); }
   size_t size() const { return Intrinsics.size(); }
   auto begin() const { return Intrinsics.begin(); }
   auto end() const { return Intrinsics.end(); }
+  CodeGenIntrinsic &operator[](size_t Pos) { return Intrinsics[Pos]; }
   const CodeGenIntrinsic &operator[](size_t Pos) const {
     return Intrinsics[Pos];
   }
-  ArrayRef<CodeGenIntrinsic> operator[](const TargetSet &Set) const {
-    return ArrayRef(&Intrinsics[Set.Offset], Set.Count);
-  }
-  ArrayRef<TargetSet> getTargets() const { return Targets; }
-
-private:
-  void CheckDuplicateIntrinsics() const;
-  void CheckTargetIndependentIntrinsics() const;
-  void CheckOverloadSuffixConflicts() const;
-
-  std::vector<CodeGenIntrinsic> Intrinsics;
-  std::vector<TargetSet> Targets;
 };
-
-// This class builds `CodeGenIntrinsic` on demand for a given Def.
-class CodeGenIntrinsicMap {
-  DenseMap<const Record *, std::unique_ptr<CodeGenIntrinsic>> Map;
-  const CodeGenIntrinsicContext Ctx;
-
-public:
-  explicit CodeGenIntrinsicMap(const RecordKeeper &RC) : Ctx(RC) {}
-  const CodeGenIntrinsic &operator[](const Record *Def);
-};
-
 } // namespace llvm
 
-#endif // LLVM_UTILS_TABLEGEN_BASIC_CODEGENINTRINSICS_H
+#endif

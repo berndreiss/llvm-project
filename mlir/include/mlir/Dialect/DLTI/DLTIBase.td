@@ -23,19 +23,14 @@ def DLTI_Dialect : Dialect {
   }];
 
   let extraClassDeclaration = [{
-    // Top-level attribute name for arbitrary description.
-    constexpr const static ::llvm::StringLiteral
-    kMapAttrName = "dlti.map";
-
-    // Top-level attribute name for data layout description.
+    // Top level attribute name.
     constexpr const static ::llvm::StringLiteral
     kDataLayoutAttrName = "dlti.dl_spec";
 
-    // Top-level attribute name for target system description.
+    // Top level attribute name for target system description
     constexpr const static ::llvm::StringLiteral
     kTargetSystemDescAttrName = "dlti.target_system_spec";
 
-    // Top-level attribute name for target device description.
     constexpr const static ::llvm::StringLiteral
     kTargetDeviceDescAttrName = "dlti.target_device_spec";
 

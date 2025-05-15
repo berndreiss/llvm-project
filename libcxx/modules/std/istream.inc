@@ -8,23 +8,23 @@
 //===----------------------------------------------------------------------===//
 
 export namespace std {
-#if _LIBCPP_HAS_LOCALIZATION
+#ifndef _LIBCPP_HAS_NO_LOCALIZATION
   using std::basic_istream;
 
   using std::istream;
-#  if _LIBCPP_HAS_WIDE_CHARACTERS
+#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
   using std::wistream;
 #  endif
 
   using std::basic_iostream;
 
   using std::iostream;
-#  if _LIBCPP_HAS_WIDE_CHARACTERS
+#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
   using std::wiostream;
 #  endif
 
   using std::ws;
 
   using std::operator>>;
-#endif // _LIBCPP_HAS_LOCALIZATION
+#endif // _LIBCPP_HAS_NO_LOCALIZATION
 } // namespace std

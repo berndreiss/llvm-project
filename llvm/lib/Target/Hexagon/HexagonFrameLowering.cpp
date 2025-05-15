@@ -906,25 +906,22 @@ void HexagonFrameLowering::insertAllocframe(MachineBasicBlock &MBB,
   if (NumBytes >= ALLOCFRAME_MAX) {
     // Emit allocframe(#0).
     BuildMI(MBB, InsertPt, dl, HII.get(Hexagon::S2_allocframe))
-        .addDef(SP)
-        .addReg(SP)
-        .addImm(0)
-        .addMemOperand(MMO)
-        .setMIFlag(MachineInstr::FrameSetup);
+      .addDef(SP)
+      .addReg(SP)
+      .addImm(0)
+      .addMemOperand(MMO);
 
     // Subtract the size from the stack pointer.
     Register SP = HRI.getStackRegister();
     BuildMI(MBB, InsertPt, dl, HII.get(Hexagon::A2_addi), SP)
-        .addReg(SP)
-        .addImm(-int(NumBytes))
-        .setMIFlag(MachineInstr::FrameSetup);
+      .addReg(SP)
+      .addImm(-int(NumBytes));
   } else {
     BuildMI(MBB, InsertPt, dl, HII.get(Hexagon::S2_allocframe))
-        .addDef(SP)
-        .addReg(SP)
-        .addImm(NumBytes)
-        .addMemOperand(MMO)
-        .setMIFlag(MachineInstr::FrameSetup);
+      .addDef(SP)
+      .addReg(SP)
+      .addImm(NumBytes)
+      .addMemOperand(MMO);
   }
 }
 
@@ -1144,7 +1141,10 @@ void HexagonFrameLowering::insertCFIInstructionsAt(MachineBasicBlock &MBB,
   }
 }
 
-bool HexagonFrameLowering::hasFPImpl(const MachineFunction &MF) const {
+bool HexagonFrameLowering::hasFP(const MachineFunction &MF) const {
+  if (MF.getFunction().hasFnAttribute(Attribute::Naked))
+    return false;
+
   auto &MFI = MF.getFrameInfo();
   auto &HRI = *MF.getSubtarget<HexagonSubtarget>().getRegisterInfo();
   bool HasExtraAlign = HRI.hasStackRealignment(MF);

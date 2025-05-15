@@ -189,11 +189,11 @@ class FunctionDifferenceEngine {
   // The returned reference is not permanently valid and should not be stored.
   BlockDiffCandidate &getOrCreateBlockDiffCandidate(const BasicBlock *LBB,
                                                     const BasicBlock *RBB) {
-    auto [It, Inserted] =
-        BlockDiffCandidateIndices.try_emplace(LBB, BlockDiffCandidates.size());
+    auto It = BlockDiffCandidateIndices.find(LBB);
     // Check if LBB already has a diff candidate
-    if (Inserted) {
+    if (It == BlockDiffCandidateIndices.end()) {
       // Add new one
+      BlockDiffCandidateIndices[LBB] = BlockDiffCandidates.size();
       BlockDiffCandidates.push_back(
           {LBB, RBB, SmallDenseMap<const Value *, const Value *>(), false});
       return BlockDiffCandidates.back();

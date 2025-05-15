@@ -746,8 +746,8 @@ class SparseTensorAllocConverter
     : public OpConversionPattern<bufferization::AllocTensorOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
-  SparseTensorAllocConverter(const TypeConverter &typeConverter,
-                             MLIRContext *context, bool enableInit)
+  SparseTensorAllocConverter(TypeConverter &typeConverter, MLIRContext *context,
+                             bool enableInit)
       : OpConversionPattern(typeConverter, context),
         enableBufferInitialization(enableInit) {}
 
@@ -808,8 +808,8 @@ private:
 class SparseTensorEmptyConverter : public OpConversionPattern<tensor::EmptyOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
-  SparseTensorEmptyConverter(const TypeConverter &typeConverter,
-                             MLIRContext *context, bool enableInit)
+  SparseTensorEmptyConverter(TypeConverter &typeConverter, MLIRContext *context,
+                             bool enableInit)
       : OpConversionPattern(typeConverter, context),
         enableBufferInitialization(enableInit) {}
 
@@ -850,7 +850,7 @@ class SparseTensorDeallocConverter
     : public OpConversionPattern<bufferization::DeallocTensorOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
-  SparseTensorDeallocConverter(const TypeConverter &typeConverter,
+  SparseTensorDeallocConverter(TypeConverter &typeConverter,
                                MLIRContext *context, bool createDeallocs)
       : OpConversionPattern(typeConverter, context),
         createDeallocs(createDeallocs) {}
@@ -1411,7 +1411,7 @@ struct SparseAssembleOpConverter : public OpConversionPattern<AssembleOp> {
 struct SparseDisassembleOpConverter
     : public OpConversionPattern<DisassembleOp> {
   using OpConversionPattern::OpConversionPattern;
-  SparseDisassembleOpConverter(const TypeConverter &typeConverter,
+  SparseDisassembleOpConverter(TypeConverter &typeConverter,
                                MLIRContext *context)
       : OpConversionPattern(typeConverter, context) {}
 
@@ -1604,7 +1604,7 @@ struct SparseHasRuntimeLibraryConverter
 /// Populates the given patterns list with conversion rules required for
 /// the sparsification of linear algebra operations.
 void mlir::populateSparseTensorCodegenPatterns(
-    const TypeConverter &typeConverter, RewritePatternSet &patterns,
+    TypeConverter &typeConverter, RewritePatternSet &patterns,
     bool createSparseDeallocs, bool enableBufferInitialization) {
   patterns.add<
       SparseAssembleOpConverter, SparseDisassembleOpConverter,

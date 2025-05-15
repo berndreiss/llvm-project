@@ -56,13 +56,11 @@ void populateMathPolynomialApproximationPatterns(
 void populateUpliftToFMAPatterns(RewritePatternSet &patterns);
 
 namespace math {
-void populateExtendToSupportedTypesTypeConverter(
-    TypeConverter &typeConverter, const SetVector<Type> &sourceTypes,
-    Type targetType);
-void populateExtendToSupportedTypesConversionTarget(
-    ConversionTarget &target, TypeConverter &typeConverter);
-void populateExtendToSupportedTypesPatterns(RewritePatternSet &patterns,
-                                            const TypeConverter &typeConverter);
+void populateLegalizeToF32TypeConverter(TypeConverter &typeConverter);
+void populateLegalizeToF32ConversionTarget(ConversionTarget &target,
+                                           TypeConverter &typeConverter);
+void populateLegalizeToF32Patterns(RewritePatternSet &patterns,
+                                   TypeConverter &typeConverter);
 } // namespace math
 } // namespace mlir
 

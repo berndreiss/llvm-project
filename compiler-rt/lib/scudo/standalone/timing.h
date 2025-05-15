@@ -14,10 +14,6 @@
 #include "string_utils.h"
 #include "thread_annotations.h"
 
-#ifndef __STDC_FORMAT_MACROS
-// Ensure PRId64 macro is available
-#define __STDC_FORMAT_MACROS 1
-#endif
 #include <inttypes.h>
 #include <string.h>
 

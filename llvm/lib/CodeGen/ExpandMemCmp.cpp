@@ -355,7 +355,7 @@ MemCmpExpansion::LoadPair MemCmpExpansion::getLoadPair(Type *LoadSizeType,
 
   // Swap bytes if required.
   if (BSwapSizeType) {
-    Function *Bswap = Intrinsic::getOrInsertDeclaration(
+    Function *Bswap = Intrinsic::getDeclaration(
         CI->getModule(), Intrinsic::bswap, BSwapSizeType);
     Lhs = Builder.CreateCall(Bswap, Lhs);
     Rhs = Builder.CreateCall(Bswap, Rhs);
@@ -590,7 +590,7 @@ void MemCmpExpansion::emitMemCmpResultBlock() {
                                   ResBlock.PhiSrc2);
 
   Value *Res =
-      Builder.CreateSelect(Cmp, Constant::getAllOnesValue(Builder.getInt32Ty()),
+      Builder.CreateSelect(Cmp, ConstantInt::get(Builder.getInt32Ty(), -1),
                            ConstantInt::get(Builder.getInt32Ty(), 1));
 
   PhiRes->addIncoming(Res, ResBlock.BB);
@@ -852,7 +852,8 @@ static bool expandMemCmp(CallInst *CI, const TargetTransformInfo *TTI,
   // available load sizes.
   const bool IsUsedForZeroCmp =
       IsBCmp || isOnlyUsedInZeroEqualityComparison(CI);
-  bool OptForSize = llvm::shouldOptimizeForSize(CI->getParent(), PSI, BFI);
+  bool OptForSize = CI->getFunction()->hasOptSize() ||
+                    llvm::shouldOptimizeForSize(CI->getParent(), PSI, BFI);
   auto Options = TTI->enableMemCmpExpansion(OptForSize,
                                             IsUsedForZeroCmp);
   if (!Options) return false;

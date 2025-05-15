@@ -37,7 +37,6 @@ add_lldb_library(lldbPluginExpressionParserClang
     lldbSymbol
     lldbTarget
     lldbUtility
-    lldbValueObject
     lldbPluginCPlusPlusLanguage
     lldbPluginCPPRuntime
     lldbPluginObjCRuntime

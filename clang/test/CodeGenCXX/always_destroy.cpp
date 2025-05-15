@@ -1,7 +1,4 @@
-// RUN: %clang_cc1 %s -fc++-static-destructors=none -emit-llvm -triple x86_64-apple-macosx10.13.0 -o - | \
-// RUN:   FileCheck --check-prefixes=CHECK,NO-DTORS %s
-// RUN: %clang_cc1 %s -fc++-static-destructors=thread-local -emit-llvm -triple x86_64-apple-macosx10.13.0 -o - | \
-// RUN:   FileCheck --check-prefixes=CHECK,THREAD-LOCAL-DTORS %s
+// RUN: %clang_cc1 %s -fno-c++-static-destructors -emit-llvm -triple x86_64-apple-macosx10.13.0 -o - | FileCheck %s
 
 struct NonTrivial {
   ~NonTrivial();
@@ -9,8 +6,7 @@ struct NonTrivial {
 
 // CHECK-NOT: __cxa_atexit{{.*}}_ZN10NonTrivialD1Ev
 NonTrivial nt1;
-// NO-DTORS-NOT: _tlv_atexit{{.*}}_ZN10NonTrivialD1Ev
-// THREAD-LOCAL-DTORS: _tlv_atexit{{.*}}_ZN10NonTrivialD1Ev
+// CHECK-NOT: _tlv_atexit{{.*}}_ZN10NonTrivialD1Ev
 thread_local NonTrivial nt2;
 
 struct NonTrivial2 {

@@ -27,11 +27,11 @@ struct SubClassReference;
 struct SubMultiClassReference;
 
 struct LetRecord {
-  const StringInit *Name;
+  StringInit *Name;
   std::vector<unsigned> Bits;
-  const Init *Value;
+  Init *Value;
   SMLoc Loc;
-  LetRecord(const StringInit *N, ArrayRef<unsigned> B, const Init *V, SMLoc L)
+  LetRecord(StringInit *N, ArrayRef<unsigned> B, Init *V, SMLoc L)
       : Name(N), Bits(B), Value(V), Loc(L) {}
 };
 
@@ -62,19 +62,19 @@ struct RecordsEntry {
 /// constructed by desugaring an if statement.)
 struct ForeachLoop {
   SMLoc Loc;
-  const VarInit *IterVar;
-  const Init *ListValue;
+  VarInit *IterVar;
+  Init *ListValue;
   std::vector<RecordsEntry> Entries;
 
   void dump() const;
 
-  ForeachLoop(SMLoc Loc, const VarInit *IVar, const Init *LValue)
+  ForeachLoop(SMLoc Loc, VarInit *IVar, Init *LValue)
       : Loc(Loc), IterVar(IVar), ListValue(LValue) {}
 };
 
 struct DefsetRecord {
   SMLoc Loc;
-  const RecTy *EltTy = nullptr;
+  RecTy *EltTy = nullptr;
   SmallVector<Init *, 16> Elements;
 };
 
@@ -96,7 +96,7 @@ private:
   ScopeKind Kind;
   std::unique_ptr<TGVarScope> Parent;
   // A scope to hold variable definitions from defvar.
-  std::map<std::string, const Init *, std::less<>> Vars;
+  std::map<std::string, Init *, std::less<>> Vars;
   Record *CurRec = nullptr;
   ForeachLoop *CurLoop = nullptr;
   MultiClass *CurMultiClass = nullptr;
@@ -118,9 +118,9 @@ public:
     return std::move(Parent);
   }
 
-  const Init *getVar(RecordKeeper &Records, MultiClass *ParsingMultiClass,
-                     const StringInit *Name, SMRange NameLoc,
-                     bool TrackReferenceLocs) const;
+  Init *getVar(RecordKeeper &Records, MultiClass *ParsingMultiClass,
+               StringInit *Name, SMRange NameLoc,
+               bool TrackReferenceLocs) const;
 
   bool varAlreadyDefined(StringRef Name) const {
     // When we check whether a variable is already defined, for the purpose of
@@ -130,7 +130,7 @@ public:
     return Vars.find(Name) != Vars.end();
   }
 
-  void addVar(StringRef Name, const Init *I) {
+  void addVar(StringRef Name, Init *I) {
     bool Ins = Vars.insert(std::make_pair(std::string(Name), I)).second;
     (void)Ins;
     assert(Ins && "Local variable already exists");
@@ -143,7 +143,7 @@ class TGParser {
   TGLexer Lex;
   std::vector<SmallVector<LetRecord, 4>> LetStack;
   std::map<std::string, std::unique_ptr<MultiClass>> MultiClasses;
-  std::map<std::string, const RecTy *> TypeAliases;
+  std::map<std::string, RecTy *> TypeAliases;
 
   /// Loops - Keep track of any foreach loops we are within.
   ///
@@ -228,15 +228,15 @@ private: // Semantic analysis methods.
   /// Set the value of a RecordVal within the given record. If `OverrideDefLoc`
   /// is set, the provided location overrides any existing location of the
   /// RecordVal.
-  bool SetValue(Record *TheRec, SMLoc Loc, const Init *ValName,
-                ArrayRef<unsigned> BitList, const Init *V,
+  bool SetValue(Record *TheRec, SMLoc Loc, Init *ValName,
+                ArrayRef<unsigned> BitList, Init *V,
                 bool AllowSelfAssignment = false, bool OverrideDefLoc = true);
   bool AddSubClass(Record *Rec, SubClassReference &SubClass);
   bool AddSubClass(RecordsEntry &Entry, SubClassReference &SubClass);
   bool AddSubMultiClass(MultiClass *CurMC,
                         SubMultiClassReference &SubMultiClass);
 
-  using SubstStack = SmallVector<std::pair<const Init *, const Init *>, 8>;
+  using SubstStack = SmallVector<std::pair<Init *, Init *>, 8>;
 
   bool addEntry(RecordsEntry E);
   bool resolve(const ForeachLoop &Loop, SubstStack &Stack, bool Final,
@@ -246,16 +246,15 @@ private: // Semantic analysis methods.
                SMLoc *Loc = nullptr);
   bool addDefOne(std::unique_ptr<Record> Rec);
 
-  using ArgValueHandler = std::function<void(const Init *, const Init *)>;
+  using ArgValueHandler = std::function<void(Init *, Init *)>;
   bool resolveArguments(
-      const Record *Rec, ArrayRef<const ArgumentInit *> ArgValues, SMLoc Loc,
-      ArgValueHandler ArgValueHandler = [](const Init *, const Init *) {});
-  bool resolveArgumentsOfClass(MapResolver &R, const Record *Rec,
-                               ArrayRef<const ArgumentInit *> ArgValues,
-                               SMLoc Loc);
+      Record *Rec, ArrayRef<ArgumentInit *> ArgValues, SMLoc Loc,
+      ArgValueHandler ArgValueHandler = [](Init *, Init *) {});
+  bool resolveArgumentsOfClass(MapResolver &R, Record *Rec,
+                               ArrayRef<ArgumentInit *> ArgValues, SMLoc Loc);
   bool resolveArgumentsOfMultiClass(SubstStack &Substs, MultiClass *MC,
-                                    ArrayRef<const ArgumentInit *> ArgValues,
-                                    const Init *DefmName, SMLoc Loc);
+                                    ArrayRef<ArgumentInit *> ArgValues,
+                                    Init *DefmName, SMLoc Loc);
 
 private:  // Parser methods.
   bool consume(tgtok::TokKind K);
@@ -281,47 +280,46 @@ private:  // Parser methods.
   bool ParseBodyItem(Record *CurRec);
 
   bool ParseTemplateArgList(Record *CurRec);
-  const Init *ParseDeclaration(Record *CurRec, bool ParsingTemplateArgs);
-  const VarInit *ParseForeachDeclaration(const Init *&ForeachListValue);
+  Init *ParseDeclaration(Record *CurRec, bool ParsingTemplateArgs);
+  VarInit *ParseForeachDeclaration(Init *&ForeachListValue);
 
   SubClassReference ParseSubClassReference(Record *CurRec, bool isDefm);
   SubMultiClassReference ParseSubMultiClassReference(MultiClass *CurMC);
 
-  const Init *ParseIDValue(Record *CurRec, const StringInit *Name,
-                           SMRange NameLoc, IDParseMode Mode = ParseValueMode);
-  const Init *ParseSimpleValue(Record *CurRec, const RecTy *ItemType = nullptr,
-                               IDParseMode Mode = ParseValueMode);
-  const Init *ParseValue(Record *CurRec, const RecTy *ItemType = nullptr,
+  Init *ParseIDValue(Record *CurRec, StringInit *Name, SMRange NameLoc,
+                     IDParseMode Mode = ParseValueMode);
+  Init *ParseSimpleValue(Record *CurRec, RecTy *ItemType = nullptr,
                          IDParseMode Mode = ParseValueMode);
-  void ParseValueList(SmallVectorImpl<const Init *> &Result, Record *CurRec,
-                      const RecTy *ItemType = nullptr);
-  bool ParseTemplateArgValueList(SmallVectorImpl<const ArgumentInit *> &Result,
-                                 Record *CurRec, const Record *ArgsRec);
+  Init *ParseValue(Record *CurRec, RecTy *ItemType = nullptr,
+                   IDParseMode Mode = ParseValueMode);
+  void ParseValueList(SmallVectorImpl<llvm::Init*> &Result,
+                      Record *CurRec, RecTy *ItemType = nullptr);
+  bool ParseTemplateArgValueList(SmallVectorImpl<llvm::ArgumentInit *> &Result,
+                                 Record *CurRec, Record *ArgsRec);
   void ParseDagArgList(
-      SmallVectorImpl<std::pair<const Init *, const StringInit *>> &Result,
+      SmallVectorImpl<std::pair<llvm::Init*, StringInit*>> &Result,
       Record *CurRec);
   bool ParseOptionalRangeList(SmallVectorImpl<unsigned> &Ranges);
   bool ParseOptionalBitList(SmallVectorImpl<unsigned> &Ranges);
-  const TypedInit *ParseSliceElement(Record *CurRec);
-  const TypedInit *ParseSliceElements(Record *CurRec, bool Single = false);
+  TypedInit *ParseSliceElement(Record *CurRec);
+  TypedInit *ParseSliceElements(Record *CurRec, bool Single = false);
   void ParseRangeList(SmallVectorImpl<unsigned> &Result);
   bool ParseRangePiece(SmallVectorImpl<unsigned> &Ranges,
-                       const TypedInit *FirstItem = nullptr);
-  const RecTy *ParseType();
-  const Init *ParseOperation(Record *CurRec, const RecTy *ItemType);
-  const Init *ParseOperationSubstr(Record *CurRec, const RecTy *ItemType);
-  const Init *ParseOperationFind(Record *CurRec, const RecTy *ItemType);
-  const Init *ParseOperationForEachFilter(Record *CurRec,
-                                          const RecTy *ItemType);
-  const Init *ParseOperationCond(Record *CurRec, const RecTy *ItemType);
-  const RecTy *ParseOperatorType();
-  const Init *ParseObjectName(MultiClass *CurMultiClass);
-  const Record *ParseClassID();
+                       TypedInit *FirstItem = nullptr);
+  RecTy *ParseType();
+  Init *ParseOperation(Record *CurRec, RecTy *ItemType);
+  Init *ParseOperationSubstr(Record *CurRec, RecTy *ItemType);
+  Init *ParseOperationFind(Record *CurRec, RecTy *ItemType);
+  Init *ParseOperationForEachFilter(Record *CurRec, RecTy *ItemType);
+  Init *ParseOperationCond(Record *CurRec, RecTy *ItemType);
+  RecTy *ParseOperatorType();
+  Init *ParseObjectName(MultiClass *CurMultiClass);
+  Record *ParseClassID();
   MultiClass *ParseMultiClassID();
   bool ApplyLetStack(Record *CurRec);
   bool ApplyLetStack(RecordsEntry &Entry);
-  bool CheckTemplateArgValues(SmallVectorImpl<const ArgumentInit *> &Values,
-                              SMLoc Loc, const Record *ArgsRec);
+  bool CheckTemplateArgValues(SmallVectorImpl<llvm::ArgumentInit *> &Values,
+                              SMLoc Loc, Record *ArgsRec);
 };
 
 } // end namespace llvm

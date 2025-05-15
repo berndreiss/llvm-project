@@ -36,7 +36,8 @@ static LogicalResult verifyCastOp(Operation *op,
   using TypePair = std::pair<Type, Type>;
   auto [operandElemTy, resultElemTy] =
       TypeSwitch<Type, TypePair>(operandType)
-          .Case<VectorType, spirv::CooperativeMatrixType>(
+          .Case<VectorType, spirv::CooperativeMatrixType,
+                spirv::JointMatrixINTELType>(
               [resultType](auto concreteOperandTy) -> TypePair {
                 if (auto concreteResultTy =
                         dyn_cast<decltype(concreteOperandTy)>(resultType)) {

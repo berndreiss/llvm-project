@@ -122,13 +122,15 @@ private:
   /// or a horizontal reduction was not matched or not possible.
   bool vectorizeHorReduction(PHINode *P, Instruction *Root, BasicBlock *BB,
                              slpvectorizer::BoUpSLP &R,
+                             TargetTransformInfo *TTI,
                              SmallVectorImpl<WeakTrackingVH> &PostponedInsts);
 
   /// Make an attempt to vectorize reduction and then try to vectorize
   /// postponed binary operations.
   /// \returns true on any successfull vectorization.
   bool vectorizeRootInstruction(PHINode *P, Instruction *Root, BasicBlock *BB,
-                                slpvectorizer::BoUpSLP &R);
+                                slpvectorizer::BoUpSLP &R,
+                                TargetTransformInfo *TTI);
 
   /// Try to vectorize trees that start at insertvalue instructions.
   bool vectorizeInsertValueInst(InsertValueInst *IVI, BasicBlock *BB,

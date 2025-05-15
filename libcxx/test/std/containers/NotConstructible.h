@@ -23,12 +23,18 @@ bool
 operator==(const NotConstructible&, const NotConstructible&)
 {return true;}
 
-template <>
-struct std::hash<NotConstructible> {
-  typedef NotConstructible argument_type;
-  typedef std::size_t result_type;
+namespace std
+{
 
-  std::size_t operator()(const NotConstructible&) const { return 0; }
+template <>
+struct hash<NotConstructible>
+{
+    typedef NotConstructible argument_type;
+    typedef std::size_t result_type;
+
+    std::size_t operator()(const NotConstructible&) const {return 0;}
 };
+
+}
 
 #endif // NOTCONSTRUCTIBLE_H

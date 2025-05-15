@@ -23,8 +23,8 @@ tablegen("RISCVTargetParserDef") {
 
 group("gen") {
   deps = [
-    ":AArch64TargetParserDef",
     ":ARMTargetParserDef",
+    ":AArch64TargetParserDef",
     ":RISCVTargetParserDef",
   ]
 }

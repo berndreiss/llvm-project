@@ -181,9 +181,6 @@ TEST(DWARFExpression, DW_OP_bra) {
       }),
       // clang-format on
       llvm::HasValue(0x42));
-
-  EXPECT_THAT_ERROR(Evaluate({DW_OP_bra, 0x01, 0x00}).takeError(),
-                    llvm::Failed());
 }
 
 TEST(DWARFExpression, DW_OP_convert) {

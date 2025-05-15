@@ -351,6 +351,9 @@ static void outputReplacementsXML(const Replacements &Replaces) {
 static bool
 emitReplacementWarnings(const Replacements &Replaces, StringRef AssumedFileName,
                         const std::unique_ptr<llvm::MemoryBuffer> &Code) {
+  if (Replaces.empty())
+    return false;
+
   unsigned Errors = 0;
   if (WarnFormat && !NoWarnFormat) {
     SourceMgr Mgr;
@@ -365,7 +368,7 @@ emitReplacementWarnings(const Replacements &Replaces, StringRef AssumedFileName,
                            : SourceMgr::DiagKind::DK_Warning,
           "code should be clang-formatted [-Wclang-format-violations]");
 
-      Diag.print(nullptr, llvm::errs(), ShowColors && !NoShowColors);
+      Diag.print(nullptr, llvm::errs(), (ShowColors && !NoShowColors));
       if (ErrorLimit && ++Errors >= ErrorLimit)
         break;
     }
@@ -410,7 +413,7 @@ static bool format(StringRef FileName, bool ErrorOnIncompleteFormat = false) {
   const bool IsSTDIN = FileName == "-";
   if (!OutputXML && Inplace && IsSTDIN) {
     errs() << "error: cannot use -i when reading from stdin.\n";
-    return true;
+    return false;
   }
   // On Windows, overwriting a file with an open file mapping doesn't work,
   // so read the whole file into memory when formatting in-place.
@@ -419,7 +422,7 @@ static bool format(StringRef FileName, bool ErrorOnIncompleteFormat = false) {
           ? MemoryBuffer::getFileAsStream(FileName)
           : MemoryBuffer::getFileOrSTDIN(FileName, /*IsText=*/true);
   if (std::error_code EC = CodeOrErr.getError()) {
-    errs() << FileName << ": " << EC.message() << "\n";
+    errs() << EC.message() << "\n";
     return true;
   }
   std::unique_ptr<llvm::MemoryBuffer> Code = std::move(CodeOrErr.get());
@@ -487,11 +490,9 @@ static bool format(StringRef FileName, bool ErrorOnIncompleteFormat = false) {
   Replacements Replaces = sortIncludes(*FormatStyle, Code->getBuffer(), Ranges,
                                        AssumedFileName, &CursorPosition);
 
-  const bool IsJson = FormatStyle->isJson();
-
   // To format JSON insert a variable to trick the code into thinking its
   // JavaScript.
-  if (IsJson && !FormatStyle->DisableFormat) {
+  if (FormatStyle->isJson() && !FormatStyle->DisableFormat) {
     auto Err = Replaces.add(tooling::Replacement(
         tooling::Replacement(AssumedFileName, 0, 0, "x = ")));
     if (Err)
@@ -509,11 +510,9 @@ static bool format(StringRef FileName, bool ErrorOnIncompleteFormat = false) {
   Replacements FormatChanges =
       reformat(*FormatStyle, *ChangedCode, Ranges, AssumedFileName, &Status);
   Replaces = Replaces.merge(FormatChanges);
-  if (DryRun) {
-    return Replaces.size() > (IsJson ? 1u : 0u) &&
-           emitReplacementWarnings(Replaces, AssumedFileName, Code);
-  }
-  if (OutputXML) {
+  if (OutputXML || DryRun) {
+    if (DryRun)
+      return emitReplacementWarnings(Replaces, AssumedFileName, Code);
     outputXML(Replaces, FormatChanges, Status, Cursor, CursorPosition);
   } else {
     IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
@@ -704,14 +703,11 @@ int main(int argc, const char **argv) {
       FileNames.push_back(Line);
       LineNo++;
     }
-    errs() << "Clang-formatting " << LineNo << " files\n";
+    errs() << "Clang-formating " << LineNo << " files\n";
   }
 
-  if (FileNames.empty()) {
-    if (isIgnored(AssumeFileName))
-      return 0;
+  if (FileNames.empty())
     return clang::format::format("-", FailOnIncompleteFormat);
-  }
 
   if (FileNames.size() > 1 &&
       (!Offsets.empty() || !Lengths.empty() || !LineRanges.empty())) {

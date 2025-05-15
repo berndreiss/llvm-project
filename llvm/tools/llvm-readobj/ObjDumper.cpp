@@ -82,8 +82,8 @@ void ObjDumper::printAsStringList(StringRef StringContent,
       continue;
     }
     W.startLine() << format("[%6tx] ", CurrentWord - StrContent);
-    printAsPrintable(W.getOStream(), CurrentWord, WordSize);
-    W.getOStream() << '\n';
+    printAsPrintable(W.startLine(), CurrentWord, WordSize);
+    W.startLine() << '\n';
     CurrentWord += WordSize + 1;
   }
 }
@@ -91,10 +91,8 @@ void ObjDumper::printAsStringList(StringRef StringContent,
 void ObjDumper::printFileSummary(StringRef FileStr, object::ObjectFile &Obj,
                                  ArrayRef<std::string> InputFilenames,
                                  const object::Archive *A) {
-  if (!FileStr.empty()) {
-    W.getOStream() << "\n";
-    W.printString("File", FileStr);
-  }
+  W.startLine() << "\n";
+  W.printString("File", FileStr);
   W.printString("Format", Obj.getFileFormatName());
   W.printString("Arch", Triple::getArchTypeName(Obj.getArch()));
   W.printString("AddressSize",
@@ -106,7 +104,7 @@ static std::vector<object::SectionRef>
 getSectionRefsByNameOrIndex(const object::ObjectFile &Obj,
                             ArrayRef<std::string> Sections) {
   std::vector<object::SectionRef> Ret;
-  std::map<std::string, bool, std::less<>> SecNames;
+  std::map<std::string, bool> SecNames;
   std::map<unsigned, bool> SecIndices;
   unsigned SecIndex;
   for (StringRef Section : Sections) {
@@ -119,7 +117,7 @@ getSectionRefsByNameOrIndex(const object::ObjectFile &Obj,
   SecIndex = Obj.isELF() ? 0 : 1;
   for (object::SectionRef SecRef : Obj.sections()) {
     StringRef SecName = unwrapOrError(Obj.getFileName(), SecRef.getName());
-    auto NameIt = SecNames.find(SecName);
+    auto NameIt = SecNames.find(std::string(SecName));
     if (NameIt != SecNames.end())
       NameIt->second = true;
     auto IndexIt = SecIndices.find(SecIndex);
@@ -165,8 +163,7 @@ void ObjDumper::printSectionsAsString(const object::ObjectFile &Obj,
   for (object::SectionRef Section :
        getSectionRefsByNameOrIndex(Obj, Sections)) {
     StringRef SectionName = unwrapOrError(Obj.getFileName(), Section.getName());
-    W.getOStream() << '\n';
-    W.startLine() << "String dump of section '" << SectionName << "':\n";
+    W.startLine() << "\nString dump of section '" << SectionName << "':\n";
 
     StringRef SectionContent =
         unwrapOrError(Obj.getFileName(), Section.getContents());
@@ -183,8 +180,7 @@ void ObjDumper::printSectionsAsHex(const object::ObjectFile &Obj,
   for (object::SectionRef Section :
        getSectionRefsByNameOrIndex(Obj, Sections)) {
     StringRef SectionName = unwrapOrError(Obj.getFileName(), Section.getName());
-    W.getOStream() << '\n';
-    W.startLine() << "Hex dump of section '" << SectionName << "':\n";
+    W.startLine() << "\nHex dump of section '" << SectionName << "':\n";
 
     StringRef SectionContent =
         unwrapOrError(Obj.getFileName(), Section.getContents());
@@ -200,13 +196,13 @@ void ObjDumper::printSectionsAsHex(const object::ObjectFile &Obj,
 
       W.startLine() << format_hex(Section.getAddress() + (SecPtr - SecContent),
                                   10);
-      W.getOStream() << ' ';
+      W.startLine() << ' ';
       for (i = 0; TmpSecPtr < SecEnd && i < 4; ++i) {
         for (k = 0; TmpSecPtr < SecEnd && k < 4; k++, TmpSecPtr++) {
           uint8_t Val = *(reinterpret_cast<const uint8_t *>(TmpSecPtr));
-          W.getOStream() << format_hex_no_prefix(Val, 2);
+          W.startLine() << format_hex_no_prefix(Val, 2);
         }
-        W.getOStream() << ' ';
+        W.startLine() << ' ';
       }
 
       // We need to print the correct amount of spaces to match the format.
@@ -215,17 +211,17 @@ void ObjDumper::printSectionsAsHex(const object::ObjectFile &Obj,
       // Least, if we cut in a middle of a row, we add the remaining characters,
       // which is (8 - (k * 2)).
       if (i < 4)
-        W.getOStream() << format("%*c", (4 - i) * 8 + (4 - i), ' ');
+        W.startLine() << format("%*c", (4 - i) * 8 + (4 - i), ' ');
       if (k < 4)
-        W.getOStream() << format("%*c", 8 - k * 2, ' ');
+        W.startLine() << format("%*c", 8 - k * 2, ' ');
 
       TmpSecPtr = SecPtr;
       for (i = 0; TmpSecPtr + i < SecEnd && i < 16; ++i)
-        W.getOStream() << (isPrint(TmpSecPtr[i])
-                               ? static_cast<char>(TmpSecPtr[i])
-                               : '.');
+        W.startLine() << (isPrint(TmpSecPtr[i])
+                              ? static_cast<char>(TmpSecPtr[i])
+                              : '.');
 
-      W.getOStream() << '\n';
+      W.startLine() << '\n';
     }
   }
 }

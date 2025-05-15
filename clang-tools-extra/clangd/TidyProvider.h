@@ -30,11 +30,11 @@ using TidyProviderRef = llvm::function_ref<void(tidy::ClangTidyOptions &,
 TidyProvider combine(std::vector<TidyProvider> Providers);
 
 /// Provider that just sets the defaults.
-TidyProvider provideEnvironment();
+TidyProviderRef provideEnvironment();
 
 /// Provider that will enable a nice set of default checks if none are
 /// specified.
-TidyProvider provideDefaultChecks();
+TidyProviderRef provideDefaultChecks();
 
 /// Provider the enables a specific set of checks and warnings as errors.
 TidyProvider addTidyChecks(llvm::StringRef Checks,
@@ -51,7 +51,7 @@ disableUnusableChecks(llvm::ArrayRef<std::string> ExtraBadChecks = {});
 TidyProvider provideClangTidyFiles(ThreadsafeFS &);
 
 // Provider that uses clangd configuration files.
-TidyProvider provideClangdConfig();
+TidyProviderRef provideClangdConfig();
 
 tidy::ClangTidyOptions getTidyOptionsForFile(TidyProviderRef Provider,
                                              llvm::StringRef Filename);

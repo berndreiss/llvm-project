@@ -21,7 +21,7 @@ InMemorySymbolIndex::InMemorySymbolIndex(
 
 std::vector<SymbolAndSignals>
 InMemorySymbolIndex::search(llvm::StringRef Identifier) {
-  auto I = LookupTable.find(Identifier);
+  auto I = LookupTable.find(std::string(Identifier));
   if (I != LookupTable.end())
     return I->second;
   return {};

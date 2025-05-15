@@ -123,24 +123,24 @@ ProcessWindows::ProcessWindows(lldb::TargetSP target_sp,
 ProcessWindows::~ProcessWindows() {}
 
 size_t ProcessWindows::GetSTDOUT(char *buf, size_t buf_size, Status &error) {
-  error = Status::FromErrorString("GetSTDOUT unsupported on Windows");
+  error.SetErrorString("GetSTDOUT unsupported on Windows");
   return 0;
 }
 
 size_t ProcessWindows::GetSTDERR(char *buf, size_t buf_size, Status &error) {
-  error = Status::FromErrorString("GetSTDERR unsupported on Windows");
+  error.SetErrorString("GetSTDERR unsupported on Windows");
   return 0;
 }
 
 size_t ProcessWindows::PutSTDIN(const char *buf, size_t buf_size,
                                 Status &error) {
-  error = Status::FromErrorString("PutSTDIN unsupported on Windows");
+  error.SetErrorString("PutSTDIN unsupported on Windows");
   return 0;
 }
 
 Status ProcessWindows::EnableBreakpointSite(BreakpointSite *bp_site) {
   if (bp_site->HardwareRequired())
-    return Status::FromErrorString("Hardware breakpoints are not supported.");
+    return Status("Hardware breakpoints are not supported.");
 
   Log *log = GetLog(WindowsLog::Breakpoints);
   LLDB_LOG(log, "bp_site = {0:x}, id={1}, addr={2:x}", bp_site,
@@ -175,10 +175,9 @@ Status ProcessWindows::DoDetach(bool keep_stopped) {
     else
       LLDB_LOG(log, "Detaching process error: {0}", error);
   } else {
-    error = Status::FromErrorStringWithFormatv(
-        "error: process {0} in state = {1}, but "
-        "cannot detach it in this state.",
-        GetID(), private_state);
+    error.SetErrorStringWithFormatv("error: process {0} in state = {1}, but "
+                                    "cannot detach it in this state.",
+                                    GetID(), private_state);
     LLDB_LOG(log, "error: {0}", error);
   }
   return error;
@@ -232,7 +231,7 @@ Status ProcessWindows::DoResume() {
     }
 
     if (failed) {
-      error = Status::FromErrorString("ProcessWindows::DoResume failed");
+      error.SetErrorString("ProcessWindows::DoResume failed");
     } else {
       SetPrivateState(eStateRunning);
     }
@@ -492,10 +491,10 @@ void ProcessWindows::RefreshStateAfterStop() {
                 << llvm::format_hex(active_exception->GetExceptionAddress(), 8);
     DumpAdditionalExceptionInformation(desc_stream, active_exception);
 
-    stop_info =
-        StopInfo::CreateStopReasonWithException(*stop_thread, desc.c_str());
+    stop_info = StopInfo::CreateStopReasonWithException(
+        *stop_thread, desc_stream.str().c_str());
     stop_thread->SetStopInfo(stop_info);
-    LLDB_LOG(log, "{0}", desc);
+    LLDB_LOG(log, "{0}", desc_stream.str());
     return;
   }
   }
@@ -821,7 +820,7 @@ void ProcessWindows::OnDebuggerError(const Status &error, uint32_t type) {
     // If we haven't actually launched the process yet, this was an error
     // launching the process.  Set the internal error and signal the initial
     // stop event so that the DoLaunch method wakes up and returns a failure.
-    m_session_data->m_launch_error = error.Clone();
+    m_session_data->m_launch_error = error;
     ::SetEvent(m_session_data->m_initial_stop_event);
     LLDB_LOG(
         log,
@@ -850,8 +849,8 @@ Status ProcessWindows::EnableWatchpoint(WatchpointSP wp_sp, bool notify) {
     if (m_watchpoint_ids[info.slot_id] == LLDB_INVALID_BREAK_ID)
       break;
   if (info.slot_id == RegisterContextWindows::GetNumHardwareBreakpointSlots()) {
-    error = Status::FromErrorStringWithFormat(
-        "Can't find free slot for watchpoint %i", wp_sp->GetID());
+    error.SetErrorStringWithFormat("Can't find free slot for watchpoint %i",
+                                   wp_sp->GetID());
     return error;
   }
   info.address = wp_sp->GetLoadAddress();
@@ -865,7 +864,7 @@ Status ProcessWindows::EnableWatchpoint(WatchpointSP wp_sp, bool notify) {
         thread->GetRegisterContext().get());
     if (!reg_ctx->AddHardwareBreakpoint(info.slot_id, info.address, info.size,
                                         info.read, info.write)) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "Can't enable watchpoint %i on thread 0x%llx", wp_sp->GetID(),
           thread->GetID());
       break;
@@ -899,8 +898,8 @@ Status ProcessWindows::DisableWatchpoint(WatchpointSP wp_sp, bool notify) {
 
   auto it = m_watchpoints.find(wp_sp->GetID());
   if (it == m_watchpoints.end()) {
-    error = Status::FromErrorStringWithFormat(
-        "Info about watchpoint %i is not found", wp_sp->GetID());
+    error.SetErrorStringWithFormat("Info about watchpoint %i is not found",
+                                   wp_sp->GetID());
     return error;
   }
 
@@ -909,7 +908,7 @@ Status ProcessWindows::DisableWatchpoint(WatchpointSP wp_sp, bool notify) {
     auto *reg_ctx = static_cast<RegisterContextWindows *>(
         thread->GetRegisterContext().get());
     if (!reg_ctx->RemoveHardwareBreakpoint(it->second.slot_id)) {
-      error = Status::FromErrorStringWithFormat(
+      error.SetErrorStringWithFormat(
           "Can't disable watchpoint %i on thread 0x%llx", wp_sp->GetID(),
           thread->GetID());
       break;

@@ -21,9 +21,7 @@ define void @local_var_mf8() {
 ; RV64IV-NEXT:    csrr a0, vlenb
 ; RV64IV-NEXT:    slli a0, a0, 1
 ; RV64IV-NEXT:    add sp, sp, a0
-; RV64IV-NEXT:    .cfi_def_cfa sp, 16
 ; RV64IV-NEXT:    addi sp, sp, 16
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local0 = alloca <vscale x 1 x i8>
   %local1 = alloca <vscale x 1 x i8>
@@ -50,9 +48,7 @@ define void @local_var_m1() {
 ; RV64IV-NEXT:    csrr a0, vlenb
 ; RV64IV-NEXT:    slli a0, a0, 1
 ; RV64IV-NEXT:    add sp, sp, a0
-; RV64IV-NEXT:    .cfi_def_cfa sp, 16
 ; RV64IV-NEXT:    addi sp, sp, 16
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local0 = alloca <vscale x 8 x i8>
   %local1 = alloca <vscale x 8 x i8>
@@ -80,9 +76,7 @@ define void @local_var_m2() {
 ; RV64IV-NEXT:    csrr a0, vlenb
 ; RV64IV-NEXT:    slli a0, a0, 2
 ; RV64IV-NEXT:    add sp, sp, a0
-; RV64IV-NEXT:    .cfi_def_cfa sp, 16
 ; RV64IV-NEXT:    addi sp, sp, 16
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local0 = alloca <vscale x 16 x i8>
   %local1 = alloca <vscale x 16 x i8>
@@ -114,13 +108,9 @@ define void @local_var_m4() {
 ; RV64IV-NEXT:    addi a0, sp, 32
 ; RV64IV-NEXT:    vl4r.v v8, (a0)
 ; RV64IV-NEXT:    addi sp, s0, -48
-; RV64IV-NEXT:    .cfi_def_cfa sp, 48
 ; RV64IV-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s0, 32(sp) # 8-byte Folded Reload
-; RV64IV-NEXT:    .cfi_restore ra
-; RV64IV-NEXT:    .cfi_restore s0
 ; RV64IV-NEXT:    addi sp, sp, 48
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local0 = alloca <vscale x 32 x i8>
   %local1 = alloca <vscale x 32 x i8>
@@ -152,13 +142,9 @@ define void @local_var_m8() {
 ; RV64IV-NEXT:    addi a0, sp, 64
 ; RV64IV-NEXT:    vl8r.v v8, (a0)
 ; RV64IV-NEXT:    addi sp, s0, -80
-; RV64IV-NEXT:    .cfi_def_cfa sp, 80
 ; RV64IV-NEXT:    ld ra, 72(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s0, 64(sp) # 8-byte Folded Reload
-; RV64IV-NEXT:    .cfi_restore ra
-; RV64IV-NEXT:    .cfi_restore s0
 ; RV64IV-NEXT:    addi sp, sp, 80
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local0 = alloca <vscale x 64 x i8>
   %local1 = alloca <vscale x 64 x i8>
@@ -188,9 +174,7 @@ define void @local_var_m2_mix_local_scalar() {
 ; RV64IV-NEXT:    csrr a0, vlenb
 ; RV64IV-NEXT:    slli a0, a0, 2
 ; RV64IV-NEXT:    add sp, sp, a0
-; RV64IV-NEXT:    .cfi_def_cfa sp, 16
 ; RV64IV-NEXT:    addi sp, sp, 16
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %local_scalar0 = alloca i32
   %local0 = alloca <vscale x 16 x i8>
@@ -239,15 +223,10 @@ define void @local_var_m2_with_varsize_object(i64 %n) {
 ; RV64IV-NEXT:    addi a0, a0, -32
 ; RV64IV-NEXT:    vl2r.v v8, (a0)
 ; RV64IV-NEXT:    addi sp, s0, -32
-; RV64IV-NEXT:    .cfi_def_cfa sp, 32
 ; RV64IV-NEXT:    ld ra, 24(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s0, 16(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s1, 8(sp) # 8-byte Folded Reload
-; RV64IV-NEXT:    .cfi_restore ra
-; RV64IV-NEXT:    .cfi_restore s0
-; RV64IV-NEXT:    .cfi_restore s1
 ; RV64IV-NEXT:    addi sp, sp, 32
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %1 = alloca i8, i64 %n
   %2 = alloca <vscale x 16 x i8>
@@ -298,17 +277,11 @@ define void @local_var_m2_with_bp(i64 %n) {
 ; RV64IV-NEXT:    vl2r.v v8, (a0)
 ; RV64IV-NEXT:    lw zero, 120(s1)
 ; RV64IV-NEXT:    addi sp, s0, -256
-; RV64IV-NEXT:    .cfi_def_cfa sp, 256
 ; RV64IV-NEXT:    ld ra, 248(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s0, 240(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s1, 232(sp) # 8-byte Folded Reload
 ; RV64IV-NEXT:    ld s2, 224(sp) # 8-byte Folded Reload
-; RV64IV-NEXT:    .cfi_restore ra
-; RV64IV-NEXT:    .cfi_restore s0
-; RV64IV-NEXT:    .cfi_restore s1
-; RV64IV-NEXT:    .cfi_restore s2
 ; RV64IV-NEXT:    addi sp, sp, 256
-; RV64IV-NEXT:    .cfi_def_cfa_offset 0
 ; RV64IV-NEXT:    ret
   %1 = alloca i8, i64 %n
   %2 = alloca i32, align 128

@@ -1,4 +1,4 @@
-! RUN: %python %S/../test_errors.py %s %flang_fc1 -fopenmp -fopenmp-version=50
+! RUN: %python %S/../test_errors.py %s %flang_fc1 -fopenmp
 
 subroutine omp_order()
  integer :: i, j = 1

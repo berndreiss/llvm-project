@@ -105,8 +105,10 @@ TEST(VerifierTest, InvalidRetAttribute) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with(
-      "Attribute 'uwtable' does not apply to function return values"));
+  EXPECT_TRUE(
+      StringRef(ErrorOS.str())
+          .starts_with(
+              "Attribute 'uwtable' does not apply to function return values"));
 }
 
 /// Test the verifier rejects invalid nofpclass values that the assembler may
@@ -131,7 +133,7 @@ TEST(VerifierTest, InvalidNoFPClassAttribute) {
     raw_string_ostream ErrorOS(Error);
     EXPECT_TRUE(verifyModule(M, &ErrorOS));
 
-    StringRef ErrMsg(Error);
+    StringRef ErrMsg(ErrorOS.str());
 
     if (InvalidMask == 0) {
       EXPECT_TRUE(ErrMsg.starts_with(
@@ -171,30 +173,33 @@ TEST(VerifierTest, CrossModuleRef) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M2, &ErrorOS));
-  EXPECT_TRUE(Error == "Global is referenced in a different module!\n"
-                       "ptr @foo2\n"
-                       "; ModuleID = 'M2'\n"
-                       "  %call = call i32 @foo2()\n"
-                       "ptr @foo1\n"
-                       "; ModuleID = 'M1'\n"
-                       "Global is used by function in a different module\n"
-                       "ptr @foo2\n"
-                       "; ModuleID = 'M2'\n"
-                       "ptr @foo3\n"
-                       "; ModuleID = 'M3'\n");
+  EXPECT_TRUE(StringRef(ErrorOS.str()) ==
+              "Global is referenced in a different module!\n"
+              "ptr @foo2\n"
+              "; ModuleID = 'M2'\n"
+              "  %call = call i32 @foo2()\n"
+              "ptr @foo1\n"
+              "; ModuleID = 'M1'\n"
+              "Global is used by function in a different module\n"
+              "ptr @foo2\n"
+              "; ModuleID = 'M2'\n"
+              "ptr @foo3\n"
+              "; ModuleID = 'M3'\n");
 
   Error.clear();
   EXPECT_TRUE(verifyModule(M1, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error) == "Referencing function in another module!\n"
-                                  "  %call = call i32 @foo2()\n"
-                                  "; ModuleID = 'M1'\n"
-                                  "ptr @foo2\n"
-                                  "; ModuleID = 'M2'\n");
+  EXPECT_TRUE(StringRef(ErrorOS.str()) ==
+              "Referencing function in another module!\n"
+              "  %call = call i32 @foo2()\n"
+              "; ModuleID = 'M1'\n"
+              "ptr @foo2\n"
+              "; ModuleID = 'M2'\n");
 
   Error.clear();
   EXPECT_TRUE(verifyModule(M3, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with(
-      "Referencing personality function in another module!"));
+  EXPECT_TRUE(
+      StringRef(ErrorOS.str())
+          .starts_with("Referencing personality function in another module!"));
 
   // Erase bad methods to avoid triggering an assertion failure on destruction
   F1->eraseFromParent();
@@ -209,8 +214,9 @@ TEST(VerifierTest, InvalidVariableLinkage) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with("Global is external, but doesn't "
-                                           "have external or weak linkage!"));
+  EXPECT_TRUE(StringRef(ErrorOS.str())
+                  .starts_with("Global is external, but doesn't "
+                               "have external or weak linkage!"));
 }
 
 TEST(VerifierTest, InvalidFunctionLinkage) {
@@ -222,8 +228,9 @@ TEST(VerifierTest, InvalidFunctionLinkage) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with("Global is external, but doesn't "
-                                           "have external or weak linkage!"));
+  EXPECT_TRUE(StringRef(ErrorOS.str())
+                  .starts_with("Global is external, but doesn't "
+                               "have external or weak linkage!"));
 }
 
 TEST(VerifierTest, DetectInvalidDebugInfo) {
@@ -271,7 +278,7 @@ TEST(VerifierTest, DetectInvalidDebugInfo) {
 
 TEST(VerifierTest, MDNodeWrongContext) {
   LLVMContext C1, C2;
-  auto *Node = MDNode::get(C1, {});
+  auto *Node = MDNode::get(C1, std::nullopt);
 
   Module M("M", C2);
   auto *NamedNode = M.getOrInsertNamedMetadata("test");
@@ -280,8 +287,9 @@ TEST(VerifierTest, MDNodeWrongContext) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with(
-      "MDNode context does not match Module context!"));
+  EXPECT_TRUE(
+      StringRef(ErrorOS.str())
+          .starts_with("MDNode context does not match Module context!"));
 }
 
 TEST(VerifierTest, AttributesWrongContext) {
@@ -350,8 +358,9 @@ TEST(VerifierTest, CrossFunctionRef) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyModule(M, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with(
-      "Referring to an instruction in another function!"));
+  EXPECT_TRUE(
+      StringRef(ErrorOS.str())
+          .starts_with("Referring to an instruction in another function!"));
 
   // Explicitly erase the store to avoid a use-after-free when the module is
   // destroyed.
@@ -379,40 +388,11 @@ TEST(VerifierTest, AtomicRMW) {
   std::string Error;
   raw_string_ostream ErrorOS(Error);
   EXPECT_TRUE(verifyFunction(*F, &ErrorOS));
-  EXPECT_TRUE(StringRef(Error).starts_with(
-      "atomicrmw fadd operand must have floating-point or "
-      "fixed vector of floating-point type!"))
-      << Error;
-}
-
-TEST(VerifierTest, GetElementPtrInst) {
-  LLVMContext C;
-  Module M("M", C);
-  FunctionType *FTy = FunctionType::get(Type::getVoidTy(C), /*isVarArg=*/false);
-  Function *F = Function::Create(FTy, Function::ExternalLinkage, "foo", M);
-  BasicBlock *Entry = BasicBlock::Create(C, "entry", F);
-  ReturnInst *RI = ReturnInst::Create(C, Entry);
-
-  FixedVectorType *V2P1Ty = FixedVectorType::get(PointerType::get(C, 1), 2);
-  FixedVectorType *V2P2Ty = FixedVectorType::get(PointerType::get(C, 2), 2);
-
-  Instruction *GEPVec = GetElementPtrInst::Create(
-      Type::getInt8Ty(C), ConstantAggregateZero::get(V2P1Ty),
-      {ConstantVector::getSplat(ElementCount::getFixed(2),
-                                ConstantInt::get(Type::getInt64Ty(C), 0))},
-      Entry);
-
-  GEPVec->insertBefore(RI);
-
-  // Break the address space of the source value
-  GEPVec->getOperandUse(0).set(ConstantAggregateZero::get(V2P2Ty));
-
-  std::string Error;
-  raw_string_ostream ErrorOS(Error);
-  EXPECT_TRUE(verifyFunction(*F, &ErrorOS));
   EXPECT_TRUE(
-      StringRef(Error).starts_with("GEP address space doesn't match type"))
-      << Error;
+      StringRef(ErrorOS.str())
+          .starts_with("atomicrmw fadd operand must have floating-point or "
+                       "fixed vector of floating-point type!"))
+      << ErrorOS.str();
 }
 
 } // end anonymous namespace

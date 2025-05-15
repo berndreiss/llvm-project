@@ -86,7 +86,6 @@ double __nv_remquo(double, double, int *);
 float __nv_remquof(float, float, int *);
 double __nv_tgamma(double);
 float __nv_tgammaf(float);
-float __nv_lgamma(double);
 }
 
 } // namespace LIBC_NAMESPACE_DECL

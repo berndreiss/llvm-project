@@ -30,7 +30,6 @@
 #include "llvm/CodeGen/SlotIndexes.h"
 #include "llvm/CodeGen/StackMaps.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
-#include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/CodeGen/VirtRegMap.h"
 #include "llvm/MC/MCInstrDesc.h"
@@ -632,7 +631,8 @@ MachineInstr *SystemZInstrInfo::optimizeLoadInstr(MachineInstr &MI,
   DefMI = MRI->getVRegDef(FoldAsLoadDefReg);
   assert(DefMI);
   bool SawStore = false;
-  if (!DefMI->isSafeToMove(SawStore) || !MRI->hasOneNonDBGUse(FoldAsLoadDefReg))
+  if (!DefMI->isSafeToMove(nullptr, SawStore) ||
+      !MRI->hasOneNonDBGUse(FoldAsLoadDefReg))
     return nullptr;
 
   int UseOpIdx =
@@ -858,9 +858,7 @@ bool SystemZInstrInfo::PredicateInstruction(
 void SystemZInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator MBBI,
                                    const DebugLoc &DL, MCRegister DestReg,
-                                   MCRegister SrcReg, bool KillSrc,
-                                   bool RenamableDest,
-                                   bool RenamableSrc) const {
+                                   MCRegister SrcReg, bool KillSrc) const {
   // Split 128-bit GPR moves into two 64-bit moves. Add implicit uses of the
   // super register in case one of the subregs is undefined.
   // This handles ADDR128 too.
@@ -1793,10 +1791,6 @@ unsigned SystemZInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     return MI.getOperand(1).getImm();
   else if (MI.getOpcode() == SystemZ::FENTRY_CALL)
     return 6;
-  if (MI.getOpcode() == TargetOpcode::PATCHABLE_FUNCTION_ENTER)
-    return 18;
-  if (MI.getOpcode() == TargetOpcode::PATCHABLE_RET)
-    return 18 + (MI.getOperand(0).getImm() == SystemZ::CondReturn ? 4 : 0);
 
   return MI.getDesc().getSize();
 }

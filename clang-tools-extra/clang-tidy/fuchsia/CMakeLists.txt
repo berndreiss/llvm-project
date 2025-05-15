@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyFuchsiaModule STATIC
+add_clang_library(clangTidyFuchsiaModule
   DefaultArgumentsCallsCheck.cpp
   DefaultArgumentsDeclarationsCheck.cpp
   FuchsiaTidyModule.cpp

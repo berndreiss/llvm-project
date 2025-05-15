@@ -15,9 +15,7 @@ import sys
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", required=True, choices=("linux", "mac", "win"))
     parser.add_argument("source")
     parser.add_argument("output")

@@ -13,6 +13,8 @@
 #include "lldb/Core/Debugger.h"
 #include "lldb/Core/DumpRegisterValue.h"
 #include "lldb/Core/Module.h"
+#include "lldb/Core/ValueObject.h"
+#include "lldb/Core/ValueObjectVariable.h"
 #include "lldb/DataFormatters/DataVisualization.h"
 #include "lldb/DataFormatters/FormatClasses.h"
 #include "lldb/DataFormatters/FormatManager.h"
@@ -50,8 +52,6 @@
 #include "lldb/Utility/StreamString.h"
 #include "lldb/Utility/StringList.h"
 #include "lldb/Utility/StructuredData.h"
-#include "lldb/ValueObject/ValueObject.h"
-#include "lldb/ValueObject/ValueObjectVariable.h"
 #include "lldb/lldb-defines.h"
 #include "lldb/lldb-forward.h"
 #include "llvm/ADT/STLExtras.h"
@@ -1960,16 +1960,14 @@ static Status ParseEntry(const llvm::StringRef &format_str,
                               "access one of its children: ",
                               entry_def->name);
             DumpCommaSeparatedChildEntryNames(error_strm, entry_def);
-            error =
-                Status::FromErrorStringWithFormat("%s", error_strm.GetData());
+            error.SetErrorStringWithFormat("%s", error_strm.GetData());
           } else if (sep_char == ':') {
             // Any value whose separator is a with a ':' means this value has a
             // string argument that needs to be stored in the entry (like
             // "${script.var:}"). In this case the string value is the empty
             // string which is ok.
           } else {
-            error = Status::FromErrorStringWithFormat(
-                "%s", "invalid entry definitions");
+            error.SetErrorStringWithFormat("%s", "invalid entry definitions");
           }
         }
       } else {
@@ -1981,7 +1979,7 @@ static Status ParseEntry(const llvm::StringRef &format_str,
           // "${script.var:modulename.function}")
           entry.string = value.str();
         } else {
-          error = Status::FromErrorStringWithFormat(
+          error.SetErrorStringWithFormat(
               "'%s' followed by '%s' but it has no children", key.str().c_str(),
               value.str().c_str());
         }
@@ -1998,7 +1996,7 @@ static Status ParseEntry(const llvm::StringRef &format_str,
     error_strm.Printf("invalid member '%s' in '%s'. Valid members are: ",
                       key.str().c_str(), parent->name);
   DumpCommaSeparatedChildEntryNames(error_strm, parent);
-  error = Status::FromErrorStringWithFormat("%s", error_strm.GetData());
+  error.SetErrorStringWithFormat("%s", error_strm.GetData());
   return error;
 }
 
@@ -2066,7 +2064,7 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
 
     case '}':
       if (depth == 0)
-        error = Status::FromErrorString("unmatched '}' character");
+        error.SetErrorString("unmatched '}' character");
       else
         format =
             format
@@ -2076,7 +2074,7 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
     case '\\': {
       format = format.drop_front(); // Skip the '\' character
       if (format.empty()) {
-        error = Status::FromErrorString(
+        error.SetErrorString(
             "'\\' character was not followed by another character");
         return error;
       }
@@ -2130,8 +2128,7 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
           if (octal_value <= UINT8_MAX) {
             parent_entry.AppendChar((char)octal_value);
           } else {
-            error = Status::FromErrorString(
-                "octal number is larger than a single byte");
+            error.SetErrorString("octal number is larger than a single byte");
             return error;
           }
         }
@@ -2156,8 +2153,7 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
           if (hex_value <= UINT8_MAX) {
             parent_entry.AppendChar((char)hex_value);
           } else {
-            error = Status::FromErrorString(
-                "hex number is larger than a single byte");
+            error.SetErrorString("hex number is larger than a single byte");
             return error;
           }
         } else {
@@ -2253,8 +2249,8 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
               } else if (entry.printf_format == "tid") {
                 verify_is_thread_id = true;
               } else {
-                error = Status::FromErrorStringWithFormat(
-                    "invalid format: '%s'", entry.printf_format.c_str());
+                error.SetErrorStringWithFormat("invalid format: '%s'",
+                                               entry.printf_format.c_str());
                 return error;
               }
             }
@@ -2280,8 +2276,8 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
         if (entry_string.contains(':')) {
           auto [_, llvm_format] = entry_string.split(':');
           if (!llvm_format.empty() && !LLVMFormatPattern.match(llvm_format)) {
-            error = Status::FromErrorStringWithFormat(
-                "invalid llvm format: '%s'", llvm_format.data());
+            error.SetErrorStringWithFormat("invalid llvm format: '%s'",
+                                           llvm_format.data());
             return error;
           }
         }
@@ -2289,9 +2285,8 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
         if (verify_is_thread_id) {
           if (entry.type != Entry::Type::ThreadID &&
               entry.type != Entry::Type::ThreadProtocolID) {
-            error = Status::FromErrorString(
-                "the 'tid' format can only be used on "
-                "${thread.id} and ${thread.protocol_id}");
+            error.SetErrorString("the 'tid' format can only be used on "
+                                 "${thread.id} and ${thread.protocol_id}");
           }
         }
 
@@ -2310,7 +2305,7 @@ static Status ParseInternal(llvm::StringRef &format, Entry &parent_entry,
           // Make sure someone didn't try to dereference anything but ${var}
           // or ${svar}
           if (entry.deref) {
-            error = Status::FromErrorStringWithFormat(
+            error.SetErrorStringWithFormat(
                 "${%s} can't be dereferenced, only ${var} and ${svar} can.",
                 variable.str().c_str());
             return error;
@@ -2347,7 +2342,7 @@ Status FormatEntity::ExtractVariableInfo(llvm::StringRef &format_str,
     // Strip off elements and the formatting and the trailing '}'
     format_str = format_str.substr(paren_pos + 1);
   } else {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "missing terminating '}' character for '${%s'",
         format_str.str().c_str());
   }

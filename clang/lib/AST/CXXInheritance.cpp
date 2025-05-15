@@ -259,10 +259,12 @@ bool CXXBasePaths::lookupInBases(ASTContext &Context,
             BaseRecord = TD->getTemplatedDecl();
         }
         if (BaseRecord) {
-          if (!BaseRecord->hasDefinition())
+          if (!BaseRecord->hasDefinition() ||
+              VisitedDependentRecords.count(BaseRecord)) {
             BaseRecord = nullptr;
-          else if (!VisitedDependentRecords.insert(BaseRecord).second)
-            BaseRecord = nullptr;
+          } else {
+            VisitedDependentRecords.insert(BaseRecord);
+          }
         }
       } else {
         BaseRecord = cast<CXXRecordDecl>(

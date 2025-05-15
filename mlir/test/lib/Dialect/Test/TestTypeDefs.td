@@ -392,10 +392,4 @@ def TestRecursiveAlias
   }];
 }
 
-def TestTypeVerification : Test_Type<"TestTypeVerification"> {
-  let parameters = (ins AnyTypeOf<[I16, I32]>:$param);
-  let mnemonic = "type_verification";
-  let assemblyFormat = "`<` $param `>`";
-}
-
 #endif // TEST_TYPEDEFS

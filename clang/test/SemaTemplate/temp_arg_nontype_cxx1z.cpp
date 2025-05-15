@@ -613,11 +613,3 @@ struct {
 template<typename T>
 using a = s<f(T::x)>;
 }
-
-namespace GH73460 {
-  template <class T, T, T> struct A;
-  template <class T, T n> struct A<T, n, n> {};
-
-  int j;
-  template struct A<int&, j, j>;
-} // namespace GH73460

@@ -2460,7 +2460,7 @@ void SemaObjC::ProcessPropertyDecl(ObjCPropertyDecl *property) {
       QualType modifiedTy = resultTy;
       if (auto nullability = AttributedType::stripOuterNullability(modifiedTy)) {
         if (*nullability == NullabilityKind::Unspecified)
-          resultTy = Context.getAttributedType(NullabilityKind::NonNull,
+          resultTy = Context.getAttributedType(attr::TypeNonNull,
                                                modifiedTy, modifiedTy);
       }
     }
@@ -2538,7 +2538,7 @@ void SemaObjC::ProcessPropertyDecl(ObjCPropertyDecl *property) {
         QualType modifiedTy = paramTy;
         if (auto nullability = AttributedType::stripOuterNullability(modifiedTy)){
           if (*nullability == NullabilityKind::Unspecified)
-            paramTy = Context.getAttributedType(NullabilityKind::Nullable,
+            paramTy = Context.getAttributedType(attr::TypeNullable,
                                                 modifiedTy, modifiedTy);
         }
       }
@@ -2552,7 +2552,7 @@ void SemaObjC::ProcessPropertyDecl(ObjCPropertyDecl *property) {
                                                   /*TInfo=*/nullptr,
                                                   SC_None,
                                                   nullptr);
-      SetterMethod->setMethodParams(Context, Argument, {});
+      SetterMethod->setMethodParams(Context, Argument, std::nullopt);
 
       AddPropertyAttrs(SemaRef, SetterMethod, property);
 

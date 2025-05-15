@@ -2,12 +2,13 @@
 // RUN: %clang_cc1 -fsyntax-only -verify %s -DALL -Wgnu
 // RUN: %clang_cc1 -fsyntax-only -verify %s -DALL \
 // RUN:   -Wgnu-zero-variadic-macro-arguments \
-// RUN:   -Wgnu-zero-line-directive
+// RUN:   -Wgnu-imaginary-constant -Wgnu-zero-line-directive
 // RUN: %clang_cc1 -fsyntax-only -verify %s -DNONE -Wgnu \
 // RUN:   -Wno-gnu-zero-variadic-macro-arguments \
-// RUN:   -Wno-gnu-zero-line-directive
+// RUN:   -Wno-gnu-imaginary-constant -Wno-gnu-zero-line-directive
 // Additional disabled tests:
 // %clang_cc1 -fsyntax-only -verify %s -DZEROARGS -Wgnu-zero-variadic-macro-arguments
+// %clang_cc1 -fsyntax-only -verify %s -DIMAGINARYCONST -Wgnu-imaginary-constant
 // %clang_cc1 -fsyntax-only -verify %s -DLINE0 -Wgnu-zero-line-directive
 
 #if NONE
@@ -25,6 +26,13 @@ void foo( const char* c )
 {
   efoo("6");
 }
+
+
+#if ALL || IMAGINARYCONST
+// expected-warning@+3 {{imaginary constants are a GNU extension}}
+#endif
+
+float _Complex c = 1.if;
 
 
 // This case is handled differently because lit has a bug whereby #line 0 is reported to be on line 4294967295

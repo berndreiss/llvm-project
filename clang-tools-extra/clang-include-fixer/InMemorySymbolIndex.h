@@ -27,8 +27,7 @@ public:
   search(llvm::StringRef Identifier) override;
 
 private:
-  std::map<std::string, std::vector<find_all_symbols::SymbolAndSignals>,
-           std::less<>>
+  std::map<std::string, std::vector<find_all_symbols::SymbolAndSignals>>
       LookupTable;
 };
 

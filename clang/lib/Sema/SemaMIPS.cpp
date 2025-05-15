@@ -13,7 +13,6 @@
 #include "clang/Sema/SemaMIPS.h"
 #include "clang/Basic/DiagnosticSema.h"
 #include "clang/Basic/TargetBuiltins.h"
-#include "clang/Basic/TargetInfo.h"
 #include "clang/Sema/Attr.h"
 #include "clang/Sema/ParsedAttr.h"
 #include "clang/Sema/Sema.h"

@@ -21,7 +21,6 @@
 #include "flang/Lower/Support/Verifier.h"
 #include "flang/Optimizer/Dialect/Support/FIRContext.h"
 #include "flang/Optimizer/Dialect/Support/KindMapping.h"
-#include "flang/Optimizer/Passes/Pipelines.h"
 #include "flang/Optimizer/Support/DataLayout.h"
 #include "flang/Optimizer/Support/InitFIR.h"
 #include "flang/Optimizer/Support/Utils.h"
@@ -78,9 +77,7 @@
 #include <memory>
 #include <system_error>
 
-namespace llvm {
-extern cl::opt<bool> PrintPipelinePasses;
-} // namespace llvm
+#include "flang/Tools/CLOptions.inc"
 
 using namespace Fortran::frontend;
 
@@ -233,7 +230,7 @@ bool CodeGenAction::beginSourceFileAction() {
     llvm::SMDiagnostic err;
     llvmModule = llvm::parseIRFile(getCurrentInput().getFile(), err, *llvmCtx);
     if (!llvmModule || llvm::verifyModule(*llvmModule, &llvm::errs())) {
-      err.print("flang", llvm::errs());
+      err.print("flang-new", llvm::errs());
       unsigned diagID = ci.getDiagnostics().getCustomDiagID(
           clang::DiagnosticsEngine::Error, "Could not parse IR");
       ci.getDiagnostics().Report(diagID);
@@ -301,7 +298,7 @@ bool CodeGenAction::beginSourceFileAction() {
       kindMap, ci.getInvocation().getLoweringOpts(),
       ci.getInvocation().getFrontendOpts().envDefaults,
       ci.getInvocation().getFrontendOpts().features, targetMachine,
-      ci.getInvocation().getTargetOpts(), ci.getInvocation().getCodeGenOpts());
+      ci.getInvocation().getTargetOpts().cpuToTuneFor);
 
   // Fetch module from lb, so we can set
   mlirModule = std::make_unique<mlir::ModuleOp>(lb.getModule());
@@ -326,7 +323,6 @@ bool CodeGenAction::beginSourceFileAction() {
   // run the default passes.
   mlir::PassManager pm((*mlirModule)->getName(),
                        mlir::OpPassManager::Nesting::Implicit);
-  (void)mlir::applyPassManagerCLOptions(pm);
   // Add OpenMP-related passes
   // WARNING: These passes must be run immediately after the lowering to ensure
   // that the FIR is correct with respect to OpenMP operations/attributes.
@@ -424,7 +420,7 @@ void PrintPreprocessedAction::executeAction() {
   // If a pre-defined output stream exists, dump the preprocessed content there
   if (!ci.isOutputStreamNull()) {
     // Send the output to the pre-defined output buffer.
-    ci.writeOutputStream(buf);
+    ci.writeOutputStream(outForPP.str());
     return;
   }
 
@@ -435,7 +431,7 @@ void PrintPreprocessedAction::executeAction() {
     return;
   }
 
-  (*os) << buf;
+  (*os) << outForPP.str();
 }
 
 void DebugDumpProvenanceAction::executeAction() {
@@ -755,7 +751,7 @@ getRISCVVScaleRange(CompilerInstance &ci) {
       outputErrMsg << errMsg.getMessage();
     });
     ci.getDiagnostics().Report(clang::diag::err_invalid_feature_combination)
-        << buffer;
+        << outputErrMsg.str();
     return std::nullopt;
   }
 
@@ -1019,20 +1015,6 @@ void CodeGenAction::runOptimizationPipeline(llvm::raw_pwrite_stream &os) {
   else if (action == BackendActionTy::Backend_EmitLL)
     mpm.addPass(llvm::PrintModulePass(os));
 
-  // FIXME: This should eventually be replaced by a first-class driver option.
-  // This should be done for both flang and clang simultaneously.
-  // Print a textual, '-passes=' compatible, representation of pipeline if
-  // requested. In this case, don't run the passes. This mimics the behavior of
-  // clang.
-  if (llvm::PrintPipelinePasses) {
-    mpm.printPipeline(llvm::outs(), [&pic](llvm::StringRef className) {
-      auto passName = pic.getPassNameForClassName(className);
-      return passName.empty() ? className : passName;
-    });
-    llvm::outs() << "\n";
-    return;
-  }
-
   // Run the passes.
   mpm.run(*llvmModule, mam);
 }
@@ -1090,7 +1072,8 @@ public:
     msgStream << diagInfo.getMsg();
 
     // Emit message.
-    diags.Report(diagID) << clang::AddFlagValue(diagInfo.getPassName()) << msg;
+    diags.Report(diagID) << clang::AddFlagValue(diagInfo.getPassName())
+                         << msgStream.str();
   }
 
   void optimizationRemarkHandler(

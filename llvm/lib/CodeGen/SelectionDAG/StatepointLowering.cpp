@@ -26,6 +26,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
+#include "llvm/CodeGen/RuntimeLibcallUtil.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/CodeGen/StackMaps.h"
@@ -672,7 +673,7 @@ lowerStatepointMetaArgs(SmallVectorImpl<SDValue> &Ops,
   // it is the contents of the slot which may get updated, not the pointer to
   // the alloca
   SmallVector<SDValue, 4> Allocas;
-  for (Value *V : SI.GCLives) {
+  for (Value *V : SI.GCArgs) {
     SDValue Incoming = Builder.getValue(V);
     if (FrameIndexSDNode *FI = dyn_cast<FrameIndexSDNode>(Incoming)) {
       // This handles allocas as arguments to the statepoint
@@ -1085,7 +1086,7 @@ SelectionDAGBuilder::LowerStatepoint(const GCStatepointInst &I,
     }
   }
 
-  SI.GCLives = ArrayRef<const Use>(I.gc_live_begin(), I.gc_live_end());
+  SI.GCArgs = ArrayRef<const Use>(I.gc_args_begin(), I.gc_args_end());
   SI.StatepointInstr = &I;
   SI.ID = I.getID();
 

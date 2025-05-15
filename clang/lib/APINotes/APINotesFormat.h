@@ -24,8 +24,7 @@ const uint16_t VERSION_MAJOR = 0;
 /// API notes file minor version number.
 ///
 /// When the format changes IN ANY WAY, this number should be incremented.
-const uint16_t VERSION_MINOR =
-    32; // implicit parameter support (at position -1)
+const uint16_t VERSION_MINOR = 27; // SingleDeclTableKey
 
 const uint8_t kSwiftCopyable = 1;
 const uint8_t kSwiftNonCopyable = 2;
@@ -72,10 +71,6 @@ enum BlockID {
   /// selector names (# of pieces, identifier IDs) to the selector ID
   /// used in other tables.
   OBJC_SELECTOR_BLOCK_ID,
-
-  /// The fields data block, which maps names fields of C records to
-  /// information about the field.
-  FIELD_BLOCK_ID,
 
   /// The global variables data block, which maps global variable names to
   /// information about the global variable.
@@ -203,20 +198,6 @@ using CXXMethodDataLayout =
                                           // tuples to C++ method information
                          >;
 } // namespace cxx_method_block
-
-namespace field_block {
-enum {
-  FIELD_DATA = 1,
-};
-
-using FieldDataLayout =
-    llvm::BCRecordLayout<FIELD_DATA,      // record ID
-                         llvm::BCVBR<16>, // table offset within the blob (see
-                                          // below)
-                         llvm::BCBlob     // map from C (context id, name)
-                                          // tuples to C field information
-                         >;
-} // namespace field_block
 
 namespace objc_selector_block {
 enum {

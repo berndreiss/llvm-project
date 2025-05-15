@@ -533,8 +533,14 @@ MCStreamer *llvm::createMachOStreamer(MCContext &Context,
                                       std::unique_ptr<MCCodeEmitter> &&CE,
                                       bool DWARFMustBeAtTheEnd,
                                       bool LabelSections) {
-  return new MCMachOStreamer(Context, std::move(MAB), std::move(OW),
-                             std::move(CE), LabelSections);
+  MCMachOStreamer *S = new MCMachOStreamer(
+      Context, std::move(MAB), std::move(OW), std::move(CE), LabelSections);
+  const Triple &Target = Context.getTargetTriple();
+  S->emitVersionForTarget(
+      Target, Context.getObjectFileInfo()->getSDKVersion(),
+      Context.getObjectFileInfo()->getDarwinTargetVariantTriple(),
+      Context.getObjectFileInfo()->getDarwinTargetVariantSDKVersion());
+  return S;
 }
 
 // The AddrSig section uses a series of relocations to refer to the symbols that

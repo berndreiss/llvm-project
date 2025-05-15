@@ -14,48 +14,52 @@ using namespace mlir;
 using namespace mlir::func;
 
 //===----------------------------------------------------------------------===//
-// Helper functions
+// ValueDecomposer
 //===----------------------------------------------------------------------===//
 
-/// If the given value can be decomposed with the type converter, decompose it.
-/// Otherwise, return the given value.
-// TODO: Value decomposition should happen automatically through a 1:N adaptor.
-// This function will disappear when the 1:1 and 1:N drivers are merged.
-static SmallVector<Value> decomposeValue(OpBuilder &builder, Location loc,
-                                         Value value,
-                                         const TypeConverter *converter) {
-  // Try to convert the given value's type. If that fails, just return the
-  // given value.
-  SmallVector<Type> convertedTypes;
-  if (failed(converter->convertType(value.getType(), convertedTypes)))
-    return {value};
-  if (convertedTypes.empty())
-    return {};
-
-  // If the given value's type is already legal, just return the given value.
-  TypeRange convertedTypeRange(convertedTypes);
-  if (convertedTypeRange == TypeRange(value.getType()))
-    return {value};
-
-  // Try to materialize a target conversion. If the materialization did not
-  // produce values of the requested type, the materialization failed. Just
-  // return the given value in that case.
-  SmallVector<Value> result = converter->materializeTargetConversion(
-      builder, loc, convertedTypeRange, value);
-  if (result.empty())
-    return {value};
-  return result;
+void ValueDecomposer::decomposeValue(OpBuilder &builder, Location loc,
+                                     Type type, Value value,
+                                     SmallVectorImpl<Value> &results) {
+  for (auto &conversion : decomposeValueConversions)
+    if (conversion(builder, loc, type, value, results))
+      return;
+  results.push_back(value);
 }
+
+//===----------------------------------------------------------------------===//
+// DecomposeCallGraphTypesOpConversionPattern
+//===----------------------------------------------------------------------===//
+
+namespace {
+/// Base OpConversionPattern class to make a ValueDecomposer available to
+/// inherited patterns.
+template <typename SourceOp>
+class DecomposeCallGraphTypesOpConversionPattern
+    : public OpConversionPattern<SourceOp> {
+public:
+  DecomposeCallGraphTypesOpConversionPattern(TypeConverter &typeConverter,
+                                             MLIRContext *context,
+                                             ValueDecomposer &decomposer,
+                                             PatternBenefit benefit = 1)
+      : OpConversionPattern<SourceOp>(typeConverter, context, benefit),
+        decomposer(decomposer) {}
+
+protected:
+  ValueDecomposer &decomposer;
+};
+} // namespace
 
 //===----------------------------------------------------------------------===//
 // DecomposeCallGraphTypesForFuncArgs
 //===----------------------------------------------------------------------===//
 
 namespace {
-/// Expand function arguments according to the provided TypeConverter.
+/// Expand function arguments according to the provided TypeConverter and
+/// ValueDecomposer.
 struct DecomposeCallGraphTypesForFuncArgs
-    : public OpConversionPattern<func::FuncOp> {
-  using OpConversionPattern::OpConversionPattern;
+    : public DecomposeCallGraphTypesOpConversionPattern<func::FuncOp> {
+  using DecomposeCallGraphTypesOpConversionPattern::
+      DecomposeCallGraphTypesOpConversionPattern;
 
   LogicalResult
   matchAndRewrite(func::FuncOp op, OpAdaptor adaptor,
@@ -96,22 +100,19 @@ struct DecomposeCallGraphTypesForFuncArgs
 //===----------------------------------------------------------------------===//
 
 namespace {
-/// Expand return operands according to the provided TypeConverter.
+/// Expand return operands according to the provided TypeConverter and
+/// ValueDecomposer.
 struct DecomposeCallGraphTypesForReturnOp
-    : public OpConversionPattern<ReturnOp> {
-  using OpConversionPattern::OpConversionPattern;
-
+    : public DecomposeCallGraphTypesOpConversionPattern<ReturnOp> {
+  using DecomposeCallGraphTypesOpConversionPattern::
+      DecomposeCallGraphTypesOpConversionPattern;
   LogicalResult
   matchAndRewrite(ReturnOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
     SmallVector<Value, 2> newOperands;
-    for (Value operand : adaptor.getOperands()) {
-      // TODO: We can directly take the values from the adaptor once this is a
-      // 1:N conversion pattern.
-      llvm::append_range(newOperands,
-                         decomposeValue(rewriter, operand.getLoc(), operand,
-                                        getTypeConverter()));
-    }
+    for (Value operand : adaptor.getOperands())
+      decomposer.decomposeValue(rewriter, op.getLoc(), operand.getType(),
+                                operand, newOperands);
     rewriter.replaceOpWithNewOp<ReturnOp>(op, newOperands);
     return success();
   }
@@ -123,9 +124,12 @@ struct DecomposeCallGraphTypesForReturnOp
 //===----------------------------------------------------------------------===//
 
 namespace {
-/// Expand call op operands and results according to the provided TypeConverter.
-struct DecomposeCallGraphTypesForCallOp : public OpConversionPattern<CallOp> {
-  using OpConversionPattern::OpConversionPattern;
+/// Expand call op operands and results according to the provided TypeConverter
+/// and ValueDecomposer.
+struct DecomposeCallGraphTypesForCallOp
+    : public DecomposeCallGraphTypesOpConversionPattern<CallOp> {
+  using DecomposeCallGraphTypesOpConversionPattern::
+      DecomposeCallGraphTypesOpConversionPattern;
 
   LogicalResult
   matchAndRewrite(CallOp op, OpAdaptor adaptor,
@@ -133,13 +137,9 @@ struct DecomposeCallGraphTypesForCallOp : public OpConversionPattern<CallOp> {
 
     // Create the operands list of the new `CallOp`.
     SmallVector<Value, 2> newOperands;
-    for (Value operand : adaptor.getOperands()) {
-      // TODO: We can directly take the values from the adaptor once this is a
-      // 1:N conversion pattern.
-      llvm::append_range(newOperands,
-                         decomposeValue(rewriter, operand.getLoc(), operand,
-                                        getTypeConverter()));
-    }
+    for (Value operand : adaptor.getOperands())
+      decomposer.decomposeValue(rewriter, op.getLoc(), operand.getType(),
+                                operand, newOperands);
 
     // Create the new result types for the new `CallOp` and track the indices in
     // the new call op's results that correspond to the old call op's results.
@@ -188,9 +188,10 @@ struct DecomposeCallGraphTypesForCallOp : public OpConversionPattern<CallOp> {
 } // namespace
 
 void mlir::populateDecomposeCallGraphTypesPatterns(
-    MLIRContext *context, const TypeConverter &typeConverter,
-    RewritePatternSet &patterns) {
+    MLIRContext *context, TypeConverter &typeConverter,
+    ValueDecomposer &decomposer, RewritePatternSet &patterns) {
   patterns
       .add<DecomposeCallGraphTypesForCallOp, DecomposeCallGraphTypesForFuncArgs,
-           DecomposeCallGraphTypesForReturnOp>(typeConverter, context);
+           DecomposeCallGraphTypesForReturnOp>(typeConverter, context,
+                                               decomposer);
 }

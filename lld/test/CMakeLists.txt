@@ -48,7 +48,6 @@ if (NOT LLD_BUILT_STANDALONE)
     llvm-ar
     llvm-as
     llvm-bcanalyzer
-    llvm-cgdata
     llvm-config
     llvm-cvtres
     llvm-dis
@@ -65,7 +64,6 @@ if (NOT LLD_BUILT_STANDALONE)
     llvm-profdata
     llvm-readelf
     llvm-readobj
-    llvm-strings
     llvm-strip
     llvm-symbolizer
     not

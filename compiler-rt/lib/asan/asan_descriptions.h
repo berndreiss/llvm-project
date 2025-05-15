@@ -35,6 +35,8 @@ class AsanThreadIdAndName {
   const char *c_str() const { return &name[0]; }
 
  private:
+  void Init(u32 tid, const char *tname);
+
   char name[128];
 };
 

@@ -356,20 +356,6 @@ GISelInstProfileBuilder::addNodeIDRegType(const RegisterBank *RB) const {
   return *this;
 }
 
-const GISelInstProfileBuilder &GISelInstProfileBuilder::addNodeIDRegType(
-    MachineRegisterInfo::VRegAttrs Attrs) const {
-  addNodeIDRegType(Attrs.Ty);
-
-  const RegClassOrRegBank &RCOrRB = Attrs.RCOrRB;
-  if (RCOrRB) {
-    if (const auto *RB = dyn_cast_if_present<const RegisterBank *>(RCOrRB))
-      addNodeIDRegType(RB);
-    else
-      addNodeIDRegType(cast<const TargetRegisterClass *>(RCOrRB));
-  }
-  return *this;
-}
-
 const GISelInstProfileBuilder &
 GISelInstProfileBuilder::addNodeIDImmediate(int64_t Imm) const {
   ID.AddInteger(Imm);
@@ -403,7 +389,17 @@ GISelInstProfileBuilder::addNodeIDFlag(unsigned Flag) const {
 
 const GISelInstProfileBuilder &
 GISelInstProfileBuilder::addNodeIDReg(Register Reg) const {
-  addNodeIDRegType(MRI.getVRegAttrs(Reg));
+  LLT Ty = MRI.getType(Reg);
+  if (Ty.isValid())
+    addNodeIDRegType(Ty);
+
+  if (const RegClassOrRegBank &RCOrRB = MRI.getRegClassOrRegBank(Reg)) {
+    if (const auto *RB = dyn_cast_if_present<const RegisterBank *>(RCOrRB))
+      addNodeIDRegType(RB);
+    else if (const auto *RC =
+                 dyn_cast_if_present<const TargetRegisterClass *>(RCOrRB))
+      addNodeIDRegType(RC);
+  }
   return *this;
 }
 

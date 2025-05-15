@@ -441,9 +441,12 @@ int llvm_ifs_main(int argc, char **argv, const llvm::ToolContext &) {
     }
 
     for (auto Symbol : TargetStub->Symbols) {
-      auto [SI, Inserted] = SymbolMap.try_emplace(Symbol.Name, Symbol);
-      if (Inserted)
+      auto SI = SymbolMap.find(Symbol.Name);
+      if (SI == SymbolMap.end()) {
+        SymbolMap.insert(
+            std::pair<std::string, IFSSymbol>(Symbol.Name, Symbol));
         continue;
+      }
 
       assert(Symbol.Name == SI->second.Name && "Symbol Names Must Match.");
 

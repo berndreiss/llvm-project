@@ -126,9 +126,6 @@ void DebugMap::dump() const { print(errs()); }
 namespace {
 
 struct YAMLContext {
-  YAMLContext(BinaryHolder &BinHolder, StringRef PrependPath)
-      : BinHolder(BinHolder), PrependPath(PrependPath) {}
-  BinaryHolder &BinHolder;
   StringRef PrependPath;
   Triple BinaryTriple;
 };
@@ -136,13 +133,15 @@ struct YAMLContext {
 } // end anonymous namespace
 
 ErrorOr<std::vector<std::unique_ptr<DebugMap>>>
-DebugMap::parseYAMLDebugMap(BinaryHolder &BinHolder, StringRef InputFile,
-                            StringRef PrependPath, bool Verbose) {
+DebugMap::parseYAMLDebugMap(StringRef InputFile, StringRef PrependPath,
+                            bool Verbose) {
   auto ErrOrFile = MemoryBuffer::getFileOrSTDIN(InputFile);
   if (auto Err = ErrOrFile.getError())
     return Err;
 
-  YAMLContext Ctxt(BinHolder, PrependPath);
+  YAMLContext Ctxt;
+
+  Ctxt.PrependPath = PrependPath;
 
   std::unique_ptr<DebugMap> Res;
   yaml::Input yin((*ErrOrFile)->getBuffer(), &Ctxt);
@@ -245,13 +244,14 @@ MappingTraits<dsymutil::DebugMapObject>::YamlDMO::YamlDMO(
 
 dsymutil::DebugMapObject
 MappingTraits<dsymutil::DebugMapObject>::YamlDMO::denormalize(IO &IO) {
+  BinaryHolder BinHolder(vfs::getRealFileSystem(), /* Verbose =*/false);
   const auto &Ctxt = *reinterpret_cast<YAMLContext *>(IO.getContext());
   SmallString<80> Path(Ctxt.PrependPath);
   StringMap<uint64_t> SymbolAddresses;
 
   sys::path::append(Path, Filename);
 
-  auto ObjectEntry = Ctxt.BinHolder.getObjectEntry(Path);
+  auto ObjectEntry = BinHolder.getObjectEntry(Path);
   if (!ObjectEntry) {
     auto Err = ObjectEntry.takeError();
     WithColor::warning() << "Unable to open " << Path << " "

@@ -87,6 +87,7 @@ std::string buildUmbrella(llvm::StringLiteral Mandatory,
                         "#endif\n",
                         Header);
   }
+  OS.flush();
   return Result;
 }
 

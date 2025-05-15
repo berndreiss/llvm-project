@@ -860,11 +860,10 @@ SVal SimpleSValBuilder::evalBinOpLL(ProgramStateRef state,
     // If one of the operands is a symbol and the other is a constant,
     // build an expression for use by the constraint manager.
     if (SymbolRef rSym = rhs.getAsLocSymbol()) {
-      if (op == BO_Cmp)
+      // We can only build expressions with symbols on the left,
+      // so we need a reversible operator.
+      if (!BinaryOperator::isComparisonOp(op) || op == BO_Cmp)
         return UnknownVal();
-
-      if (!BinaryOperator::isComparisonOp(op))
-        return makeNonLoc(L.getValue(), op, rSym, resultTy);
 
       op = BinaryOperator::reverseComparisonOp(op);
       return makeNonLoc(rSym, op, L.getValue(), resultTy);

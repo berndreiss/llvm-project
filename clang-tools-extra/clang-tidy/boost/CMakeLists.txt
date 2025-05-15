@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   FrontendOpenMP
   )
 
-add_clang_library(clangTidyBoostModule STATIC
+add_clang_library(clangTidyBoostModule
   BoostTidyModule.cpp
   UseRangesCheck.cpp
   UseToStringCheck.cpp

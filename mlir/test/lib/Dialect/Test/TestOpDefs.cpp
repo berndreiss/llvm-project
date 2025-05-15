@@ -127,14 +127,6 @@ RegionKind GraphRegionOp::getRegionKind(unsigned index) {
 }
 
 //===----------------------------------------------------------------------===//
-// IsolatedGraphRegionOp
-//===----------------------------------------------------------------------===//
-
-RegionKind IsolatedGraphRegionOp::getRegionKind(unsigned index) {
-  return RegionKind::Graph;
-}
-
-//===----------------------------------------------------------------------===//
 // AffineScopeOp
 //===----------------------------------------------------------------------===//
 
@@ -760,13 +752,12 @@ void TestReflectBoundsOp::inferResultRanges(
   Type sIntTy, uIntTy;
   // For plain `IntegerType`s, we can derive the appropriate signed and unsigned
   // Types for the Attributes.
-  Type type = getElementTypeOrSelf(getType());
-  if (auto intTy = llvm::dyn_cast<IntegerType>(type)) {
+  if (auto intTy = llvm::dyn_cast<IntegerType>(getType())) {
     unsigned bitwidth = intTy.getWidth();
     sIntTy = b.getIntegerType(bitwidth, /*isSigned=*/true);
     uIntTy = b.getIntegerType(bitwidth, /*isSigned=*/false);
   } else
-    sIntTy = uIntTy = type;
+    sIntTy = uIntTy = getType();
 
   setUminAttr(b.getIntegerAttr(uIntTy, range.umin()));
   setUmaxAttr(b.getIntegerAttr(uIntTy, range.umax()));

@@ -25,7 +25,6 @@
 #include "clang/Sema/Sema.h"
 #include "clang/Support/RISCVVIntrinsicUtils.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/TargetParser/RISCVISAInfo.h"
 #include "llvm/TargetParser/RISCVTargetParser.h"
 #include <optional>
 #include <string>
@@ -50,7 +49,7 @@ struct RVVIntrinsicDef {
 
 struct RVVOverloadIntrinsicDef {
   // Indexes of RISCVIntrinsicManagerImpl::IntrinsicList.
-  SmallVector<uint32_t, 8> Indexes;
+  SmallVector<uint16_t, 8> Indexes;
 };
 
 } // namespace
@@ -169,7 +168,7 @@ private:
   // List of all RVV intrinsic.
   std::vector<RVVIntrinsicDef> IntrinsicList;
   // Mapping function name to index of IntrinsicList.
-  StringMap<uint32_t> Intrinsics;
+  StringMap<uint16_t> Intrinsics;
   // Mapping function name to RVVOverloadIntrinsicDef.
   StringMap<RVVOverloadIntrinsicDef> OverloadIntrinsics;
 
@@ -223,7 +222,6 @@ void RISCVIntrinsicManagerImpl::ConstructRVVIntrinsics(
       {"zvksh", RVV_REQ_Zvksh},
       {"zvfbfwma", RVV_REQ_Zvfbfwma},
       {"zvfbfmin", RVV_REQ_Zvfbfmin},
-      {"zvfh", RVV_REQ_Zvfh},
       {"experimental", RVV_REQ_Experimental}};
 
   // Construction of RVVIntrinsicRecords need to sync with createRVVIntrinsics
@@ -282,11 +280,6 @@ void RISCVIntrinsicManagerImpl::ConstructRVVIntrinsics(
       if ((BaseTypeI & Record.TypeRangeMask) != BaseTypeI)
         continue;
 
-      // TODO: Remove the check below and use RequiredFeatures in
-      // riscv_vector.td to check the intrinsics instead, the type check should
-      // be done in checkRVVTypeSupport. This check also not able to work on the
-      // intrinsics that have Float16 but the BaseType is not Float16 such as
-      // `vfcvt_f_x_v`.
       if (BaseType == BasicType::Float16) {
         if ((Record.RequiredExtensions & RVV_REQ_Zvfhmin) == RVV_REQ_Zvfhmin) {
           if (!TI.hasFeature("zvfhmin"))
@@ -399,7 +392,7 @@ void RISCVIntrinsicManagerImpl::InitRVVIntrinsic(
                                      Record.HasFRMRoundModeOp);
 
   // Put into IntrinsicList.
-  uint32_t Index = IntrinsicList.size();
+  uint16_t Index = IntrinsicList.size();
   assert(IntrinsicList.size() == (size_t)Index &&
          "Intrinsics indices overflow.");
   IntrinsicList.push_back({BuiltinName, Signature});
@@ -623,12 +616,7 @@ bool SemaRISCV::CheckBuiltinFunctionCall(const TargetInfo &TI,
     ASTContext::BuiltinVectorTypeInfo Info = Context.getBuiltinVectorTypeInfo(
         TheCall->getType()->castAs<BuiltinType>());
 
-    const FunctionDecl *FD = SemaRef.getCurFunctionDecl();
-    llvm::StringMap<bool> FunctionFeatureMap;
-    Context.getFunctionFeatureMap(FunctionFeatureMap, FD);
-
-    if (Context.getTypeSize(Info.ElementType) == 64 && !TI.hasFeature("v") &&
-        !FunctionFeatureMap.lookup("v"))
+    if (Context.getTypeSize(Info.ElementType) == 64 && !TI.hasFeature("v"))
       return Diag(TheCall->getBeginLoc(),
                   diag::err_riscv_builtin_requires_extension)
              << /* IsExtension */ true << TheCall->getSourceRange() << "v";
@@ -739,7 +727,7 @@ bool SemaRISCV::CheckBuiltinFunctionCall(const TargetInfo &TI,
     if (ElemSize == 64 && !TI.hasFeature("zvknhb"))
       return Diag(TheCall->getBeginLoc(),
                   diag::err_riscv_builtin_requires_extension)
-             << /* IsExtension */ true << TheCall->getSourceRange() << "zvknhb";
+             << /* IsExtension */ true << TheCall->getSourceRange() << "zvknb";
 
     return CheckInvalidVLENandLMUL(TI, TheCall, SemaRef, Op1Type,
                                    ElemSize * 4) ||
@@ -1496,16 +1484,6 @@ void SemaRISCV::handleInterruptAttr(Decl *D, const ParsedAttr &AL) {
 bool SemaRISCV::isAliasValid(unsigned BuiltinID, StringRef AliasName) {
   return BuiltinID >= RISCV::FirstRVVBuiltin &&
          BuiltinID <= RISCV::LastRVVBuiltin;
-}
-
-bool SemaRISCV::isValidFMVExtension(StringRef Ext) {
-  if (Ext.empty())
-    return false;
-
-  if (!Ext.consume_front("+"))
-    return false;
-
-  return -1 != RISCVISAInfo::getRISCVFeaturesBitsInfo(Ext).second;
 }
 
 SemaRISCV::SemaRISCV(Sema &S) : SemaBase(S) {}

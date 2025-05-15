@@ -57,6 +57,7 @@
 #include <optional>
 
 namespace llvm {
+class Module;
 
 namespace IRSimilarity {
 

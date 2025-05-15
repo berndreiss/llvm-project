@@ -12,13 +12,9 @@
 using namespace mlir;
 
 ParseResult mlir::parseSemiFunctionType(OpAsmParser &parser, Type &argumentType,
-                                        Type &resultType, bool resultOptional) {
+                                        Type &resultType) {
   argumentType = resultType = nullptr;
-
-  bool hasLParen = resultOptional ? parser.parseOptionalLParen().succeeded()
-                                  : parser.parseLParen().succeeded();
-  if (!resultOptional && !hasLParen)
-    return failure();
+  bool hasLParen = parser.parseOptionalLParen().succeeded();
   if (parser.parseType(argumentType).failed())
     return failure();
   if (!hasLParen)
@@ -73,9 +69,7 @@ void mlir::printSemiFunctionType(OpAsmPrinter &printer, Operation *op,
 }
 
 void mlir::printSemiFunctionType(OpAsmPrinter &printer, Operation *op,
-                                 Type argumentType, Type resultType,
-                                 bool resultOptional) {
-  assert(resultOptional || resultType != nullptr);
+                                 Type argumentType, Type resultType) {
   return printSemiFunctionType(printer, op, argumentType,
                                resultType ? TypeRange(resultType)
                                           : TypeRange());

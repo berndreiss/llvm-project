@@ -83,7 +83,6 @@ class LLVMConfig(object):
                 "UBSAN_SYMBOLIZER_PATH" "ASAN_OPTIONS",
                 "HWASAN_OPTIONS",
                 "MSAN_OPTIONS",
-                "RTSAN_OPTIONS",
                 "TSAN_OPTIONS",
                 "UBSAN_OPTIONS",
             ]
@@ -187,7 +186,10 @@ class LLVMConfig(object):
 
     def _find_git_windows_unix_tools(self, tools_needed):
         assert sys.platform == "win32"
-        import winreg
+        if sys.version_info.major >= 3:
+            import winreg
+        else:
+            import _winreg as winreg
 
         # Search both the 64 and 32-bit hives, as well as HKLM + HKCU
         masks = [0, winreg.KEY_WOW64_64KEY]

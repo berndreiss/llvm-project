@@ -1,18 +1,18 @@
 import unittest
 
 from clang.cindex import (
-    AccessSpecifier,
-    AvailabilityKind,
-    BinaryOperator,
-    CursorKind,
-    ExceptionSpecificationKind,
-    LinkageKind,
-    RefQualifierKind,
-    StorageClass,
-    TemplateArgumentKind,
-    TLSKind,
     TokenKind,
+    CursorKind,
+    TemplateArgumentKind,
+    ExceptionSpecificationKind,
+    AvailabilityKind,
+    AccessSpecifier,
     TypeKind,
+    RefQualifierKind,
+    LinkageKind,
+    TLSKind,
+    StorageClass,
+    BinaryOperator,
 )
 
 

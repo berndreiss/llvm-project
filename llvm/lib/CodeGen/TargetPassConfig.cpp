@@ -46,7 +46,6 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Target/CGPassBuilderOption.h"
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 #include <cassert>
@@ -290,10 +289,10 @@ static IdentifyingPassPtr overridePass(AnalysisID StandardID,
   if (StandardID == &BranchFolderPassID)
     return applyDisable(TargetID, DisableBranchFold);
 
-  if (StandardID == &TailDuplicateLegacyID)
+  if (StandardID == &TailDuplicateID)
     return applyDisable(TargetID, DisableTailDuplicate);
 
-  if (StandardID == &EarlyTailDuplicateLegacyID)
+  if (StandardID == &EarlyTailDuplicateID)
     return applyDisable(TargetID, DisableEarlyTailDup);
 
   if (StandardID == &MachineBlockPlacementID)
@@ -305,13 +304,13 @@ static IdentifyingPassPtr overridePass(AnalysisID StandardID,
   if (StandardID == &DeadMachineInstructionElimID)
     return applyDisable(TargetID, DisableMachineDCE);
 
-  if (StandardID == &EarlyIfConverterLegacyID)
+  if (StandardID == &EarlyIfConverterID)
     return applyDisable(TargetID, DisableEarlyIfConversion);
 
   if (StandardID == &EarlyMachineLICMID)
     return applyDisable(TargetID, DisableMachineLICM);
 
-  if (StandardID == &MachineCSELegacyID)
+  if (StandardID == &MachineCSEID)
     return applyDisable(TargetID, DisableMachineCSE);
 
   if (StandardID == &MachineLICMID)
@@ -521,9 +520,9 @@ void llvm::registerCodeGenCallback(PassInstrumentationCallbacks &PIC,
     DISABLE_PASS(DisableBlockPlacement, MachineBlockPlacementPass)
     DISABLE_PASS(DisableBranchFold, BranchFolderPass)
     DISABLE_PASS(DisableCopyProp, MachineCopyPropagationPass)
-    DISABLE_PASS(DisableEarlyIfConversion, EarlyIfConverterLegacyPass)
+    DISABLE_PASS(DisableEarlyIfConversion, EarlyIfConverterPass)
     DISABLE_PASS(DisableEarlyTailDup, EarlyTailDuplicatePass)
-    DISABLE_PASS(DisableMachineCSE, MachineCSELegacyPass)
+    DISABLE_PASS(DisableMachineCSE, MachineCSEPass)
     DISABLE_PASS(DisableMachineDCE, DeadMachineInstructionElimPass)
     DISABLE_PASS(DisableMachineLICM, EarlyMachineLICMPass)
     DISABLE_PASS(DisableMachineSink, MachineSinkingPass)
@@ -828,8 +827,6 @@ void TargetPassConfig::addIRPasses() {
     if (!DisableLSR) {
       addPass(createCanonicalizeFreezeInLoopsPass());
       addPass(createLoopStrengthReducePass());
-      if (EnableLoopTermFold)
-        addPass(createLoopTermFoldPass());
       if (PrintLSR)
         addPass(createPrintFunctionPass(dbgs(),
                                         "\n\n*** Code after LSR ***\n"));
@@ -848,6 +845,7 @@ void TargetPassConfig::addIRPasses() {
   // TODO: add a pass insertion point here
   addPass(&GCLoweringID);
   addPass(&ShadowStackGCLoweringID);
+  addPass(createLowerConstantIntrinsicsPass());
 
   // For MachO, lower @llvm.global_dtors into @llvm.global_ctors with
   // __cxa_atexit() calls to avoid emitting the deprecated __mod_term_func.
@@ -868,6 +866,11 @@ void TargetPassConfig::addIRPasses() {
   if (getOptLevel() != CodeGenOptLevel::None && !DisablePartialLibcallInlining)
     addPass(createPartiallyInlineLibCallsPass());
 
+  // Expand vector predication intrinsics into standard IR instructions.
+  // This pass has to run before ScalarizeMaskedMemIntrin and ExpandReduction
+  // passes since it emits those kinds of intrinsics.
+  addPass(createExpandVectorPredicationPass());
+
   // Instrument function entry after all inlining.
   addPass(createPostInlineEntryExitInstrumenterPass());
 
@@ -880,6 +883,9 @@ void TargetPassConfig::addIRPasses() {
   // Allow disabling it for testing purposes.
   if (!DisableExpandReductions)
     addPass(createExpandReductionsPass());
+
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createTLSVariableHoistPass());
 
   // Convert conditional moves to conditional jumps when profitable.
   if (getOptLevel() != CodeGenOptLevel::None && !DisableSelectOptimize)
@@ -946,9 +952,6 @@ void TargetPassConfig::addISelPrepare() {
   // Force codegen to run according to the callgraph.
   if (requiresCodeGenSCCOrder())
     addPass(new DummyCGSCCPass);
-
-  if (getOptLevel() != CodeGenOptLevel::None)
-    addPass(createObjCARCContractPass());
 
   addPass(createCallBrPass());
 
@@ -1203,7 +1206,6 @@ void TargetPassConfig::addMachinePasses() {
   // addPreEmitPass.  Maybe only pass "false" here for those targets?
   addPass(&FuncletLayoutID);
 
-  addPass(&RemoveLoadsIntoFakeUsesID);
   addPass(&StackMapLivenessID);
   addPass(&LiveDebugValuesID);
   addPass(&MachineSanitizerBinaryMetadataID);
@@ -1276,15 +1278,15 @@ void TargetPassConfig::addMachinePasses() {
 /// Add passes that optimize machine instructions in SSA form.
 void TargetPassConfig::addMachineSSAOptimization() {
   // Pre-ra tail duplication.
-  addPass(&EarlyTailDuplicateLegacyID);
+  addPass(&EarlyTailDuplicateID);
 
   // Optimize PHIs before DCE: removing dead PHI cycles may make more
   // instructions dead.
-  addPass(&OptimizePHIsLegacyID);
+  addPass(&OptimizePHIsID);
 
   // This pass merges large allocas. StackSlotColoring is a different pass
   // which merges spill slots.
-  addPass(&StackColoringLegacyID);
+  addPass(&StackColoringID);
 
   // If the target requests it, assign local variables to stack slots relative
   // to one another and simplify frame index references where possible.
@@ -1302,7 +1304,7 @@ void TargetPassConfig::addMachineSSAOptimization() {
   addILPOpts();
 
   addPass(&EarlyMachineLICMID);
-  addPass(&MachineCSELegacyID);
+  addPass(&MachineCSEID);
 
   addPass(&MachineSinkingID);
 
@@ -1504,7 +1506,7 @@ void TargetPassConfig::addMachineLateOptimization() {
   // performance for targets that require Structured Control Flow.
   // In addition it can also make CFG irreducible. Thus we disable it.
   if (!TM->requiresStructuredCFG())
-    addPass(&TailDuplicateLegacyID);
+    addPass(&TailDuplicateID);
 
   // Copy propagation.
   addPass(&MachineCopyPropagationID);

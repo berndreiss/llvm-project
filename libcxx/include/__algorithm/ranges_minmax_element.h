@@ -40,7 +40,8 @@ namespace ranges {
 template <class _T1>
 using minmax_element_result = min_max_result<_T1>;
 
-struct __minmax_element {
+namespace __minmax_element {
+struct __fn {
   template <forward_iterator _Ip,
             sentinel_for<_Ip> _Sp,
             class _Proj                                             = identity,
@@ -60,9 +61,10 @@ struct __minmax_element {
     return {__ret.first, __ret.second};
   }
 };
+} // namespace __minmax_element
 
 inline namespace __cpo {
-inline constexpr auto minmax_element = __minmax_element{};
+inline constexpr auto minmax_element = __minmax_element::__fn{};
 } // namespace __cpo
 
 } // namespace ranges

@@ -37,13 +37,17 @@ friend int get(MyPairLike const&)
 
 } // namespace my_ns
 
+namespace std {
+
 template <>
-struct std::tuple_size<my_ns::MyPairLike> : std::integral_constant<std::size_t, 2> {};
+struct tuple_size<my_ns::MyPairLike> : std::integral_constant<std::size_t, 2> {};
 
 template <std::size_t N>
-struct std::tuple_element<N, my_ns::MyPairLike> {
+struct tuple_element<N, my_ns::MyPairLike> {
   using type = int;
 };
+
+} // namespace std
 
 // https://github.com/llvm/llvm-project/issues/65620
 // This used to be a hard error

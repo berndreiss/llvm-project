@@ -142,7 +142,7 @@ std::string ToString(std::array<DeathCause, N> const& causes) {
   return ss.str();
 }
 
-[[noreturn]] void StopChildProcess(DeathCause cause) { std::exit(static_cast<int>(cause)); }
+TEST_NORETURN void StopChildProcess(DeathCause cause) { std::exit(static_cast<int>(cause)); }
 
 DeathCause ConvertToDeathCause(int val) {
   if (val < static_cast<int>(DeathCause::VerboseAbort) || val > static_cast<int>(DeathCause::Unknown)) {
@@ -260,7 +260,7 @@ private:
   }
 
   template <class Func>
-  [[noreturn]] void RunForChild(Func&& f) {
+  TEST_NORETURN void RunForChild(Func&& f) {
     close(GetStdOutReadFD()); // don't need to read from the pipe in the child.
     close(GetStdErrReadFD());
     auto DupFD = [](int DestFD, int TargetFD) {
@@ -334,7 +334,7 @@ private:
 };
 
 #ifdef _LIBCPP_VERSION
-void std::__libcpp_verbose_abort(char const* format, ...) noexcept {
+void std::__libcpp_verbose_abort(char const* format, ...) {
   va_list args;
   va_start(args, format);
 

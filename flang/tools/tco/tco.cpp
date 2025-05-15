@@ -70,8 +70,7 @@ static cl::opt<bool> codeGenLLVM(
     cl::desc("Run only CodeGen passes and translate FIR to LLVM IR"),
     cl::init(false));
 
-#include "flang/Optimizer/Passes/CommandLineOpts.h"
-#include "flang/Optimizer/Passes/Pipelines.h"
+#include "flang/Tools/CLOptions.inc"
 
 static void printModule(mlir::ModuleOp mod, raw_ostream &output) {
   output << mod << '\n';

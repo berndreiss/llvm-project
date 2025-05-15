@@ -11,7 +11,6 @@ add_llvm_component_library(LLVMFrontendOffloading
   LINK_COMPONENTS
   Core
   BinaryFormat
-  Object
   Support
   TransformUtils
   TargetParser

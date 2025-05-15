@@ -143,8 +143,6 @@ AArch64TargetInfo::AArch64TargetInfo(const llvm::Triple &Triple,
     IntMaxType = SignedLong;
   }
 
-  AddrSpaceMap = &ARM64AddrSpaceMap;
-
   // All AArch64 implementations support ARMv8 FP, which makes half a legal type.
   HasLegalHalfType = true;
   HalfArgsAndReturns = true;
@@ -375,12 +373,6 @@ void AArch64TargetInfo::getTargetDefinesARMV95A(const LangOptions &Opts,
   getTargetDefinesARMV94A(Opts, Builder);
 }
 
-void AArch64TargetInfo::getTargetDefinesARMV96A(const LangOptions &Opts,
-                                                MacroBuilder &Builder) const {
-  // Armv9.6-A does not have a v8.* equivalent, but is a superset of v9.5-A.
-  getTargetDefinesARMV95A(Opts, Builder);
-}
-
 void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
                                          MacroBuilder &Builder) const {
   // Target identification.
@@ -407,13 +399,7 @@ void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
   Builder.defineMacro("__AARCH64_CMODEL_" + CodeModel + "__");
 
   // ACLE predefines. Many can only have one possible value on v8 AArch64.
-  Builder.defineMacro("__ARM_ACLE_VERSION(year, quarter, patch)",
-                      "(100 * (year) + 10 * (quarter) + (patch))");
-#define ARM_ACLE_VERSION(Y, Q, P) (100 * (Y) + 10 * (Q) + (P))
-  Builder.defineMacro("__ARM_ACLE", Twine(ARM_ACLE_VERSION(2024, 2, 0)));
-  Builder.defineMacro("__FUNCTION_MULTI_VERSIONING_SUPPORT_LEVEL",
-                      Twine(ARM_ACLE_VERSION(2024, 2, 0)));
-#undef ARM_ACLE_VERSION
+  Builder.defineMacro("__ARM_ACLE", "200");
   Builder.defineMacro("__ARM_ARCH",
                       std::to_string(ArchInfo->Version.getMajor()));
   Builder.defineMacro("__ARM_ARCH_PROFILE",
@@ -665,8 +651,6 @@ void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
     getTargetDefinesARMV94A(Opts, Builder);
   else if (*ArchInfo == llvm::AArch64::ARMV9_5A)
     getTargetDefinesARMV95A(Opts, Builder);
-  else if (*ArchInfo == llvm::AArch64::ARMV9_6A)
-    getTargetDefinesARMV96A(Opts, Builder);
 
   // All of the __sync_(bool|val)_compare_and_swap_(1|2|4|8|16) builtins work.
   Builder.defineMacro("__GCC_HAVE_SYNC_COMPARE_AND_SWAP_1");
@@ -765,6 +749,8 @@ bool AArch64TargetInfo::hasFeature(StringRef Feature) const {
       .Case("i8mm", HasMatMul)
       .Case("bf16", HasBFloat16)
       .Case("sve", FPU & SveMode)
+      .Case("sve-bf16", FPU & SveMode && HasBFloat16)
+      .Case("sve-i8mm", FPU & SveMode && HasMatMul)
       .Case("sve-b16b16", HasSVEB16B16)
       .Case("f32mm", FPU & SveMode && HasMatmulFP32)
       .Case("f64mm", FPU & SveMode && HasMatmulFP64)
@@ -782,7 +768,7 @@ bool AArch64TargetInfo::hasFeature(StringRef Feature) const {
       .Case("sme-fa64", HasSMEFA64)
       .Case("sme-f16f16", HasSMEF16F16)
       .Case("sme-b16b16", HasSMEB16B16)
-      .Case("memtag", HasMTE)
+      .Cases("memtag", "memtag2", HasMTE)
       .Case("sb", HasSB)
       .Case("predres", HasPredRes)
       .Cases("ssbs", "ssbs2", HasSSBS)
@@ -1052,9 +1038,6 @@ bool AArch64TargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
     if (Feature == "+v9.5a" &&
         ArchInfo->Version < llvm::AArch64::ARMV9_5A.Version)
       ArchInfo = &llvm::AArch64::ARMV9_5A;
-    if (Feature == "+v9.6a" &&
-        ArchInfo->Version < llvm::AArch64::ARMV9_6A.Version)
-      ArchInfo = &llvm::AArch64::ARMV9_6A;
     if (Feature == "+v8r")
       ArchInfo = &llvm::AArch64::ARMV8R;
     if (Feature == "+fullfp16") {
@@ -1533,16 +1516,11 @@ AArch64leTargetInfo::AArch64leTargetInfo(const llvm::Triple &Triple,
 void AArch64leTargetInfo::setDataLayout() {
   if (getTriple().isOSBinFormatMachO()) {
     if(getTriple().isArch32Bit())
-      resetDataLayout("e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-"
-                      "i128:128-n32:64-S128-Fn32",
-                      "_");
+      resetDataLayout("e-m:o-p:32:32-i64:64-i128:128-n32:64-S128-Fn32", "_");
     else
-      resetDataLayout("e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-"
-                      "n32:64-S128-Fn32",
-                      "_");
+      resetDataLayout("e-m:o-i64:64-i128:128-n32:64-S128-Fn32", "_");
   } else
-    resetDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-"
-                    "i64:64-i128:128-n32:64-S128-Fn32");
+    resetDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32");
 }
 
 void AArch64leTargetInfo::getTargetDefines(const LangOptions &Opts,
@@ -1565,8 +1543,7 @@ void AArch64beTargetInfo::getTargetDefines(const LangOptions &Opts,
 
 void AArch64beTargetInfo::setDataLayout() {
   assert(!getTriple().isOSBinFormatMachO());
-  resetDataLayout("E-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-"
-                  "i64:64-i128:128-n32:64-S128-Fn32");
+  resetDataLayout("E-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32");
 }
 
 WindowsARM64TargetInfo::WindowsARM64TargetInfo(const llvm::Triple &Triple,
@@ -1589,10 +1566,8 @@ WindowsARM64TargetInfo::WindowsARM64TargetInfo(const llvm::Triple &Triple,
 
 void WindowsARM64TargetInfo::setDataLayout() {
   resetDataLayout(Triple.isOSBinFormatMachO()
-                      ? "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:"
-                        "128-n32:64-S128-Fn32"
-                      : "e-m:w-p270:32:32-p271:32:32-p272:64:64-p:64:64-i32:32-"
-                        "i64:64-i128:128-n32:64-S128-Fn32",
+                      ? "e-m:o-i64:64-i128:128-n32:64-S128-Fn32"
+                      : "e-m:w-p:64:64-i32:32-i64:64-i128:128-n32:64-S128-Fn32",
                   Triple.isOSBinFormatMachO() ? "_" : "");
 }
 
@@ -1714,10 +1689,26 @@ void DarwinAArch64TargetInfo::getOSDefines(const LangOptions &Opts,
   if (Triple.isArm64e())
     Builder.defineMacro("__arm64e__", "1");
 
-  DarwinTargetInfo<AArch64leTargetInfo>::getOSDefines(Opts, Triple, Builder);
+  getDarwinDefines(Builder, Opts, Triple, PlatformName, PlatformMinVersion);
 }
 
 TargetInfo::BuiltinVaListKind
 DarwinAArch64TargetInfo::getBuiltinVaListKind() const {
   return TargetInfo::CharPtrBuiltinVaList;
+}
+
+// 64-bit RenderScript is aarch64
+RenderScript64TargetInfo::RenderScript64TargetInfo(const llvm::Triple &Triple,
+                                                   const TargetOptions &Opts)
+    : AArch64leTargetInfo(llvm::Triple("aarch64", Triple.getVendorName(),
+                                       Triple.getOSName(),
+                                       Triple.getEnvironmentName()),
+                          Opts) {
+  IsRenderScriptTarget = true;
+}
+
+void RenderScript64TargetInfo::getTargetDefines(const LangOptions &Opts,
+                                                MacroBuilder &Builder) const {
+  Builder.defineMacro("__RENDERSCRIPT__");
+  AArch64leTargetInfo::getTargetDefines(Opts, Builder);
 }

@@ -206,9 +206,7 @@ def AnyRegion : Region<CPred<"true">, "any region">;
 // A region with the given number of blocks.
 class SizedRegion<int numBlocks> : Region<
   CPred<"::llvm::hasNItems($_self, " # numBlocks # ")">,
-  "region with " # numBlocks # " blocks"> {
-  int blocks = numBlocks;
-}
+  "region with " # numBlocks # " blocks">;
 
 // A region with at least the given number of blocks.
 class MinSizedRegion<int numBlocks> : Region<

@@ -182,7 +182,7 @@ struct VecTypeInfo {
 static inline VecTypeInfo getVecTypeFromFirType(mlir::Type firTy) {
   assert(mlir::isa<fir::VectorType>(firTy));
   VecTypeInfo vecTyInfo;
-  vecTyInfo.eleTy = mlir::dyn_cast<fir::VectorType>(firTy).getElementType();
+  vecTyInfo.eleTy = mlir::dyn_cast<fir::VectorType>(firTy).getEleTy();
   vecTyInfo.len = mlir::dyn_cast<fir::VectorType>(firTy).getLen();
   return vecTyInfo;
 }

@@ -15,20 +15,9 @@
 namespace llvm {
 namespace dxil {
 
-enum class OpCode : unsigned {
-#define DXIL_OPCODE(Op, Name) Name = Op,
+#define DXIL_OP_ENUM
 #include "DXILOperation.inc"
-};
-
-enum class OpCodeClass : unsigned {
-#define DXIL_OPCLASS(Name) Name,
-#include "DXILOperation.inc"
-};
-
-enum class OpParamType : unsigned {
-#define DXIL_OP_PARAM_TYPE(Name) Name,
-#include "DXILOperation.inc"
-};
+#undef DXIL_OP_ENUM
 
 } // namespace dxil
 } // namespace llvm

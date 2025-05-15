@@ -26,10 +26,10 @@
 using namespace mlir;
 
 //===----------------------------------------------------------------------===//
-// GenericLatticeAnchor
+// GenericProgramPoint
 //===----------------------------------------------------------------------===//
 
-GenericLatticeAnchor::~GenericLatticeAnchor() = default;
+GenericProgramPoint::~GenericProgramPoint() = default;
 
 //===----------------------------------------------------------------------===//
 // AnalysisState
@@ -37,14 +37,14 @@ GenericLatticeAnchor::~GenericLatticeAnchor() = default;
 
 AnalysisState::~AnalysisState() = default;
 
-void AnalysisState::addDependency(ProgramPoint *dependent,
+void AnalysisState::addDependency(ProgramPoint dependent,
                                   DataFlowAnalysis *analysis) {
   auto inserted = dependents.insert({dependent, analysis});
   (void)inserted;
   DATAFLOW_DEBUG({
     if (inserted) {
       llvm::dbgs() << "Creating dependency between " << debugName << " of "
-                   << anchor << "\nand " << debugName << " on " << dependent
+                   << point << "\nand " << debugName << " on " << dependent
                    << "\n";
     }
   });
@@ -61,42 +61,23 @@ void ProgramPoint::print(raw_ostream &os) const {
     os << "<NULL POINT>";
     return;
   }
-  if (!isBlockStart()) {
-    os << "<after operation>:";
-    return getPrevOp()->print(os, OpPrintingFlags().skipRegions());
-  }
-  os << "<before operation>:";
-  return getNextOp()->print(os, OpPrintingFlags().skipRegions());
-}
-
-//===----------------------------------------------------------------------===//
-// LatticeAnchor
-//===----------------------------------------------------------------------===//
-
-void LatticeAnchor::print(raw_ostream &os) const {
-  if (isNull()) {
-    os << "<NULL POINT>";
-    return;
-  }
-  if (auto *LatticeAnchor = llvm::dyn_cast<GenericLatticeAnchor *>(*this))
-    return LatticeAnchor->print(os);
-  if (auto value = llvm::dyn_cast<Value>(*this)) {
+  if (auto *programPoint = llvm::dyn_cast<GenericProgramPoint *>(*this))
+    return programPoint->print(os);
+  if (auto *op = llvm::dyn_cast<Operation *>(*this))
+    return op->print(os, OpPrintingFlags().skipRegions());
+  if (auto value = llvm::dyn_cast<Value>(*this))
     return value.print(os, OpPrintingFlags().skipRegions());
-  }
-
-  return get<ProgramPoint *>()->print(os);
+  return get<Block *>()->print(os);
 }
 
-Location LatticeAnchor::getLoc() const {
-  if (auto *LatticeAnchor = llvm::dyn_cast<GenericLatticeAnchor *>(*this))
-    return LatticeAnchor->getLoc();
+Location ProgramPoint::getLoc() const {
+  if (auto *programPoint = llvm::dyn_cast<GenericProgramPoint *>(*this))
+    return programPoint->getLoc();
+  if (auto *op = llvm::dyn_cast<Operation *>(*this))
+    return op->getLoc();
   if (auto value = llvm::dyn_cast<Value>(*this))
     return value.getLoc();
-
-  ProgramPoint *pp = get<ProgramPoint *>();
-  if (!pp->isBlockStart())
-    return pp->getPrevOp()->getLoc();
-  return pp->getBlock()->getParent()->getLoc();
+  return get<Block *>()->getParent()->getLoc();
 }
 
 //===----------------------------------------------------------------------===//
@@ -136,7 +117,7 @@ void DataFlowSolver::propagateIfChanged(AnalysisState *state,
                                         ChangeResult changed) {
   if (changed == ChangeResult::Change) {
     DATAFLOW_DEBUG(llvm::dbgs() << "Propagating update to " << state->debugName
-                                << " of " << state->anchor << "\n"
+                                << " of " << state->point << "\n"
                                 << "Value: " << *state << "\n");
     state->onUpdate(this);
   }
@@ -150,8 +131,7 @@ DataFlowAnalysis::~DataFlowAnalysis() = default;
 
 DataFlowAnalysis::DataFlowAnalysis(DataFlowSolver &solver) : solver(solver) {}
 
-void DataFlowAnalysis::addDependency(AnalysisState *state,
-                                     ProgramPoint *point) {
+void DataFlowAnalysis::addDependency(AnalysisState *state, ProgramPoint point) {
   state->addDependency(point, this);
 }
 

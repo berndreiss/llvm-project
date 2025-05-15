@@ -29,7 +29,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/TableGen/Record.h"
-#include "llvm/TableGen/TGTimer.h"
 #include "llvm/TableGen/TableGenBackend.h"
 #include <memory>
 #include <string>
@@ -99,14 +98,13 @@ static int createDependencyFile(const TGParser &Parser, const char *argv0) {
 int llvm::TableGenMain(const char *argv0,
                        std::function<TableGenMainFn> MainFn) {
   RecordKeeper Records;
-  TGTimer &Timer = Records.getTimer();
 
   if (TimePhases)
-    Timer.startPhaseTiming();
+    Records.startPhaseTiming();
 
   // Parse the input file.
 
-  Timer.startTimer("Parse, build records");
+  Records.startTimer("Parse, build records");
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(InputFilename, /*IsText=*/true);
   if (std::error_code EC = FileOrErr.getError())
@@ -126,18 +124,21 @@ int llvm::TableGenMain(const char *argv0,
 
   if (Parser.ParseFile())
     return 1;
-  Timer.stopTimer();
+  Records.stopTimer();
 
   // Write output to memory.
-  Timer.startBackendTimer("Backend overall");
+  Records.startBackendTimer("Backend overall");
   std::string OutString;
   raw_string_ostream Out(OutString);
   unsigned status = 0;
-  // ApplyCallback will return true if it did not apply any callback. In that
-  // case, attempt to apply the MainFn.
-  if (TableGen::Emitter::ApplyCallback(Records, Out))
-    status = MainFn ? MainFn(Out, Records) : 1;
-  Timer.stopBackendTimer();
+  TableGen::Emitter::FnT ActionFn = TableGen::Emitter::Action->getValue();
+  if (ActionFn)
+    ActionFn(Records, Out);
+  else if (MainFn)
+    status = MainFn(Out, Records);
+  else
+    return 1;
+  Records.stopBackendTimer();
   if (status)
     return 1;
 
@@ -150,7 +151,7 @@ int llvm::TableGenMain(const char *argv0,
       return Ret;
   }
 
-  Timer.startTimer("Write output");
+  Records.startTimer("Write output");
   bool WriteFile = true;
   if (WriteIfChanged) {
     // Only updates the real output file if there are any differences.
@@ -171,9 +172,9 @@ int llvm::TableGenMain(const char *argv0,
     if (ErrorsPrinted == 0)
       OutFile.keep();
   }
-
-  Timer.stopTimer();
-  Timer.stopPhaseTiming();
+  
+  Records.stopTimer();
+  Records.stopPhaseTiming();
 
   if (ErrorsPrinted > 0)
     return reportError(argv0, Twine(ErrorsPrinted) + " errors.\n");

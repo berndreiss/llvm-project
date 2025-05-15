@@ -19,11 +19,6 @@ public:
   MCELFStreamer &getStreamer();
   LoongArchTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
 
-  void emitDirectiveOptionPush() override;
-  void emitDirectiveOptionPop() override;
-  void emitDirectiveOptionRelax() override;
-  void emitDirectiveOptionNoRelax() override;
-
   void finish() override;
 };
 

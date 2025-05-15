@@ -18,8 +18,17 @@
 
 namespace LIBC_NAMESPACE_DECL {
 
-static LIBC_CONSTINIT FreeListHeap<> freelist_heap_symbols;
-FreeListHeap<> *freelist_heap = &freelist_heap_symbols;
+namespace {
+#ifdef LIBC_FREELIST_MALLOC_SIZE
+// This is set via the LIBC_CONF_FREELIST_MALLOC_BUFFER_SIZE configuration.
+constexpr size_t SIZE = LIBC_FREELIST_MALLOC_SIZE;
+#else
+#error "LIBC_FREELIST_MALLOC_SIZE was not defined for this build."
+#endif
+LIBC_CONSTINIT FreeListHeapBuffer<SIZE> freelist_heap_buffer;
+} // namespace
+
+FreeListHeap<> *freelist_heap = &freelist_heap_buffer;
 
 LLVM_LIBC_FUNCTION(void *, malloc, (size_t size)) {
   return freelist_heap->allocate(size);

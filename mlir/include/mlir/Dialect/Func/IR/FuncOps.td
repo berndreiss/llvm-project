@@ -183,7 +183,6 @@ def CallIndirectOp : Func_Op<"call_indirect", [
 
 def ConstantOp : Func_Op<"constant",
     [ConstantLike, Pure,
-     DeclareOpInterfaceMethods<SymbolUserOpInterface>,
      DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
   let summary = "constant";
   let description = [{
@@ -217,6 +216,7 @@ def ConstantOp : Func_Op<"constant",
   }];
 
   let hasFolder = 1;
+  let hasVerifier = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -251,7 +251,7 @@ def FuncOp : Func_Op<"func", [
 
     // A function that returns its argument twice:
     func.func @count(%x: i64) -> (i64, i64)
-      attributes {fruit = "banana"} {
+      attributes {fruit: "banana"} {
       return %x, %x: i64, i64
     }
 

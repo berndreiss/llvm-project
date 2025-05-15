@@ -49,10 +49,6 @@ public:
 
   linalg::GenericOp op() const { return linalgOp; }
   const SparsificationOptions &options() const { return sparseOptions; }
-  bool generatingSparseIterator() const {
-    return sparseOptions.sparseEmitStrategy ==
-           SparseEmitStrategy::kSparseIterator;
-  }
   Merger &merger() { return latticeMerger; }
   LoopEmitter &emitter() { return loopEmitter; }
 

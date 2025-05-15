@@ -239,8 +239,7 @@ struct MapperT {
 ENUM(MemoryOrder, AcqRel, Acquire, Relaxed, Release, SeqCst);
 ENUM(MotionExpectation, Present);
 // V5.2: [15.9.1] `task-dependence-type` modifier
-ENUM(TaskDependenceType, Depobj, In, Inout, Inoutset, Mutexinoutset, Out, Sink,
-     Source);
+ENUM(TaskDependenceType, In, Out, Inout, Mutexinoutset, Inoutset, Depobj);
 
 template <typename I, typename E> //
 struct LoopIterationT {
@@ -504,7 +503,7 @@ struct DependT {
   using LocatorList = ObjectListT<I, E>;
   using TaskDependenceType = tomp::type::TaskDependenceType;
 
-  struct DepType { // The form with task dependence type.
+  struct WithLocators { // Modern form
     using TupleTrait = std::true_type;
     // Empty LocatorList means "omp_all_memory".
     std::tuple<TaskDependenceType, OPT(Iterator), LocatorList> t;
@@ -512,7 +511,7 @@ struct DependT {
 
   using Doacross = DoacrossT<T, I, E>;
   using UnionTrait = std::true_type;
-  std::variant<Doacross, DepType> u; // Doacross form is legacy
+  std::variant<Doacross, WithLocators> u; // Doacross form is legacy
 };
 
 // V5.2: [3.5] `destroy` clause
@@ -886,20 +885,10 @@ struct NumTasksT {
 // V5.2: [10.2.1] `num_teams` clause
 template <typename T, typename I, typename E> //
 struct NumTeamsT {
+  using TupleTrait = std::true_type;
   using LowerBound = E;
   using UpperBound = E;
-
-  // The name Range is not a spec name.
-  struct Range {
-    using TupleTrait = std::true_type;
-    std::tuple<OPT(LowerBound), UpperBound> t;
-  };
-
-  // The name List is not a spec name. The list is an extension to allow
-  // specifying a grid with connection with the ompx_bare clause.
-  using List = ListT<Range>;
-  using WrapperTrait = std::true_type;
-  List v;
+  std::tuple<OPT(LowerBound), UpperBound> t;
 };
 
 // V5.2: [10.1.2] `num_threads` clause
@@ -955,14 +944,6 @@ struct PartialT {
   using UnrollFactor = E;
   using WrapperTrait = std::true_type;
   OPT(UnrollFactor) v;
-};
-
-// V6.0:  `permutation` clause
-template <typename T, typename I, typename E> //
-struct PermutationT {
-  using ArgList = ListT<E>;
-  using WrapperTrait = std::true_type;
-  ArgList v;
 };
 
 // V5.2: [12.4] `priority` clause
@@ -1276,9 +1257,9 @@ using WrapperClausesT = std::variant<
     NovariantsT<T, I, E>, NumTeamsT<T, I, E>, NumThreadsT<T, I, E>,
     OrderedT<T, I, E>, PartialT<T, I, E>, PriorityT<T, I, E>, PrivateT<T, I, E>,
     ProcBindT<T, I, E>, SafelenT<T, I, E>, SeverityT<T, I, E>, SharedT<T, I, E>,
-    SimdlenT<T, I, E>, SizesT<T, I, E>, PermutationT<T, I, E>,
-    ThreadLimitT<T, I, E>, UniformT<T, I, E>, UpdateT<T, I, E>,
-    UseDeviceAddrT<T, I, E>, UseDevicePtrT<T, I, E>, UsesAllocatorsT<T, I, E>>;
+    SimdlenT<T, I, E>, SizesT<T, I, E>, ThreadLimitT<T, I, E>,
+    UniformT<T, I, E>, UpdateT<T, I, E>, UseDeviceAddrT<T, I, E>,
+    UseDevicePtrT<T, I, E>, UsesAllocatorsT<T, I, E>>;
 
 template <typename T, typename I, typename E>
 using UnionOfAllClausesT = typename type::Union< //

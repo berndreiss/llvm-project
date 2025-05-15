@@ -74,12 +74,6 @@ std::tuple<Value, Value> AllocationOpLLVMLowering::allocateBufferManuallyAlign(
   MemRefType memRefType = getMemRefResultType(op);
   // Allocate the underlying buffer.
   Type elementPtrType = this->getElementPtrType(memRefType);
-  if (!elementPtrType) {
-    emitError(loc, "conversion of memref memory space ")
-        << memRefType.getMemorySpace()
-        << " to integer address space "
-           "failed. Consider adding memory space conversions.";
-  }
   LLVM::LLVMFuncOp allocFuncOp = getNotalignedAllocFn(
       getTypeConverter(), op->getParentWithTrait<OpTrait::SymbolTable>(),
       getIndexType());

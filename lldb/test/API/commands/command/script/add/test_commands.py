@@ -18,7 +18,7 @@ class ReportingCmd(ParsedCommand):
             for long_option, elem in opt_def.items():
                 dest = elem["dest"]
                 result.AppendMessage(
-                    f"{long_option} (set: {elem['_value_set']}): {object.__getattribute__(self.get_parser(), dest)}\n"
+                    f"{long_option} (set: {elem['_value_set']}): {object.__getattribute__(self.ov_parser, dest)}\n"
                 )
         else:
             result.AppendMessage("No options\n")
@@ -30,6 +30,7 @@ class ReportingCmd(ParsedCommand):
             result.AppendMessage(
                 f"{idx}: {args_array.GetItemAtIndex(idx).GetStringValue(10000)}\n"
             )
+
 
 # Use these to make sure that get_repeat_command sends the right
 # command.
@@ -48,8 +49,7 @@ class NoArgsCommand(ReportingCmd):
         ParsedCommand.do_register_cmd(cls, debugger, module_name)
 
     def setup_command_definition(self):
-        ov_parser = self.get_parser()
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "b",
             "bool-arg",
             "a boolean arg, defaults to True",
@@ -59,7 +59,7 @@ class NoArgsCommand(ReportingCmd):
             default=True,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "s",
             "shlib-name",
             "A shared library name.",
@@ -69,7 +69,7 @@ class NoArgsCommand(ReportingCmd):
             default=None,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "d",
             "disk-file-name",
             "An on disk filename",
@@ -78,7 +78,7 @@ class NoArgsCommand(ReportingCmd):
             default=None,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "l",
             "line-num",
             "A line number",
@@ -88,7 +88,7 @@ class NoArgsCommand(ReportingCmd):
             default=0,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "e",
             "enum-option",
             "An enum, doesn't actually do anything",
@@ -126,9 +126,8 @@ class OneArgCommandNoOptions(ReportingCmd):
         ParsedCommand.do_register_cmd(cls, debugger, module_name)
 
     def setup_command_definition(self):
-        ov_parser = self.get_parser()
-        ov_parser.add_argument_set(
-            [ov_parser.make_argument_element(lldb.eArgTypeSourceFile, "plain")]
+        self.ov_parser.add_argument_set(
+            [self.ov_parser.make_argument_element(lldb.eArgTypeSourceFile, "plain")]
         )
 
     def get_repeat_command(self, command):
@@ -155,8 +154,7 @@ class TwoArgGroupsCommand(ReportingCmd):
         ParsedCommand.do_register_cmd(cls, debugger, module_name)
 
     def setup_command_definition(self):
-        ov_parser = self.get_parser()
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "l",
             "language",
             "language defaults to None",
@@ -166,7 +164,7 @@ class TwoArgGroupsCommand(ReportingCmd):
             default=None,
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "c",
             "log-channel",
             "log channel - defaults to lldb",
@@ -176,7 +174,7 @@ class TwoArgGroupsCommand(ReportingCmd):
             default="lldb",
         )
 
-        ov_parser.add_option(
+        self.ov_parser.add_option(
             "p",
             "process-name",
             "A process name, defaults to None",
@@ -185,23 +183,25 @@ class TwoArgGroupsCommand(ReportingCmd):
             default=None,
         )
 
-        ov_parser.add_argument_set(
+        self.ov_parser.add_argument_set(
             [
-                ov_parser.make_argument_element(
+                self.ov_parser.make_argument_element(
                     lldb.eArgTypeClassName, "plain", [1, 2]
                 ),
-                ov_parser.make_argument_element(
+                self.ov_parser.make_argument_element(
                     lldb.eArgTypeOffset, "optional", [1, 2]
                 ),
             ]
         )
 
-        ov_parser.add_argument_set(
+        self.ov_parser.add_argument_set(
             [
-                ov_parser.make_argument_element(
+                self.ov_parser.make_argument_element(
                     lldb.eArgTypePythonClass, "plain", [3, 4]
                 ),
-                ov_parser.make_argument_element(lldb.eArgTypePid, "optional", [3, 4]),
+                self.ov_parser.make_argument_element(
+                    lldb.eArgTypePid, "optional", [3, 4]
+                ),
             ]
         )
 
@@ -209,35 +209,6 @@ class TwoArgGroupsCommand(ReportingCmd):
         global two_arg_repeat
         two_arg_repeat = command
         return command + " THIRD_ARG"
-
-    def handle_option_argument_completion(self, long_option, cursor_pos):
-        ov_parser = self.get_parser()
-        value = ov_parser.dest_for_option(long_option)[0 : cursor_pos + 1]
-        proc_value = ov_parser.proc_name
-        if proc_value != None:
-            new_str = value + proc_value
-            ret_arr = {"completion": new_str, "mode": "partial"}
-            return ret_arr
-
-        ret_arr = {"values": [value + "nice", value + "not_nice", value + "mediocre"]}
-        return ret_arr
-
-    def handle_argument_completion(self, args, arg_pos, cursor_pos):
-        ov_parser = self.get_parser()
-        orig_arg = args[arg_pos][0:cursor_pos]
-        if orig_arg == "correct_":
-            ret_arr = {"completion": "correct_answer"}
-            return ret_arr
-
-        if ov_parser.was_set("process-name"):
-            # No completions if proc_name was set.
-            return True
-
-        ret_arr = {
-            "values": [orig_arg + "cool", orig_arg + "yuck"],
-            "descriptions": ["good idea", "bad idea"],
-        }
-        return ret_arr
 
     def get_short_help(self):
         return "This is my short help string"

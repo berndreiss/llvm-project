@@ -84,7 +84,7 @@ class FileManager : public RefCountedBase<FileManager> {
   /// VirtualDirectoryEntries/VirtualFileEntries above.
   ///
   llvm::StringMap<llvm::ErrorOr<DirectoryEntry &>, llvm::BumpPtrAllocator>
-      SeenDirEntries;
+  SeenDirEntries;
 
   /// A cache that maps paths to file entries (either real or
   /// virtual) we have looked up, or an error that occurred when we looked up
@@ -124,8 +124,8 @@ class FileManager : public RefCountedBase<FileManager> {
   std::unique_ptr<FileSystemStatCache> StatCache;
 
   std::error_code getStatValue(StringRef Path, llvm::vfs::Status &Status,
-                               bool isFile, std::unique_ptr<llvm::vfs::File> *F,
-                               bool IsText = true);
+                               bool isFile,
+                               std::unique_ptr<llvm::vfs::File> *F);
 
   /// Add all ancestors of the given path (pointing to either a file
   /// or a directory) as virtual directories.
@@ -190,8 +190,6 @@ public:
   ///
   /// \param CacheFailure If true and the file does not exist, we'll cache
   /// the failure to find this file.
-  LLVM_DEPRECATED("Functions returning DirectoryEntry are deprecated.",
-                  "getOptionalDirectoryRef()")
   llvm::ErrorOr<const DirectoryEntry *>
   getDirectory(StringRef DirName, bool CacheFailure = true);
 
@@ -209,8 +207,6 @@ public:
   ///
   /// \param CacheFailure If true and the file does not exist, we'll cache
   /// the failure to find this file.
-  LLVM_DEPRECATED("Functions returning FileEntry are deprecated.",
-                  "getOptionalFileRef()")
   llvm::ErrorOr<const FileEntry *>
   getFile(StringRef Filename, bool OpenFile = false, bool CacheFailure = true);
 
@@ -230,8 +226,7 @@ public:
   /// the failure to find this file.
   llvm::Expected<FileEntryRef> getFileRef(StringRef Filename,
                                           bool OpenFile = false,
-                                          bool CacheFailure = true,
-                                          bool IsText = true);
+                                          bool CacheFailure = true);
 
   /// Get the FileEntryRef for stdin, returning an error if stdin cannot be
   /// read.
@@ -274,8 +269,6 @@ public:
   FileEntryRef getVirtualFileRef(StringRef Filename, off_t Size,
                                  time_t ModificationTime);
 
-  LLVM_DEPRECATED("Functions returning FileEntry are deprecated.",
-                  "getVirtualFileRef()")
   const FileEntry *getVirtualFile(StringRef Filename, off_t Size,
                                   time_t ModificationTime);
 
@@ -291,28 +284,23 @@ public:
 
   /// Open the specified file as a MemoryBuffer, returning a new
   /// MemoryBuffer if successful, otherwise returning null.
-  /// The IsText parameter controls whether the file should be opened as a text
-  /// or binary file, and should be set to false if the file contents should be
-  /// treated as binary.
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
   getBufferForFile(FileEntryRef Entry, bool isVolatile = false,
                    bool RequiresNullTerminator = true,
-                   std::optional<int64_t> MaybeLimit = std::nullopt,
-                   bool IsText = true);
+                   std::optional<int64_t> MaybeLimit = std::nullopt);
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
   getBufferForFile(StringRef Filename, bool isVolatile = false,
                    bool RequiresNullTerminator = true,
-                   std::optional<int64_t> MaybeLimit = std::nullopt,
-                   bool IsText = true) const {
+                   std::optional<int64_t> MaybeLimit = std::nullopt) const {
     return getBufferForFileImpl(Filename,
-                                /*FileSize=*/MaybeLimit.value_or(-1),
-                                isVolatile, RequiresNullTerminator, IsText);
+                                /*FileSize=*/(MaybeLimit ? *MaybeLimit : -1),
+                                isVolatile, RequiresNullTerminator);
   }
 
 private:
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
   getBufferForFileImpl(StringRef Filename, int64_t FileSize, bool isVolatile,
-                       bool RequiresNullTerminator, bool IsText) const;
+                       bool RequiresNullTerminator) const;
 
   DirectoryEntry *&getRealDirEntry(const llvm::vfs::Status &Status);
 

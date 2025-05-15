@@ -20,8 +20,7 @@ define dso_local void @lots_args(i32 signext %x0, i32 signext %x1, <vscale x 16 
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    sub a0, s0, a0
 ; CHECK-NEXT:    addi a0, a0, -64
-; CHECK-NEXT:    vsetvli a1, zero, e32, m8, ta, ma
-; CHECK-NEXT:    vse32.v v8, (a0)
+; CHECK-NEXT:    vs8r.v v8, (a0)
 ; CHECK-NEXT:    sw a2, -36(s0)
 ; CHECK-NEXT:    sw a3, -40(s0)
 ; CHECK-NEXT:    sw a4, -44(s0)
@@ -86,8 +85,7 @@ define dso_local signext i32 @main() #0 {
 ; CHECK-NEXT:    slli s1, s1, 3
 ; CHECK-NEXT:    sub s1, s0, s1
 ; CHECK-NEXT:    addi s1, s1, -112
-; CHECK-NEXT:    vsetvli a0, zero, e32, m8, ta, ma
-; CHECK-NEXT:    vse32.v v8, (s1)
+; CHECK-NEXT:    vs8r.v v8, (s1)
 ; CHECK-NEXT:    li a0, 1
 ; CHECK-NEXT:    sw a0, -76(s0)
 ; CHECK-NEXT:    sw a0, -80(s0)
@@ -101,7 +99,7 @@ define dso_local signext i32 @main() #0 {
 ; CHECK-NEXT:    sw a0, -112(s0)
 ; CHECK-NEXT:    lw a0, -76(s0)
 ; CHECK-NEXT:    lw a1, -80(s0)
-; CHECK-NEXT:    vle32.v v8, (s1)
+; CHECK-NEXT:    vl8re32.v v8, (s1)
 ; CHECK-NEXT:    lw a2, -84(s0)
 ; CHECK-NEXT:    lw a3, -88(s0)
 ; CHECK-NEXT:    lw a4, -92(s0)
@@ -117,8 +115,7 @@ define dso_local signext i32 @main() #0 {
 ; CHECK-NEXT:    addi sp, sp, 16
 ; CHECK-NEXT:    lw a0, -76(s0)
 ; CHECK-NEXT:    lw a1, -80(s0)
-; CHECK-NEXT:    vsetvli a2, zero, e32, m8, ta, ma
-; CHECK-NEXT:    vle32.v v8, (s1)
+; CHECK-NEXT:    vl8re32.v v8, (s1)
 ; CHECK-NEXT:    lw a2, -84(s0)
 ; CHECK-NEXT:    lw a3, -88(s0)
 ; CHECK-NEXT:    lw a4, -92(s0)

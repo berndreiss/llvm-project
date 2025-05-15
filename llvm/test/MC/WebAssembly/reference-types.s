@@ -76,17 +76,14 @@ ref_select_test:
 # CHECK: block externref
 # CHECK: block exnref
 ref_block_test:
-  .functype ref_block_test () -> ()
+  .functype ref_block_test () -> (exnref, externref, funcref)
   block funcref
   block externref
   block exnref
   ref.null_exn
   end_block
-  drop
   ref.null_extern
   end_block
-  drop
   ref.null_func
   end_block
-  drop
   end_function

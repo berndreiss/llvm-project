@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyLLVMLibcModule STATIC
+add_clang_library(clangTidyLLVMLibcModule
   CalleeNamespaceCheck.cpp
   ImplementationInNamespaceCheck.cpp
   InlineFunctionDeclCheck.cpp

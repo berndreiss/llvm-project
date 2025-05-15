@@ -1,3 +1,3 @@
-CXX_SOURCES := pass-to-base.cpp anonymous-b.cpp
+CXX_SOURCES := pass-to-base.cpp
 
 include Makefile.rules

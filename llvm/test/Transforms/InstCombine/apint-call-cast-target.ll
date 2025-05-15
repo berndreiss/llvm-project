@@ -4,19 +4,8 @@
 target datalayout = "e-p:32:32"
 target triple = "i686-pc-linux-gnu"
 
-define i32 @main2() {
-; CHECK-LABEL: @main2(
-; CHECK-NEXT:    ret i32 0
-;
-  ret i32 0
-}
-
-define ptr @ctime2(ptr %p) {
-; CHECK-LABEL: @ctime2(
-; CHECK-NEXT:    ret ptr [[P:%.*]]
-;
-  ret ptr %p
-}
+declare i32 @main2()
+declare ptr @ctime2(ptr)
 
 define ptr @ctime(ptr) {
 ; CHECK-LABEL: @ctime(

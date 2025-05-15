@@ -1,8 +1,4 @@
-//--------------------------------------------------------------------------------------------------
-// Enable all supported profiles to focus the verification of expected level errors.
-//--------------------------------------------------------------------------------------------------
-
-// RUN: mlir-opt %s -split-input-file -verify-diagnostics --tosa-validate="profile=bi,mi,mt"
+// RUN: mlir-opt %s -split-input-file -verify-diagnostics --tosa-validate
 
 
 func.func @test_argmax(%arg0: tensor<1x1x1x1x29x29x4xf32>) -> tensor<1x1x1x1x29x4xi32> {

@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 // UNSUPPORTED: c++03, c++11, c++14
-// XFAIL: !has-64-bit-atomics
+// XFAIL: LIBCXX-PICOLIBC-FIXME
 
 // <atomic>
 //
@@ -18,11 +18,10 @@
 
 // Ignore diagnostic about vector types changing the ABI on some targets, since
 // that is irrelevant for this test.
-// ADDITIONAL_COMPILE_FLAGS(gcc-style-warnings): -Wno-psabi
+// ADDITIONAL_COMPILE_FLAGS: -Wno-psabi
 
 #include <atomic>
 #include <cassert>
-#include <concepts>
 #include <cstddef>
 
 #include "test_macros.h"
@@ -52,7 +51,7 @@ void check_always_lock_free(std::atomic<T> const& a) {
   // In all cases, also sanity-check it based on the implication always-lock-free => lock-free.
   if (is_always_lock_free) {
     auto is_lock_free = a.is_lock_free();
-    ASSERT_SAME_TYPE(decltype(is_lock_free), bool);
+    ASSERT_SAME_TYPE(decltype(is_always_lock_free), bool const);
     assert(is_lock_free);
   }
   ASSERT_NOEXCEPT(a.is_lock_free());

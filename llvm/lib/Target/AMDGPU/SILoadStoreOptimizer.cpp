@@ -57,7 +57,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "SILoadStoreOptimizer.h"
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
@@ -105,7 +104,7 @@ struct AddressRegs {
 // GFX10 image_sample instructions can have 12 vaddrs + srsrc + ssamp.
 const unsigned MaxAddressRegs = 12 + 1 + 1;
 
-class SILoadStoreOptimizer {
+class SILoadStoreOptimizer : public MachineFunctionPass {
   struct CombineInfo {
     MachineBasicBlock::iterator I;
     unsigned EltSize;
@@ -296,20 +295,16 @@ private:
   static InstClassEnum getCommonInstClass(const CombineInfo &CI,
                                           const CombineInfo &Paired);
 
-  bool optimizeInstsWithSameBaseAddr(std::list<CombineInfo> &MergeList,
-                                     bool &OptimizeListAgain);
-  bool optimizeBlock(std::list<std::list<CombineInfo> > &MergeableInsts);
-
-public:
-  SILoadStoreOptimizer(AliasAnalysis *AA) : AA(AA) {}
-  bool run(MachineFunction &MF);
-};
-
-class SILoadStoreOptimizerLegacy : public MachineFunctionPass {
 public:
   static char ID;
 
-  SILoadStoreOptimizerLegacy() : MachineFunctionPass(ID) {}
+  SILoadStoreOptimizer() : MachineFunctionPass(ID) {
+    initializeSILoadStoreOptimizerPass(*PassRegistry::getPassRegistry());
+  }
+
+  bool optimizeInstsWithSameBaseAddr(std::list<CombineInfo> &MergeList,
+                                     bool &OptimizeListAgain);
+  bool optimizeBlock(std::list<std::list<CombineInfo> > &MergeableInsts);
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -357,8 +352,6 @@ static unsigned getOpcodeWidth(const MachineInstr &MI, const SIInstrInfo &TII) {
     return 1;
   case AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM_ec:
   case AMDGPU::S_LOAD_DWORDX2_IMM:
   case AMDGPU::S_LOAD_DWORDX2_IMM_ec:
   case AMDGPU::GLOBAL_LOAD_DWORDX2:
@@ -370,8 +363,6 @@ static unsigned getOpcodeWidth(const MachineInstr &MI, const SIInstrInfo &TII) {
     return 2;
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM_ec:
   case AMDGPU::S_LOAD_DWORDX3_IMM:
   case AMDGPU::S_LOAD_DWORDX3_IMM_ec:
   case AMDGPU::GLOBAL_LOAD_DWORDX3:
@@ -383,8 +374,6 @@ static unsigned getOpcodeWidth(const MachineInstr &MI, const SIInstrInfo &TII) {
     return 3;
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM_ec:
   case AMDGPU::S_LOAD_DWORDX4_IMM:
   case AMDGPU::S_LOAD_DWORDX4_IMM_ec:
   case AMDGPU::GLOBAL_LOAD_DWORDX4:
@@ -396,8 +385,6 @@ static unsigned getOpcodeWidth(const MachineInstr &MI, const SIInstrInfo &TII) {
     return 4;
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM_ec:
   case AMDGPU::S_LOAD_DWORDX8_IMM:
   case AMDGPU::S_LOAD_DWORDX8_IMM_ec:
     return 8;
@@ -512,20 +499,12 @@ static InstClassEnum getInstClass(unsigned Opc, const SIInstrInfo &TII) {
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM_ec:
     return S_BUFFER_LOAD_IMM;
   case AMDGPU::S_BUFFER_LOAD_DWORD_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM_ec:
     return S_BUFFER_LOAD_SGPR_IMM;
   case AMDGPU::S_LOAD_DWORD_IMM:
   case AMDGPU::S_LOAD_DWORDX2_IMM:
@@ -608,20 +587,12 @@ static unsigned getInstSubclass(unsigned Opc, const SIInstrInfo &TII) {
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM_ec:
     return AMDGPU::S_BUFFER_LOAD_DWORD_IMM;
   case AMDGPU::S_BUFFER_LOAD_DWORD_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM_ec:
     return AMDGPU::S_BUFFER_LOAD_DWORD_SGPR_IMM;
   case AMDGPU::S_LOAD_DWORD_IMM:
   case AMDGPU::S_LOAD_DWORDX2_IMM:
@@ -732,10 +703,6 @@ static AddressRegs getRegs(unsigned Opc, const SIInstrInfo &TII) {
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM_ec:
     Result.SOffset = true;
     [[fallthrough]];
   case AMDGPU::S_BUFFER_LOAD_DWORD_IMM:
@@ -743,10 +710,6 @@ static AddressRegs getRegs(unsigned Opc, const SIInstrInfo &TII) {
   case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM:
   case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM_ec:
-  case AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM_ec:
   case AMDGPU::S_LOAD_DWORD_IMM:
   case AMDGPU::S_LOAD_DWORDX2_IMM:
   case AMDGPU::S_LOAD_DWORDX3_IMM:
@@ -887,18 +850,18 @@ void SILoadStoreOptimizer::CombineInfo::setMI(MachineBasicBlock::iterator MI,
 
 } // end anonymous namespace.
 
-INITIALIZE_PASS_BEGIN(SILoadStoreOptimizerLegacy, DEBUG_TYPE,
+INITIALIZE_PASS_BEGIN(SILoadStoreOptimizer, DEBUG_TYPE,
                       "SI Load Store Optimizer", false, false)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-INITIALIZE_PASS_END(SILoadStoreOptimizerLegacy, DEBUG_TYPE,
-                    "SI Load Store Optimizer", false, false)
+INITIALIZE_PASS_END(SILoadStoreOptimizer, DEBUG_TYPE, "SI Load Store Optimizer",
+                    false, false)
 
-char SILoadStoreOptimizerLegacy::ID = 0;
+char SILoadStoreOptimizer::ID = 0;
 
-char &llvm::SILoadStoreOptimizerLegacyID = SILoadStoreOptimizerLegacy::ID;
+char &llvm::SILoadStoreOptimizerID = SILoadStoreOptimizer::ID;
 
-FunctionPass *llvm::createSILoadStoreOptimizerLegacyPass() {
-  return new SILoadStoreOptimizerLegacy();
+FunctionPass *llvm::createSILoadStoreOptimizerPass() {
+  return new SILoadStoreOptimizer();
 }
 
 static void addDefsUsesToList(const MachineInstr &MI,
@@ -1716,14 +1679,6 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeFlatStorePair(
   return New;
 }
 
-static bool needsConstrainedOpcode(const GCNSubtarget &STM,
-                                   ArrayRef<MachineMemOperand *> MMOs,
-                                   unsigned Width) {
-  // Conservatively returns true if not found the MMO.
-  return STM.isXNACKEnabled() &&
-         (MMOs.size() != 1 || MMOs[0]->getAlign().value() < Width * 4);
-}
-
 unsigned SILoadStoreOptimizer::getNewOpcode(const CombineInfo &CI,
                                             const CombineInfo &Paired) {
   const unsigned Width = CI.Width + Paired.Width;
@@ -1741,55 +1696,38 @@ unsigned SILoadStoreOptimizer::getNewOpcode(const CombineInfo &CI,
 
   case UNKNOWN:
     llvm_unreachable("Unknown instruction class");
-  case S_BUFFER_LOAD_IMM: {
-    // If XNACK is enabled, use the constrained opcodes when the first load is
-    // under-aligned.
-    bool NeedsConstrainedOpc =
-        needsConstrainedOpcode(*STM, CI.I->memoperands(), Width);
+  case S_BUFFER_LOAD_IMM:
     switch (Width) {
     default:
       return 0;
     case 2:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX2_IMM;
     case 3:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX3_IMM;
     case 4:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX4_IMM;
     case 8:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX8_IMM;
     }
-  }
-  case S_BUFFER_LOAD_SGPR_IMM: {
-    // If XNACK is enabled, use the constrained opcodes when the first load is
-    // under-aligned.
-    bool NeedsConstrainedOpc =
-        needsConstrainedOpcode(*STM, CI.I->memoperands(), Width);
+  case S_BUFFER_LOAD_SGPR_IMM:
     switch (Width) {
     default:
       return 0;
     case 2:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX2_SGPR_IMM;
     case 3:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX3_SGPR_IMM;
     case 4:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX4_SGPR_IMM;
     case 8:
-      return NeedsConstrainedOpc ? AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM_ec
-                                 : AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM;
+      return AMDGPU::S_BUFFER_LOAD_DWORDX8_SGPR_IMM;
     }
-  }
   case S_LOAD_IMM: {
     // If XNACK is enabled, use the constrained opcodes when the first load is
     // under-aligned.
+    const MachineMemOperand *MMO = *CI.I->memoperands_begin();
     bool NeedsConstrainedOpc =
-        needsConstrainedOpcode(*STM, CI.I->memoperands(), Width);
+        STM->isXNACKEnabled() && MMO->getAlign().value() < Width * 4;
     switch (Width) {
     default:
       return 0;
@@ -2014,7 +1952,7 @@ Register SILoadStoreOptimizer::computeBase(MachineInstr &MI,
   MachineOperand OffsetHi =
     createRegOrImm(static_cast<int32_t>(Addr.Offset >> 32), MI);
 
-  const auto *CarryRC = TRI->getWaveMaskRegClass();
+  const auto *CarryRC = TRI->getRegClass(AMDGPU::SReg_1_XEXECRegClassID);
   Register CarryReg = MRI->createVirtualRegister(CarryRC);
   Register DeadCarryReg = MRI->createVirtualRegister(CarryRC);
 
@@ -2056,7 +1994,7 @@ Register SILoadStoreOptimizer::computeBase(MachineInstr &MI,
 void SILoadStoreOptimizer::updateBaseAndOffset(MachineInstr &MI,
                                                Register NewBase,
                                                int32_t NewOffset) const {
-  auto *Base = TII->getNamedOperand(MI, AMDGPU::OpName::vaddr);
+  auto Base = TII->getNamedOperand(MI, AMDGPU::OpName::vaddr);
   Base->setReg(NewBase);
   Base->setIsKill(false);
   TII->getNamedOperand(MI, AMDGPU::OpName::offset)->setImm(NewOffset);
@@ -2122,9 +2060,6 @@ void SILoadStoreOptimizer::processBaseWithConstOffset(const MachineOperand &Base
     BaseLo = *Src0;
   }
 
-  if (!BaseLo.isReg())
-    return;
-
   Src0 = TII->getNamedOperand(*BaseHiDef, AMDGPU::OpName::src0);
   Src1 = TII->getNamedOperand(*BaseHiDef, AMDGPU::OpName::src1);
 
@@ -2136,9 +2071,6 @@ void SILoadStoreOptimizer::processBaseWithConstOffset(const MachineOperand &Base
 
   uint64_t Offset1 = Src1->getImm();
   BaseHi = *Src0;
-
-  if (!BaseHi.isReg())
-    return;
 
   Addr.Base.LoReg = BaseLo.getReg();
   Addr.Base.HiReg = BaseHi.getReg();
@@ -2187,9 +2119,8 @@ bool SILoadStoreOptimizer::promoteConstantOffsetToImm(
     return false;
   }
 
-  LLVM_DEBUG(dbgs() << "  BASE: {" << printReg(MAddr.Base.HiReg, TRI) << ", "
-                    << printReg(MAddr.Base.LoReg, TRI)
-                    << "} Offset: " << MAddr.Offset << "\n\n";);
+  LLVM_DEBUG(dbgs() << "  BASE: {" << MAddr.Base.HiReg << ", "
+             << MAddr.Base.LoReg << "} Offset: " << MAddr.Offset << "\n\n";);
 
   // Step2: Traverse through MI's basic block and find an anchor(that has the
   // same base-registers) with the highest 13bit distance from MI's offset.
@@ -2528,15 +2459,10 @@ SILoadStoreOptimizer::optimizeInstsWithSameBaseAddr(
   return Modified;
 }
 
-bool SILoadStoreOptimizerLegacy::runOnMachineFunction(MachineFunction &MF) {
+bool SILoadStoreOptimizer::runOnMachineFunction(MachineFunction &MF) {
   if (skipFunction(MF.getFunction()))
     return false;
-  return SILoadStoreOptimizer(
-             &getAnalysis<AAResultsWrapperPass>().getAAResults())
-      .run(MF);
-}
 
-bool SILoadStoreOptimizer::run(MachineFunction &MF) {
   STM = &MF.getSubtarget<GCNSubtarget>();
   if (!STM->loadStoreOptEnabled())
     return false;
@@ -2545,6 +2471,7 @@ bool SILoadStoreOptimizer::run(MachineFunction &MF) {
   TRI = &TII->getRegisterInfo();
 
   MRI = &MF.getRegInfo();
+  AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
 
   LLVM_DEBUG(dbgs() << "Running SILoadStoreOptimizer\n");
 
@@ -2580,25 +2507,4 @@ bool SILoadStoreOptimizer::run(MachineFunction &MF) {
   }
 
   return Modified;
-}
-
-PreservedAnalyses
-SILoadStoreOptimizerPass::run(MachineFunction &MF,
-                              MachineFunctionAnalysisManager &MFAM) {
-  MFPropsModifier _(*this, MF);
-
-  if (MF.getFunction().hasOptNone())
-    return PreservedAnalyses::all();
-
-  auto &FAM = MFAM.getResult<FunctionAnalysisManagerMachineFunctionProxy>(MF)
-                  .getManager();
-  AAResults &AA = FAM.getResult<AAManager>(MF.getFunction());
-
-  bool Changed = SILoadStoreOptimizer(&AA).run(MF);
-  if (!Changed)
-    return PreservedAnalyses::all();
-
-  PreservedAnalyses PA = getMachineFunctionPassPreservedAnalyses();
-  PA.preserveSet<CFGAnalyses>();
-  return PA;
 }

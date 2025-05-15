@@ -32,9 +32,9 @@ InsertPosition::InsertPosition(Instruction *InsertBefore)
 InsertPosition::InsertPosition(BasicBlock *InsertAtEnd)
     : InsertAt(InsertAtEnd ? InsertAtEnd->end() : InstListType::iterator()) {}
 
-Instruction::Instruction(Type *ty, unsigned it, AllocInfo AllocInfo,
+Instruction::Instruction(Type *ty, unsigned it, Use *Ops, unsigned NumOps,
                          InsertPosition InsertBefore)
-    : User(ty, Value::InstructionVal + it, AllocInfo) {
+    : User(ty, Value::InstructionVal + it, Ops, NumOps) {
   // When called with an iterator, there must be a block to insert into.
   if (InstListType::iterator InsertIt = InsertBefore; InsertIt.isValid()) {
     BasicBlock *BB = InsertIt.getNodeParent();
@@ -441,10 +441,6 @@ void Instruction::dropPoisonGeneratingFlags() {
     cast<TruncInst>(this)->setHasNoUnsignedWrap(false);
     cast<TruncInst>(this)->setHasNoSignedWrap(false);
     break;
-
-  case Instruction::ICmp:
-    cast<ICmpInst>(this)->setSameSign(false);
-    break;
   }
 
   if (isa<FPMathOperator>(this)) {
@@ -658,10 +654,6 @@ void Instruction::copyIRFlags(const Value *V, bool IncludeWrapFlags) {
   if (auto *NNI = dyn_cast<PossiblyNonNegInst>(V))
     if (isa<PossiblyNonNegInst>(this))
       setNonNeg(NNI->hasNonNeg());
-
-  if (auto *SrcICmp = dyn_cast<ICmpInst>(V))
-    if (auto *DestICmp = dyn_cast<ICmpInst>(this))
-      DestICmp->setSameSign(SrcICmp->hasSameSign());
 }
 
 void Instruction::andIRFlags(const Value *V) {
@@ -703,10 +695,6 @@ void Instruction::andIRFlags(const Value *V) {
   if (auto *NNI = dyn_cast<PossiblyNonNegInst>(V))
     if (isa<PossiblyNonNegInst>(this))
       setNonNeg(hasNonNeg() && NNI->hasNonNeg());
-
-  if (auto *SrcICmp = dyn_cast<ICmpInst>(V))
-    if (auto *DestICmp = dyn_cast<ICmpInst>(this))
-      DestICmp->setSameSign(DestICmp->hasSameSign() && SrcICmp->hasSameSign());
 }
 
 const char *Instruction::getOpcodeName(unsigned OpCode) {
@@ -797,20 +785,10 @@ const char *Instruction::getOpcodeName(unsigned OpCode) {
 /// This must be kept in sync with FunctionComparator::cmpOperations in
 /// lib/Transforms/IPO/MergeFunctions.cpp.
 bool Instruction::hasSameSpecialState(const Instruction *I2,
-                                      bool IgnoreAlignment,
-                                      bool IntersectAttrs) const {
+                                      bool IgnoreAlignment) const {
   auto I1 = this;
   assert(I1->getOpcode() == I2->getOpcode() &&
          "Can not compare special state of different instructions");
-
-  auto CheckAttrsSame = [IntersectAttrs](const CallBase *CB0,
-                                         const CallBase *CB1) {
-    return IntersectAttrs
-               ? CB0->getAttributes()
-                     .intersectWith(CB0->getContext(), CB1->getAttributes())
-                     .has_value()
-               : CB0->getAttributes() == CB1->getAttributes();
-  };
 
   if (const AllocaInst *AI = dyn_cast<AllocaInst>(I1))
     return AI->getAllocatedType() == cast<AllocaInst>(I2)->getAllocatedType() &&
@@ -833,15 +811,15 @@ bool Instruction::hasSameSpecialState(const Instruction *I2,
   if (const CallInst *CI = dyn_cast<CallInst>(I1))
     return CI->isTailCall() == cast<CallInst>(I2)->isTailCall() &&
            CI->getCallingConv() == cast<CallInst>(I2)->getCallingConv() &&
-           CheckAttrsSame(CI, cast<CallInst>(I2)) &&
+           CI->getAttributes() == cast<CallInst>(I2)->getAttributes() &&
            CI->hasIdenticalOperandBundleSchema(*cast<CallInst>(I2));
   if (const InvokeInst *CI = dyn_cast<InvokeInst>(I1))
     return CI->getCallingConv() == cast<InvokeInst>(I2)->getCallingConv() &&
-           CheckAttrsSame(CI, cast<InvokeInst>(I2)) &&
+           CI->getAttributes() == cast<InvokeInst>(I2)->getAttributes() &&
            CI->hasIdenticalOperandBundleSchema(*cast<InvokeInst>(I2));
   if (const CallBrInst *CI = dyn_cast<CallBrInst>(I1))
     return CI->getCallingConv() == cast<CallBrInst>(I2)->getCallingConv() &&
-           CheckAttrsSame(CI, cast<CallBrInst>(I2)) &&
+           CI->getAttributes() == cast<CallBrInst>(I2)->getAttributes() &&
            CI->hasIdenticalOperandBundleSchema(*cast<CallBrInst>(I2));
   if (const InsertValueInst *IVI = dyn_cast<InsertValueInst>(I1))
     return IVI->getIndices() == cast<InsertValueInst>(I2)->getIndices();
@@ -879,16 +857,15 @@ bool Instruction::isIdenticalTo(const Instruction *I) const {
          SubclassOptionalData == I->SubclassOptionalData;
 }
 
-bool Instruction::isIdenticalToWhenDefined(const Instruction *I,
-                                           bool IntersectAttrs) const {
+bool Instruction::isIdenticalToWhenDefined(const Instruction *I) const {
   if (getOpcode() != I->getOpcode() ||
-      getNumOperands() != I->getNumOperands() || getType() != I->getType())
+      getNumOperands() != I->getNumOperands() ||
+      getType() != I->getType())
     return false;
 
   // If both instructions have no operands, they are identical.
   if (getNumOperands() == 0 && I->getNumOperands() == 0)
-    return this->hasSameSpecialState(I, /*IgnoreAlignment=*/false,
-                                     IntersectAttrs);
+    return this->hasSameSpecialState(I);
 
   // We have two instructions of identical opcode and #operands.  Check to see
   // if all operands are the same.
@@ -902,8 +879,7 @@ bool Instruction::isIdenticalToWhenDefined(const Instruction *I,
                       otherPHI->block_begin());
   }
 
-  return this->hasSameSpecialState(I, /*IgnoreAlignment=*/false,
-                                   IntersectAttrs);
+  return this->hasSameSpecialState(I);
 }
 
 // Keep this in sync with FunctionComparator::cmpOperations in
@@ -911,8 +887,7 @@ bool Instruction::isIdenticalToWhenDefined(const Instruction *I,
 bool Instruction::isSameOperationAs(const Instruction *I,
                                     unsigned flags) const {
   bool IgnoreAlignment = flags & CompareIgnoringAlignment;
-  bool UseScalarTypes = flags & CompareUsingScalarTypes;
-  bool IntersectAttrs = flags & CompareUsingIntersectedAttrs;
+  bool UseScalarTypes  = flags & CompareUsingScalarTypes;
 
   if (getOpcode() != I->getOpcode() ||
       getNumOperands() != I->getNumOperands() ||
@@ -930,7 +905,7 @@ bool Instruction::isSameOperationAs(const Instruction *I,
         getOperand(i)->getType() != I->getOperand(i)->getType())
       return false;
 
-  return this->hasSameSpecialState(I, IgnoreAlignment, IntersectAttrs);
+  return this->hasSameSpecialState(I, IgnoreAlignment);
 }
 
 bool Instruction::isUsedOutsideOfBlock(const BasicBlock *BB) const {
@@ -1196,10 +1171,7 @@ Instruction::getNextNonDebugInstruction(bool SkipPseudoOp) const {
 const Instruction *
 Instruction::getPrevNonDebugInstruction(bool SkipPseudoOp) const {
   for (const Instruction *I = getPrevNode(); I; I = I->getPrevNode())
-    if (!isa<DbgInfoIntrinsic>(I) &&
-        !(SkipPseudoOp && isa<PseudoProbeInst>(I)) &&
-        !(isa<IntrinsicInst>(I) &&
-          cast<IntrinsicInst>(I)->getIntrinsicID() == Intrinsic::fake_use))
+    if (!isa<DbgInfoIntrinsic>(I) && !(SkipPseudoOp && isa<PseudoProbeInst>(I)))
       return I;
   return nullptr;
 }

@@ -183,7 +183,7 @@ private:
 
   // Hack to keep track of the inverse of FindCallSeqStart without more crazy
   // DAG crawling.
-  SmallDenseMap<SUnit *, SUnit *, 16> CallSeqEndForStart;
+  DenseMap<SUnit*, SUnit*> CallSeqEndForStart;
 
 public:
   ScheduleDAGRRList(MachineFunction &mf, bool needlatency,

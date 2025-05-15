@@ -25,6 +25,7 @@ namespace llvm {
 
 class BasicBlock;
 class BranchProbabilityInfo;
+class Function;
 class LoopInfo;
 class Module;
 class raw_ostream;

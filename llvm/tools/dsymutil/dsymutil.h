@@ -16,7 +16,6 @@
 #ifndef LLVM_TOOLS_DSYMUTIL_DSYMUTIL_H
 #define LLVM_TOOLS_DSYMUTIL_DSYMUTIL_H
 
-#include "BinaryHolder.h"
 #include "DebugMap.h"
 #include "LinkUtils.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -34,14 +33,14 @@ namespace dsymutil {
 /// The file has to be a MachO object file. Multiple debug maps can be
 /// returned when the file is universal (aka fat) binary.
 ErrorOr<std::vector<std::unique_ptr<DebugMap>>>
-parseDebugMap(BinaryHolder &BinHolder, StringRef InputFile,
-              ArrayRef<std::string> Archs,
+parseDebugMap(llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS,
+              StringRef InputFile, ArrayRef<std::string> Archs,
               ArrayRef<std::string> DSYMSearchPaths, StringRef PrependPath,
               StringRef VariantSuffix, bool Verbose, bool InputIsYAML);
 
 /// Dump the symbol table.
-bool dumpStab(BinaryHolder &BinHolder, StringRef InputFile,
-              ArrayRef<std::string> Archs,
+bool dumpStab(llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS,
+              StringRef InputFile, ArrayRef<std::string> Archs,
               ArrayRef<std::string> DSYMSearchPaths, StringRef PrependPath = "",
               StringRef VariantSuffix = "");
 

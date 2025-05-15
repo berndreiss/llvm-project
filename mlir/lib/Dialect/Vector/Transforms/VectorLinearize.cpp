@@ -232,7 +232,8 @@ struct LinearizeVectorExtractStridedSlice final
     }
     // Perform a shuffle to extract the kD vector.
     rewriter.replaceOpWithNewOp<vector::ShuffleOp>(
-        extractOp, dstType, srcVector, srcVector, indices);
+        extractOp, dstType, srcVector, srcVector,
+        rewriter.getI64ArrayAttr(indices));
     return success();
   }
 
@@ -297,17 +298,20 @@ struct LinearizeVectorShuffle final
     // that needs to be shuffled to the destination vector. If shuffleSliceLen >
     // 1 we need to shuffle the slices (consecutive shuffleSliceLen number of
     // elements) instead of scalars.
-    ArrayRef<int64_t> mask = shuffleOp.getMask();
+    ArrayAttr mask = shuffleOp.getMask();
     int64_t totalSizeOfShuffledElmnts = mask.size() * shuffleSliceLen;
     llvm::SmallVector<int64_t, 2> indices(totalSizeOfShuffledElmnts);
-    for (auto [i, value] : llvm::enumerate(mask)) {
+    for (auto [i, value] :
+         llvm::enumerate(mask.getAsValueRange<IntegerAttr>())) {
+
+      int64_t v = value.getZExtValue();
       std::iota(indices.begin() + shuffleSliceLen * i,
                 indices.begin() + shuffleSliceLen * (i + 1),
-                shuffleSliceLen * value);
+                shuffleSliceLen * v);
     }
 
-    rewriter.replaceOpWithNewOp<vector::ShuffleOp>(shuffleOp, dstType, vec1,
-                                                   vec2, indices);
+    rewriter.replaceOpWithNewOp<vector::ShuffleOp>(
+        shuffleOp, dstType, vec1, vec2, rewriter.getI64ArrayAttr(indices));
     return success();
   }
 
@@ -337,10 +341,6 @@ struct LinearizeVectorExtract final
   matchAndRewrite(vector::ExtractOp extractOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Type dstTy = getTypeConverter()->convertType(extractOp.getType());
-    if (!dstTy)
-      return rewriter.notifyMatchFailure(extractOp,
-                                         "expected n-D vector type.");
-
     if (extractOp.getVector().getType().isScalable() ||
         cast<VectorType>(dstTy).isScalable())
       return rewriter.notifyMatchFailure(extractOp,
@@ -368,7 +368,8 @@ struct LinearizeVectorExtract final
     llvm::SmallVector<int64_t, 2> indices(size);
     std::iota(indices.begin(), indices.end(), linearizedOffset);
     rewriter.replaceOpWithNewOp<vector::ShuffleOp>(
-        extractOp, dstTy, adaptor.getVector(), adaptor.getVector(), indices);
+        extractOp, dstTy, adaptor.getVector(), adaptor.getVector(),
+        rewriter.getI64ArrayAttr(indices));
 
     return success();
   }
@@ -451,7 +452,8 @@ struct LinearizeVectorInsert final
                                            // [offset+srcNumElements, end)
 
     rewriter.replaceOpWithNewOp<vector::ShuffleOp>(
-        insertOp, dstTy, adaptor.getDest(), adaptor.getSource(), indices);
+        insertOp, dstTy, adaptor.getDest(), adaptor.getSource(),
+        rewriter.getI64ArrayAttr(indices));
 
     return success();
   }
@@ -500,7 +502,7 @@ void mlir::vector::populateVectorLinearizeTypeConversionsAndLegality(
 }
 
 void mlir::vector::populateVectorLinearizeShuffleLikeOpsPatterns(
-    const TypeConverter &typeConverter, RewritePatternSet &patterns,
+    TypeConverter &typeConverter, RewritePatternSet &patterns,
     ConversionTarget &target, unsigned int targetBitWidth) {
   target.addDynamicallyLegalOp<vector::ShuffleOp>(
       [=](vector::ShuffleOp shuffleOp) -> bool {

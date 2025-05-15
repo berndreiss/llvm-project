@@ -99,8 +99,9 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
     assert(c.max_load_factor() == 1);
   };
 
+  auto in = wrap_input<Iter, Sent>(input);
+
   { // (range)
-    auto in = wrap_input<Iter, Sent>(input);
     Container<K, V> c(std::from_range, in);
 
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
@@ -109,7 +110,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n)
-    auto in = wrap_input<Iter, Sent>(input);
     Container<K, V> c(std::from_range, in, 123);
 
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
@@ -118,7 +118,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n, hasher)
-    auto in = wrap_input<Iter, Sent>(input);
     Container<K, V, Hash> c(std::from_range, in, 123, Hash());
 
     assert(c.hash_function() == Hash());
@@ -128,7 +127,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n, hasher, key_equal)
-    auto in = wrap_input<Iter, Sent>(input);
     Container<K, V, Hash, Equal> c(std::from_range, in, 123, Hash(), Equal());
 
     assert(c.hash_function() == Hash());
@@ -139,7 +137,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n, hasher, key_equal, allocator)
-    auto in = wrap_input<Iter, Sent>(input);
     Alloc alloc;
     Container<K, V, Hash, Equal, Alloc> c(std::from_range, in, 123, Hash(), Equal(), alloc);
 
@@ -152,7 +149,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n, allocator)
-    auto in = wrap_input<Iter, Sent>(input);
     Alloc alloc;
     Container<K, V, DefaultHash, DefaultEqual, Alloc> c(std::from_range, in, 123, alloc);
 
@@ -163,7 +159,6 @@ void test_unordered_map_with_input(std::vector<ValueType>&& input) {
   }
 
   { // (range, n, hasher, allocator)
-    auto in = wrap_input<Iter, Sent>(input);
     Alloc alloc;
     Container<K, V, Hash, DefaultEqual, Alloc> c(std::from_range, in, 123, Hash(), alloc);
 
@@ -302,8 +297,11 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
     assert(c.max_load_factor() == 1);
   };
 
+  auto b = Iter(input.data());
+  auto e = Iter(input.data() + input.size());
+  std::ranges::subrange in(std::move(b), Sent(std::move(e)));
+
   { // (range)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Container<T> c(std::from_range, in);
 
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
@@ -312,7 +310,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Container<T> c(std::from_range, in, 123);
 
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
@@ -321,7 +318,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n, hasher)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Container<T, Hash> c(std::from_range, in, 123, Hash());
 
     assert(c.hash_function() == Hash());
@@ -331,7 +327,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n, hasher, key_equal)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Container<T, Hash, Equal> c(std::from_range, in, 123, Hash(), Equal());
 
     assert(c.hash_function() == Hash());
@@ -342,7 +337,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n, hasher, key_equal, allocator)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Alloc alloc;
     Container<T, Hash, Equal, Alloc> c(std::from_range, in, 123, Hash(), Equal(), alloc);
 
@@ -355,7 +349,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n, allocator)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Alloc alloc;
     Container<T, DefaultHash, DefaultEqual, Alloc> c(std::from_range, in, 123, alloc);
 
@@ -366,7 +359,6 @@ void test_unordered_set_with_input(std::vector<T>&& input) {
   }
 
   { // (range, n, hasher, allocator)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Alloc alloc;
     Container<T, Hash, DefaultEqual, Alloc> c(std::from_range, in, 123, Hash(), alloc);
 

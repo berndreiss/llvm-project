@@ -19,8 +19,7 @@ Expected<std::unique_ptr<EPCDynamicLibrarySearchGenerator>>
 EPCDynamicLibrarySearchGenerator::Load(
     ExecutionSession &ES, const char *LibraryPath, SymbolPredicate Allow,
     AddAbsoluteSymbolsFn AddAbsoluteSymbols) {
-  auto Handle =
-      ES.getExecutorProcessControl().getDylibMgr().loadDylib(LibraryPath);
+  auto Handle = ES.getExecutorProcessControl().loadDylib(LibraryPath);
   if (!Handle)
     return Handle.takeError();
 
@@ -49,11 +48,10 @@ Error EPCDynamicLibrarySearchGenerator::tryToGenerate(
     LookupSymbols.add(KV.first, SymbolLookupFlags::WeaklyReferencedSymbol);
   }
 
-  DylibManager::LookupRequest Request(H, LookupSymbols);
+  ExecutorProcessControl::LookupRequest Request(H, LookupSymbols);
   // Copy-capture LookupSymbols, since LookupRequest keeps a reference.
-  EPC.getDylibMgr().lookupSymbolsAsync(Request, [this, &JD, LS = std::move(LS),
-                                                 LookupSymbols](
-                                                    auto Result) mutable {
+  EPC.lookupSymbolsAsync(Request, [this, &JD, LS = std::move(LS),
+                                   LookupSymbols](auto Result) mutable {
     if (!Result) {
       LLVM_DEBUG({
         dbgs() << "EPCDynamicLibrarySearchGenerator lookup failed due to error";

@@ -40,8 +40,7 @@ BreakpointResolverSP BreakpointResolverAddress::CreateFromStructuredData(
   success = options_dict.GetValueForKeyAsInteger(
       GetKey(OptionNames::AddressOffset), addr_offset);
   if (!success) {
-    error = Status::FromErrorString(
-        "BRFL::CFSD: Couldn't find address offset entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find address offset entry.");
     return nullptr;
   }
   Address address(addr_offset);
@@ -51,8 +50,7 @@ BreakpointResolverSP BreakpointResolverAddress::CreateFromStructuredData(
     success = options_dict.GetValueForKeyAsString(
         GetKey(OptionNames::ModuleName), module_name);
     if (!success) {
-      error = Status::FromErrorString(
-          "BRA::CFSD: Couldn't read module name entry.");
+      error.SetErrorString("BRA::CFSD: Couldn't read module name entry.");
       return nullptr;
     }
     module_filespec.SetFile(module_name, FileSpec::Style::native);

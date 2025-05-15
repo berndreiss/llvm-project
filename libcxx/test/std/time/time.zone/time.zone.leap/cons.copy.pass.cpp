@@ -21,10 +21,9 @@
 //   ...
 // };
 
-#include <cassert>
 #include <chrono>
 #include <concepts>
-#include <type_traits>
+#include <cassert>
 
 #include "test_chrono_leap_second.h"
 

@@ -21,12 +21,12 @@
 namespace lldb_private {
 
 bool SaveMiniDump(const lldb::ProcessSP &process_sp,
-                  SaveCoreOptions &core_options, lldb_private::Status &error) {
+                  const SaveCoreOptions &core_options,
+                  lldb_private::Status &error) {
   if (!process_sp)
     return false;
 #ifdef _WIN32
-  std::optional<FileSpec> outfileSpec = core_options.GetOutputFile();
-  const auto &outfile = outfileSpec.value();
+  const auto &outfile = core_options.GetOutputFile().value();
   HANDLE process_handle = ::OpenProcess(
       PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_sp->GetID());
   const std::string file_name = outfile.GetPath();
@@ -36,7 +36,7 @@ bool SaveMiniDump(const lldb::ProcessSP &process_sp,
   const llvm::UTF8 *error_ptr = nullptr;
   if (!llvm::ConvertUTF8toWide(sizeof(wchar_t), file_name, result_ptr,
                                error_ptr)) {
-    error = Status::FromErrorString("cannot convert file name");
+    error.SetErrorString("cannot convert file name");
     return false;
   }
   HANDLE file_handle =
@@ -48,7 +48,7 @@ bool SaveMiniDump(const lldb::ProcessSP &process_sp,
   ::CloseHandle(file_handle);
   ::CloseHandle(process_handle);
   if (!result) {
-    error = Status(::GetLastError(), lldb::eErrorTypeWin32);
+    error.SetError(::GetLastError(), lldb::eErrorTypeWin32);
     return false;
   }
   return true;

@@ -508,10 +508,13 @@ public:
       // Sort contents.
       llvm::sort(H->second);
 
-      // Record this header and its contents if we haven't seen it before.
-      auto [KnownH, Inserted] = AllHeaderContents.insert(*H);
-      if (Inserted)
+      // Check whether we've seen this header before.
+      auto KnownH = AllHeaderContents.find(H->first);
+      if (KnownH == AllHeaderContents.end()) {
+        // We haven't seen this header before; record its contents.
+        AllHeaderContents.insert(*H);
         continue;
+      }
 
       // If the header contents are the same, we're done.
       if (H->second == KnownH->second)
@@ -621,6 +624,7 @@ public:
     std::string Name;
     llvm::raw_string_ostream OS(Name);
     ND->printQualifiedName(OS);
+    OS.flush();
     if (Name.empty())
       return true;
 

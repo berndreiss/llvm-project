@@ -175,7 +175,6 @@ static void handleLLVMFatalError(void *, const char *Message, bool) {
 extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
                                                         char ***argv) {
   EnableDebugBuffering = true;
-  StringRef ExecName = *argv[0];
 
   // Make sure we print the summary and the current unit when LLVM errors out.
   install_fatal_error_handler(handleLLVMFatalError, nullptr);
@@ -189,16 +188,17 @@ extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
   // Parse input options
   //
 
-  handleExecNameEncodedOptimizerOpts(ExecName);
+  handleExecNameEncodedOptimizerOpts(*argv[0]);
   parseFuzzerCLOpts(*argc, *argv);
 
   // Create TargetMachine
   //
+
   if (TargetTripleStr.empty()) {
-    errs() << ExecName << ": -mtriple must be specified\n";
+    errs() << *argv[0] << ": -mtriple must be specified\n";
     exit(1);
   }
-  ExitOnError ExitOnErr(std::string(ExecName) + ": error:");
+  ExitOnError ExitOnErr(std::string(*argv[0]) + ": error:");
   TM = ExitOnErr(codegen::createTargetMachineForTriple(
       Triple::normalize(TargetTripleStr)));
 
@@ -206,14 +206,14 @@ extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
   //
 
   if (PassPipeline.empty()) {
-    errs() << ExecName << ": at least one pass should be specified\n";
+    errs() << *argv[0] << ": at least one pass should be specified\n";
     exit(1);
   }
 
   PassBuilder PB(TM.get());
   ModulePassManager MPM;
   if (auto Err = PB.parsePassPipeline(MPM, PassPipeline)) {
-    errs() << ExecName << ": " << toString(std::move(Err)) << "\n";
+    errs() << *argv[0] << ": " << toString(std::move(Err)) << "\n";
     exit(1);
   }
 

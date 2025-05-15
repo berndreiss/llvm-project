@@ -21,7 +21,8 @@
  */
 
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+
+#include "../clcmacro.h"
 
 _CLC_OVERLOAD _CLC_DEF float degrees(float radians) {
   // 180/pi = ~57.29577951308232087685 or 0x1.ca5dc1a63c1f8p+5 or 0x1.ca5dc2p+5F

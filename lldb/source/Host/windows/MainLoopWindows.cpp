@@ -65,19 +65,18 @@ MainLoopWindows::ReadHandleUP
 MainLoopWindows::RegisterReadObject(const IOObjectSP &object_sp,
                                     const Callback &callback, Status &error) {
   if (!object_sp || !object_sp->IsValid()) {
-    error = Status::FromErrorString("IO object is not valid.");
+    error.SetErrorString("IO object is not valid.");
     return nullptr;
   }
   if (object_sp->GetFdType() != IOObject::eFDTypeSocket) {
-    error = Status::FromErrorString(
+    error.SetErrorString(
         "MainLoopWindows: non-socket types unsupported on Windows");
     return nullptr;
   }
 
   WSAEVENT event = WSACreateEvent();
   if (event == WSA_INVALID_EVENT) {
-    error =
-        Status::FromErrorStringWithFormat("Cannot create monitoring event.");
+    error.SetErrorStringWithFormat("Cannot create monitoring event.");
     return nullptr;
   }
 
@@ -87,9 +86,8 @@ MainLoopWindows::RegisterReadObject(const IOObjectSP &object_sp,
           .second;
   if (!inserted) {
     WSACloseEvent(event);
-    error = Status::FromErrorStringWithFormat(
-        "File descriptor %d already monitored.",
-        object_sp->GetWaitableHandle());
+    error.SetErrorStringWithFormat("File descriptor %d already monitored.",
+                                   object_sp->GetWaitableHandle());
     return nullptr;
   }
 
@@ -116,14 +114,15 @@ Status MainLoopWindows::Run() {
 
   Status error;
 
-  while (!m_terminate_request) {
+  // run until termination or until we run out of things to listen to
+  while (!m_terminate_request && !m_read_fds.empty()) {
+
     llvm::Expected<size_t> signaled_event = Poll();
     if (!signaled_event)
-      return Status::FromError(signaled_event.takeError());
+      return Status(signaled_event.takeError());
 
     if (*signaled_event < m_read_fds.size()) {
       auto &KV = *std::next(m_read_fds.begin(), *signaled_event);
-      WSAResetEvent(KV.second.event);
       ProcessReadObject(KV.first);
     } else {
       assert(*signaled_event == m_read_fds.size());

@@ -517,8 +517,7 @@ void Disassembler::PrintInstructions(Debugger &debugger, const ArchSpec &arch,
             line_highlight = "**";
           }
           source_manager.DisplaySourceLinesWithLineNumbers(
-              std::make_shared<SupportFile>(ln.file), ln.line, ln.column, 0, 0,
-              line_highlight, &strm);
+              ln.file, ln.line, ln.column, 0, 0, line_highlight, &strm);
         }
         if (source_lines_to_display.print_source_context_end_eol)
           strm.EOL();

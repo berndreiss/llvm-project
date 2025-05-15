@@ -12,7 +12,6 @@ static_library("POSIX") {
     "//lldb/source/Plugins/Platform/gdb-server",
     "//lldb/source/Plugins/TypeSystem/Clang",
     "//lldb/source/Target",
-    "//lldb/source/ValueObject",
   ]
 
   # Reaches into Plugins/TypeSystem/Clang.

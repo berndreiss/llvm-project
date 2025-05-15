@@ -18,10 +18,8 @@ TEST(Support, getProcFile_Pid) {
   ASSERT_TRUE(*BufferOrError);
 }
 
-#ifdef LLVM_ENABLE_THREADING
 TEST(Support, getProcFile_Tid) {
   auto BufferOrError = getProcFile(getpid(), llvm::get_threadid(), "comm");
   ASSERT_TRUE(BufferOrError);
   ASSERT_TRUE(*BufferOrError);
 }
-#endif /*ifdef LLVM_ENABLE_THREADING */

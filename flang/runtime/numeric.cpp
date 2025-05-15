@@ -95,22 +95,20 @@ template <typename T> inline RT_API_ATTRS T Scale(T x, std::int64_t p) {
 }
 
 // SELECTED_INT_KIND (16.9.169)
-template <typename X, typename M>
-inline RT_API_ATTRS CppTypeFor<TypeCategory::Integer, 4> SelectedIntKind(
-    X x, M mask) {
-#if !defined __SIZEOF_INT128__ || defined FLANG_RUNTIME_NO_INTEGER_16
-  mask &= ~(1 << 16);
-#endif
-  if (x <= 2 && (mask & (1 << 1))) {
+template <typename T>
+inline RT_API_ATTRS CppTypeFor<TypeCategory::Integer, 4> SelectedIntKind(T x) {
+  if (x <= 2) {
     return 1;
-  } else if (x <= 4 && (mask & (1 << 2))) {
+  } else if (x <= 4) {
     return 2;
-  } else if (x <= 9 && (mask & (1 << 4))) {
+  } else if (x <= 9) {
     return 4;
-  } else if (x <= 18 && (mask & (1 << 8))) {
+  } else if (x <= 18) {
     return 8;
-  } else if (x <= 38 && (mask & (1 << 16))) {
+#ifdef __SIZEOF_INT128__
+  } else if (x <= 38) {
     return 16;
+#endif
   }
   return -1;
 }
@@ -132,53 +130,47 @@ inline RT_API_ATTRS CppTypeFor<TypeCategory::Integer, 4> SelectedLogicalKind(
 }
 
 // SELECTED_REAL_KIND (16.9.170)
-template <typename P, typename R, typename D, typename M>
+template <typename P, typename R, typename D>
 inline RT_API_ATTRS CppTypeFor<TypeCategory::Integer, 4> SelectedRealKind(
-    P p, R r, D d, M mask) {
+    P p, R r, D d) {
   if (d != 2) {
     return -5;
   }
-#ifdef FLANG_RUNTIME_NO_REAL_2
-  mask &= ~(1 << 2);
-#endif
-#ifdef FLANG_RUNTIME_NO_REAL_3
-  mask &= ~(1 << 3);
-#endif
-#if !HAS_FLOAT80 || defined FLANG_RUNTIME_NO_REAL_10
-  mask &= ~(1 << 10);
-#endif
-#if LDBL_MANT_DIG < 64 || defined FLANG_RUNTIME_NO_REAL_16
-  mask &= ~(1 << 16);
-#endif
 
   int error{0};
   int kind{0};
-  if (p <= 3 && (mask & (1 << 2))) {
+  if (p <= 3) {
     kind = 2;
-  } else if (p <= 6 && (mask & (1 << 4))) {
+  } else if (p <= 6) {
     kind = 4;
-  } else if (p <= 15 && (mask & (1 << 8))) {
+  } else if (p <= 15) {
     kind = 8;
-  } else if (p <= 18 && (mask & (1 << 10))) {
+#if LDBL_MANT_DIG == 64
+  } else if (p <= 18) {
     kind = 10;
-  } else if (p <= 33 && (mask & (1 << 16))) {
+  } else if (p <= 33) {
     kind = 16;
+#elif LDBL_MANT_DIG == 113
+  } else if (p <= 33) {
+    kind = 16;
+#endif
   } else {
     error -= 1;
   }
 
-  if (r <= 4 && (mask & (1 << 2))) {
+  if (r <= 4) {
     kind = kind < 2 ? 2 : kind;
-  } else if (r <= 37 && p != 3 && (mask & (1 << 3))) {
-    kind = kind < 3 ? 3 : kind;
-  } else if (r <= 37 && (mask & (1 << 4))) {
-    kind = kind < 4 ? 4 : kind;
-  } else if (r <= 307 && (mask & (1 << 8))) {
+  } else if (r <= 37) {
+    kind = kind < 3 ? (p == 3 ? 4 : 3) : kind;
+  } else if (r <= 307) {
     kind = kind < 8 ? 8 : kind;
-  } else if (r <= 4931 && (mask & (1 << 10))) {
+#if LDBL_MANT_DIG == 64
+  } else if (r <= 4931) {
     kind = kind < 10 ? 10 : kind;
-  } else if (r <= 4931 && (mask & (1 << 16))) {
+#elif LDBL_MANT_DIG == 113
+  } else if (r <= 4931) {
     kind = kind < 16 ? 16 : kind;
+#endif
   } else {
     error -= 2;
   }
@@ -276,7 +268,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Ceiling8_16)(
   return Ceiling<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Ceiling10_1)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Ceiling<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -299,7 +291,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Ceiling10_16)(
   return Ceiling<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#elif HAS_LDBL128
+#elif LDBL_MANT_DIG == 113
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Ceiling16_1)(
     CppTypeFor<TypeCategory::Real, 16> x) {
   return Ceiling<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -332,13 +324,13 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(ErfcScaled8)(
     CppTypeFor<TypeCategory::Real, 8> x) {
   return ErfcScaled(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(ErfcScaled10)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return ErfcScaled(x);
 }
 #endif
-#if HAS_LDBL128
+#if LDBL_MANT_DIG == 113
 CppTypeFor<TypeCategory::Real, 16> RTDEF(ErfcScaled16)(
     CppTypeFor<TypeCategory::Real, 16> x) {
   return ErfcScaled(x);
@@ -361,7 +353,7 @@ CppTypeFor<TypeCategory::Integer, 8> RTDEF(Exponent8_8)(
     CppTypeFor<TypeCategory::Real, 8> x) {
   return Exponent<CppTypeFor<TypeCategory::Integer, 8>>(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Integer, 4> RTDEF(Exponent10_4)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Exponent<CppTypeFor<TypeCategory::Integer, 4>>(x);
@@ -416,7 +408,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Floor8_16)(
   return Floor<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Floor10_1)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Floor<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -439,7 +431,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Floor10_16)(
   return Floor<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#elif HAS_LDBL128
+#elif LDBL_MANT_DIG == 113
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Floor16_1)(
     CppTypeFor<TypeCategory::Real, 16> x) {
   return Floor<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -472,7 +464,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(Fraction8)(
     CppTypeFor<TypeCategory::Real, 8> x) {
   return Fraction(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(Fraction10)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Fraction(x);
@@ -485,11 +477,11 @@ bool RTDEF(IsFinite4)(CppTypeFor<TypeCategory::Real, 4> x) {
 bool RTDEF(IsFinite8)(CppTypeFor<TypeCategory::Real, 8> x) {
   return std::isfinite(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 bool RTDEF(IsFinite10)(CppTypeFor<TypeCategory::Real, 10> x) {
   return std::isfinite(x);
 }
-#elif HAS_LDBL128
+#elif LDBL_MANT_DIG == 113
 bool RTDEF(IsFinite16)(CppTypeFor<TypeCategory::Real, 16> x) {
   return std::isfinite(x);
 }
@@ -501,11 +493,11 @@ bool RTDEF(IsNaN4)(CppTypeFor<TypeCategory::Real, 4> x) {
 bool RTDEF(IsNaN8)(CppTypeFor<TypeCategory::Real, 8> x) {
   return std::isnan(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 bool RTDEF(IsNaN10)(CppTypeFor<TypeCategory::Real, 10> x) {
   return std::isnan(x);
 }
-#elif HAS_LDBL128
+#elif LDBL_MANT_DIG == 113
 bool RTDEF(IsNaN16)(CppTypeFor<TypeCategory::Real, 16> x) {
   return std::isnan(x);
 }
@@ -553,7 +545,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(ModReal8)(
     const char *sourceFile, int sourceLine) {
   return RealMod<false>(x, p, sourceFile, sourceLine);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(ModReal10)(
     CppTypeFor<TypeCategory::Real, 10> x, CppTypeFor<TypeCategory::Real, 10> p,
     const char *sourceFile, int sourceLine) {
@@ -603,7 +595,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(ModuloReal8)(
     const char *sourceFile, int sourceLine) {
   return RealMod<true>(x, p, sourceFile, sourceLine);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(ModuloReal10)(
     CppTypeFor<TypeCategory::Real, 10> x, CppTypeFor<TypeCategory::Real, 10> p,
     const char *sourceFile, int sourceLine) {
@@ -619,7 +611,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(Nearest8)(
     CppTypeFor<TypeCategory::Real, 8> x, bool positive) {
   return Nearest<53>(x, positive);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(Nearest10)(
     CppTypeFor<TypeCategory::Real, 10> x, bool positive) {
   return Nearest<64>(x, positive);
@@ -670,7 +662,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Nint8_16)(
   return Nint<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Nint10_1)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Nint<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -693,7 +685,7 @@ CppTypeFor<TypeCategory::Integer, 16> RTDEF(Nint10_16)(
   return Nint<CppTypeFor<TypeCategory::Integer, 16>>(x);
 }
 #endif
-#elif HAS_LDBL128
+#elif LDBL_MANT_DIG == 113
 CppTypeFor<TypeCategory::Integer, 1> RTDEF(Nint16_1)(
     CppTypeFor<TypeCategory::Real, 16> x) {
   return Nint<CppTypeFor<TypeCategory::Integer, 1>>(x);
@@ -726,7 +718,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(RRSpacing8)(
     CppTypeFor<TypeCategory::Real, 8> x) {
   return RRSpacing<53>(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(RRSpacing10)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return RRSpacing<64>(x);
@@ -741,7 +733,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(SetExponent8)(
     CppTypeFor<TypeCategory::Real, 8> x, std::int64_t p) {
   return SetExponent(x, p);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(SetExponent10)(
     CppTypeFor<TypeCategory::Real, 10> x, std::int64_t p) {
   return SetExponent(x, p);
@@ -756,7 +748,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(Scale8)(
     CppTypeFor<TypeCategory::Real, 8> x, std::int64_t p) {
   return Scale(x, p);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(Scale10)(
     CppTypeFor<TypeCategory::Real, 10> x, std::int64_t p) {
   return Scale(x, p);
@@ -784,12 +776,6 @@ CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedCharKind)(
 // SELECTED_INT_KIND
 CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedIntKind)(
     const char *source, int line, void *x, int xKind) {
-  return RTNAME(SelectedIntKindMasked)(source, line, x, xKind,
-      (1 << 1) | (1 << 2) | (1 << 4) | (1 << 8) | (1 << 16));
-}
-
-CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedIntKindMasked)(
-    const char *source, int line, void *x, int xKind, int mask) {
 #ifdef __SIZEOF_INT128__
   CppTypeFor<TypeCategory::Integer, 16> r =
       GetIntArgValue<CppTypeFor<TypeCategory::Integer, 16>>(
@@ -798,7 +784,7 @@ CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedIntKindMasked)(
   std::int64_t r = GetIntArgValue<std::int64_t>(
       source, line, x, xKind, /*defaultValue*/ 0, /*resKind*/ 8);
 #endif
-  return SelectedIntKind(r, mask);
+  return SelectedIntKind(r);
 }
 
 // SELECTED_LOGICAL_KIND
@@ -819,14 +805,6 @@ CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedLogicalKind)(
 CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedRealKind)(const char *source,
     int line, void *precision, int pKind, void *range, int rKind, void *radix,
     int dKind) {
-  return RTNAME(SelectedRealKindMasked)(source, line, precision, pKind, range,
-      rKind, radix, dKind,
-      (1 << 2) | (1 << 3) | (1 << 4) | (1 << 8) | (1 << 10) | (1 << 16));
-}
-
-CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedRealKindMasked)(
-    const char *source, int line, void *precision, int pKind, void *range,
-    int rKind, void *radix, int dKind, int mask) {
 #ifdef __SIZEOF_INT128__
   CppTypeFor<TypeCategory::Integer, 16> p =
       GetIntArgValue<CppTypeFor<TypeCategory::Integer, 16>>(
@@ -845,29 +823,9 @@ CppTypeFor<TypeCategory::Integer, 4> RTDEF(SelectedRealKindMasked)(
   std::int64_t d = GetIntArgValue<std::int64_t>(
       source, line, radix, dKind, /*defaultValue*/ 2, /*resKind*/ 8);
 #endif
-  return SelectedRealKind(p, r, d, mask);
+  return SelectedRealKind(p, r, d);
 }
 
-#if HAS_FP16
-CppTypeFor<TypeCategory::Real, 2> RTDEF(Spacing2)(
-    CppTypeFor<TypeCategory::Real, 2> x) {
-  return Spacing<11>(x);
-}
-#endif
-CppTypeFor<TypeCategory::Real, 4> RTDEF(Spacing2By4)(
-    CppTypeFor<TypeCategory::Real, 4> x) {
-  return Spacing<11>(x);
-}
-#if HAS_BF16
-CppTypeFor<TypeCategory::Real, 3> RTDEF(Spacing3)(
-    CppTypeFor<TypeCategory::Real, 3> x) {
-  return Spacing<8>(x);
-}
-#endif
-CppTypeFor<TypeCategory::Real, 4> RTDEF(Spacing3By4)(
-    CppTypeFor<TypeCategory::Real, 4> x) {
-  return Spacing<8>(x);
-}
 CppTypeFor<TypeCategory::Real, 4> RTDEF(Spacing4)(
     CppTypeFor<TypeCategory::Real, 4> x) {
   return Spacing<24>(x);
@@ -876,7 +834,7 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(Spacing8)(
     CppTypeFor<TypeCategory::Real, 8> x) {
   return Spacing<53>(x);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(Spacing10)(
     CppTypeFor<TypeCategory::Real, 10> x) {
   return Spacing<64>(x);
@@ -893,14 +851,14 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(FPow8i)(
     CppTypeFor<TypeCategory::Integer, 4> e) {
   return FPowI(b, e);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(FPow10i)(
     CppTypeFor<TypeCategory::Real, 10> b,
     CppTypeFor<TypeCategory::Integer, 4> e) {
   return FPowI(b, e);
 }
 #endif
-#if HAS_LDBL128 || HAS_FLOAT128
+#if LDBL_MANT_DIG == 113 || HAS_FLOAT128
 CppTypeFor<TypeCategory::Real, 16> RTDEF(FPow16i)(
     CppTypeFor<TypeCategory::Real, 16> b,
     CppTypeFor<TypeCategory::Integer, 4> e) {
@@ -918,14 +876,14 @@ CppTypeFor<TypeCategory::Real, 8> RTDEF(FPow8k)(
     CppTypeFor<TypeCategory::Integer, 8> e) {
   return FPowI(b, e);
 }
-#if HAS_FLOAT80
+#if LDBL_MANT_DIG == 64
 CppTypeFor<TypeCategory::Real, 10> RTDEF(FPow10k)(
     CppTypeFor<TypeCategory::Real, 10> b,
     CppTypeFor<TypeCategory::Integer, 8> e) {
   return FPowI(b, e);
 }
 #endif
-#if HAS_LDBL128 || HAS_FLOAT128
+#if LDBL_MANT_DIG == 113 || HAS_FLOAT128
 CppTypeFor<TypeCategory::Real, 16> RTDEF(FPow16k)(
     CppTypeFor<TypeCategory::Real, 16> b,
     CppTypeFor<TypeCategory::Integer, 8> e) {

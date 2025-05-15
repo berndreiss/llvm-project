@@ -56,6 +56,8 @@ void testNonPODCopyConstructor() {
 namespace ConstructorVirtualCalls {
   class A {
   public:
+    int *out1, *out2, *out3;
+
     virtual int get() { return 1; }
 
     A(int *out1) {

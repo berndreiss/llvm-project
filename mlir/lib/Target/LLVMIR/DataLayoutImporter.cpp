@@ -197,9 +197,9 @@ DataLayoutImporter::tryToEmplaceStackAlignmentEntry(StringRef token) {
   if (failed(alignment))
     return failure();
 
-  // Stack alignment shouldn't be zero.
+  // Only store the stack alignment if it has a non-default value.
   if (*alignment == 0)
-    return failure();
+    return success();
   OpBuilder builder(context);
   keyEntries.try_emplace(key, DataLayoutEntryAttr::get(
                                   key, builder.getI64IntegerAttr(*alignment)));

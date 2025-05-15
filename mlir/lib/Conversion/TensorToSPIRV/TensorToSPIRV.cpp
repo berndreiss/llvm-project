@@ -35,7 +35,7 @@ namespace {
 class TensorExtractPattern final
     : public OpConversionPattern<tensor::ExtractOp> {
 public:
-  TensorExtractPattern(const TypeConverter &typeConverter, MLIRContext *context,
+  TensorExtractPattern(TypeConverter &typeConverter, MLIRContext *context,
                        int64_t threshold, PatternBenefit benefit = 1)
       : OpConversionPattern(typeConverter, context, benefit),
         byteCountThreshold(threshold) {}
@@ -45,8 +45,6 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     auto tensorType = cast<RankedTensorType>(extractOp.getTensor().getType());
 
-    if (!isa<spirv::ScalarType>(tensorType.getElementType()))
-      return rewriter.notifyMatchFailure(extractOp, "unsupported type");
     if (!tensorType.hasStaticShape())
       return rewriter.notifyMatchFailure(extractOp, "non-static tensor");
 
@@ -103,9 +101,9 @@ private:
 // Pattern population
 //===----------------------------------------------------------------------===//
 
-void mlir::populateTensorToSPIRVPatterns(
-    const SPIRVTypeConverter &typeConverter, int64_t byteCountThreshold,
-    RewritePatternSet &patterns) {
+void mlir::populateTensorToSPIRVPatterns(SPIRVTypeConverter &typeConverter,
+                                         int64_t byteCountThreshold,
+                                         RewritePatternSet &patterns) {
   patterns.add<TensorExtractPattern>(typeConverter, patterns.getContext(),
                                      byteCountThreshold);
 }

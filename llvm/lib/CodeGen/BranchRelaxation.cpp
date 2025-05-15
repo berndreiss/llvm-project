@@ -72,8 +72,8 @@ class BranchRelaxation : public MachineFunctionPass {
       if (Alignment <= ParentAlign)
         return alignTo(PO, Alignment);
 
-      // The alignment of this MBB is larger than the function's alignment, so
-      // we can't tell whether or not it will insert nops. Assume that it will.
+      // The alignment of this MBB is larger than the function's alignment, so we
+      // can't tell whether or not it will insert nops. Assume that it will.
       return alignTo(PO, Alignment) + Alignment.value() - ParentAlign.value();
     }
   };
@@ -103,10 +103,7 @@ class BranchRelaxation : public MachineFunctionPass {
   MachineBasicBlock *splitBlockBeforeInstr(MachineInstr &MI,
                                            MachineBasicBlock *DestBB);
   void adjustBlockOffsets(MachineBasicBlock &Start);
-  void adjustBlockOffsets(MachineBasicBlock &Start,
-                          MachineFunction::iterator End);
-  bool isBlockInRange(const MachineInstr &MI,
-                      const MachineBasicBlock &BB) const;
+  bool isBlockInRange(const MachineInstr &MI, const MachineBasicBlock &BB) const;
 
   bool fixupConditionalBranch(MachineInstr &MI);
   bool fixupUnconditionalBranch(MachineInstr &MI);
@@ -202,8 +199,7 @@ void BranchRelaxation::scanFunction() {
 }
 
 /// computeBlockSize - Compute the size for MBB.
-uint64_t
-BranchRelaxation::computeBlockSize(const MachineBasicBlock &MBB) const {
+uint64_t BranchRelaxation::computeBlockSize(const MachineBasicBlock &MBB) const {
   uint64_t Size = 0;
   for (const MachineInstr &MI : MBB)
     Size += TII->getInstSizeInBytes(MI);
@@ -231,14 +227,9 @@ unsigned BranchRelaxation::getInstrOffset(const MachineInstr &MI) const {
 }
 
 void BranchRelaxation::adjustBlockOffsets(MachineBasicBlock &Start) {
-  adjustBlockOffsets(Start, MF->end());
-}
-
-void BranchRelaxation::adjustBlockOffsets(MachineBasicBlock &Start,
-                                          MachineFunction::iterator End) {
   unsigned PrevNum = Start.getNumber();
   for (auto &MBB :
-       make_range(std::next(MachineFunction::iterator(Start)), End)) {
+       make_range(std::next(MachineFunction::iterator(Start)), MF->end())) {
     unsigned Num = MBB.getNumber();
     // Get the offset and known bits at the end of the layout predecessor.
     // Include the alignment of the current block.
@@ -323,8 +314,8 @@ BranchRelaxation::splitBlockBeforeInstr(MachineInstr &MI,
   // block, it may contain a tablejump.
   BlockInfo[NewBB->getNumber()].Size = computeBlockSize(*NewBB);
 
-  // Update the offset of the new block.
-  adjustBlockOffsets(*OrigBB, std::next(NewBB->getIterator()));
+  // All BBOffsets following these blocks must be modified.
+  adjustBlockOffsets(*OrigBB);
 
   // Need to fix live-in lists if we track liveness.
   if (TRI->trackLivenessAfterRegAlloc(*MF))
@@ -337,8 +328,8 @@ BranchRelaxation::splitBlockBeforeInstr(MachineInstr &MI,
 
 /// isBlockInRange - Returns true if the distance between specific MI and
 /// specific BB can fit in MI's displacement field.
-bool BranchRelaxation::isBlockInRange(const MachineInstr &MI,
-                                      const MachineBasicBlock &DestBB) const {
+bool BranchRelaxation::isBlockInRange(
+  const MachineInstr &MI, const MachineBasicBlock &DestBB) const {
   int64_t BrOffset = getInstrOffset(MI);
   int64_t DestOffset = BlockInfo[DestBB.getNumber()].Offset;
 
@@ -378,7 +369,7 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
   };
   auto insertBranch = [&](MachineBasicBlock *MBB, MachineBasicBlock *TBB,
                           MachineBasicBlock *FBB,
-                          SmallVectorImpl<MachineOperand> &Cond) {
+                          SmallVectorImpl<MachineOperand>& Cond) {
     unsigned &BBSize = BlockInfo[MBB->getNumber()].Size;
     int NewBrSize = 0;
     TII->insertBranch(*MBB, TBB, FBB, Cond, DL, &NewBrSize);
@@ -391,18 +382,13 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
     BBSize -= RemovedSize;
   };
 
-  // Populate the block offset and live-ins for a new basic block.
-  auto updateOffsetAndLiveness = [&](MachineBasicBlock *NewBB) {
-    assert(NewBB != nullptr && "can't populate offset for nullptr");
-
-    // Keep the block offsets approximately up to date. While they will be
-    // slight underestimates, we will update them appropriately in the next
-    // scan through the function.
-    adjustBlockOffsets(*std::prev(NewBB->getIterator()),
-                       std::next(NewBB->getIterator()));
+  auto finalizeBlockChanges = [&](MachineBasicBlock *MBB,
+                                  MachineBasicBlock *NewBB) {
+    // Keep the block offsets up to date.
+    adjustBlockOffsets(*MBB);
 
     // Need to fix live-in lists if we track liveness.
-    if (TRI->trackLivenessAfterRegAlloc(*MF))
+    if (NewBB && TRI->trackLivenessAfterRegAlloc(*MF))
       computeAndAddLiveIns(LiveRegs, *NewBB);
   };
 
@@ -442,7 +428,7 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
       insertBranch(MBB, NewBB, FBB, Cond);
 
       TrampolineInsertionPoint = NewBB;
-      updateOffsetAndLiveness(NewBB);
+      finalizeBlockChanges(MBB, NewBB);
       return true;
     }
 
@@ -452,7 +438,6 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
                << ".\n");
     TrampolineInsertionPoint->setIsEndSection(NewBB->isEndSection());
     MF->erase(NewBB);
-    NewBB = nullptr;
   }
 
   // Add an unconditional branch to the destination and invert the branch
@@ -479,6 +464,7 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
 
       removeBranch(MBB);
       insertBranch(MBB, FBB, TBB, Cond);
+      finalizeBlockChanges(MBB, nullptr);
       return true;
     }
     if (FBB) {
@@ -491,11 +477,10 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
       // Do it here since if there's no split, no update is needed.
       MBB->replaceSuccessor(FBB, NewBB);
       NewBB->addSuccessor(FBB);
-      updateOffsetAndLiveness(NewBB);
     }
 
-    // We now have an appropriate fall-through block in place (either naturally
-    // or just created), so we can use the inverted the condition.
+    // We now have an appropriate fall-through block in place (either naturally or
+    // just created), so we can use the inverted the condition.
     MachineBasicBlock &NextBB = *std::next(MachineFunction::iterator(MBB));
 
     LLVM_DEBUG(dbgs() << "  Insert B to " << printMBBReference(*TBB)
@@ -505,6 +490,8 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
     removeBranch(MBB);
     // Insert a new conditional branch and a new unconditional branch.
     insertBranch(MBB, &NextBB, TBB, Cond);
+
+    finalizeBlockChanges(MBB, NewBB);
     return true;
   }
   // Branch cond can't be inverted.
@@ -544,7 +531,7 @@ bool BranchRelaxation::fixupConditionalBranch(MachineInstr &MI) {
   removeBranch(MBB);
   insertBranch(MBB, NewBB, FBB, Cond);
 
-  updateOffsetAndLiveness(NewBB);
+  finalizeBlockChanges(MBB, NewBB);
   return true;
 }
 
@@ -590,8 +577,8 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
   // Create the optional restore block and, initially, place it at the end of
   // function. That block will be placed later if it's used; otherwise, it will
   // be erased.
-  MachineBasicBlock *RestoreBB =
-      createNewBlockAfter(MF->back(), DestBB->getBasicBlock());
+  MachineBasicBlock *RestoreBB = createNewBlockAfter(MF->back(),
+                                                     DestBB->getBasicBlock());
   std::prev(RestoreBB->getIterator())
       ->setIsEndSection(RestoreBB->isEndSection());
   RestoreBB->setIsEndSection(false);
@@ -602,10 +589,8 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
                                 : DestOffset - SrcOffset,
                             RS.get());
 
-  // Update the block size and offset for the BranchBB (which may be newly
-  // created).
   BlockInfo[BranchBB->getNumber()].Size = computeBlockSize(*BranchBB);
-  adjustBlockOffsets(*MBB, std::next(BranchBB->getIterator()));
+  adjustBlockOffsets(*MBB);
 
   // If RestoreBB is required, place it appropriately.
   if (!RestoreBB->empty()) {
@@ -616,8 +601,6 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
       MachineBasicBlock *NewBB = createNewBlockAfter(*TrampolineInsertionPoint);
       TII->insertUnconditionalBranch(*NewBB, DestBB, DebugLoc());
       BlockInfo[NewBB->getNumber()].Size = computeBlockSize(*NewBB);
-      adjustBlockOffsets(*TrampolineInsertionPoint,
-                         std::next(NewBB->getIterator()));
 
       // New trampolines should be inserted after NewBB.
       TrampolineInsertionPoint = NewBB;
@@ -653,8 +636,8 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
       computeAndAddLiveIns(LiveRegs, *RestoreBB);
     // Compute the restore block size.
     BlockInfo[RestoreBB->getNumber()].Size = computeBlockSize(*RestoreBB);
-    // Update the estimated offset for the restore block.
-    adjustBlockOffsets(*PrevBB, DestBB->getIterator());
+    // Update the offset starting from the previous block.
+    adjustBlockOffsets(*PrevBB);
 
     // Fix up section information for RestoreBB and DestBB
     RestoreBB->setSectionID(DestBB->getSectionID());
@@ -734,12 +717,6 @@ bool BranchRelaxation::relaxBranchInstructions() {
       }
     }
   }
-
-  // If we relaxed a branch, we must recompute offsets for *all* basic blocks.
-  // Otherwise, we may underestimate branch distances and fail to relax a branch
-  // that has been pushed out of range.
-  if (Changed)
-    adjustBlockOffsets(MF->front());
 
   return Changed;
 }

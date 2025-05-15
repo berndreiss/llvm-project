@@ -48,7 +48,7 @@ def NVVMOptimizeForTarget : Pass<"llvm-optimize-for-nvvm-target"> {
   let constructor = "::mlir::NVVM::createOptimizeForTargetPass()";
 }
 
-def DIScopeForLLVMFuncOpPass : Pass<"ensure-debug-info-scope-on-llvm-func", "::mlir::ModuleOp"> {
+def DIScopeForLLVMFuncOp : Pass<"ensure-debug-info-scope-on-llvm-func", "::mlir::ModuleOp"> {
   let summary = "Materialize LLVM debug info subprogram attribute on every LLVMFuncOp";
   let description = [{
     Having a debug info subprogram attribute on a function is required for
@@ -60,16 +60,7 @@ def DIScopeForLLVMFuncOpPass : Pass<"ensure-debug-info-scope-on-llvm-func", "::m
     line-by-line or get a backtrace with line numbers.
   }];
 
-  let options = [
-    Option<"emissionKind", "emission-kind", "mlir::LLVM::DIEmissionKind",
-    /*default=*/"mlir::LLVM::DIEmissionKind::LineTablesOnly", "Emission kind to generate debug info.",
-    [{::llvm::cl::values(
-	     clEnumValN(::mlir::LLVM::DIEmissionKind::None, "None", "None"),
-	     clEnumValN(::mlir::LLVM::DIEmissionKind::Full, "Full", "Full"),
-	     clEnumValN(::mlir::LLVM::DIEmissionKind::LineTablesOnly, "LineTablesOnly", "LineTablesOnly (default)"),
-	     clEnumValN(::mlir::LLVM::DIEmissionKind::DebugDirectivesOnly, "DebugDirectivesOnly", "DebugDirectivesOnly")
-	   )}]>,
-  ];
+  let constructor = "mlir::LLVM::createDIScopeForLLVMFuncOpPass()";
 }
 
 #endif // MLIR_DIALECT_LLVMIR_TRANSFORMS_PASSES

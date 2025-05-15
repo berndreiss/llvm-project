@@ -116,8 +116,9 @@ void ExpandModularHeadersPPCallbacks::handleModuleFile(
   if (!MF)
     return;
   // Avoid processing a ModuleFile more than once.
-  if (!VisitedModules.insert(MF).second)
+  if (VisitedModules.count(MF))
     return;
+  VisitedModules.insert(MF);
 
   // Visit all the input files of this module and mark them to record their
   // contents later.

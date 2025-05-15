@@ -12,7 +12,6 @@
 #include "gwp_asan/utilities.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -47,8 +46,7 @@ void *GuardedPoolAllocator::map(size_t Size, const char *Name) const {
   assert((Size % State.PageSize) == 0);
   void *Ptr = mmap(nullptr, Size, PROT_READ | PROT_WRITE,
                    MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  checkWithErrorCode(Ptr != MAP_FAILED,
-                     "Failed to map guarded pool allocator memory", errno);
+  check(Ptr != MAP_FAILED, "Failed to map guarded pool allocator memory");
   MaybeSetMappingName(Ptr, Size, Name);
   return Ptr;
 }
@@ -56,16 +54,15 @@ void *GuardedPoolAllocator::map(size_t Size, const char *Name) const {
 void GuardedPoolAllocator::unmap(void *Ptr, size_t Size) const {
   assert((reinterpret_cast<uintptr_t>(Ptr) % State.PageSize) == 0);
   assert((Size % State.PageSize) == 0);
-  checkWithErrorCode(munmap(Ptr, Size) == 0,
-                     "Failed to unmap guarded pool allocator memory.", errno);
+  check(munmap(Ptr, Size) == 0,
+        "Failed to unmap guarded pool allocator memory.");
 }
 
 void *GuardedPoolAllocator::reserveGuardedPool(size_t Size) {
   assert((Size % State.PageSize) == 0);
   void *Ptr =
       mmap(nullptr, Size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  checkWithErrorCode(Ptr != MAP_FAILED,
-                     "Failed to reserve guarded pool allocator memory", errno);
+  check(Ptr != MAP_FAILED, "Failed to reserve guarded pool allocator memory");
   MaybeSetMappingName(Ptr, Size, kGwpAsanGuardPageName);
   return Ptr;
 }
@@ -78,9 +75,8 @@ void GuardedPoolAllocator::unreserveGuardedPool() {
 void GuardedPoolAllocator::allocateInGuardedPool(void *Ptr, size_t Size) const {
   assert((reinterpret_cast<uintptr_t>(Ptr) % State.PageSize) == 0);
   assert((Size % State.PageSize) == 0);
-  checkWithErrorCode(mprotect(Ptr, Size, PROT_READ | PROT_WRITE) == 0,
-                     "Failed to allocate in guarded pool allocator memory",
-                     errno);
+  check(mprotect(Ptr, Size, PROT_READ | PROT_WRITE) == 0,
+        "Failed to allocate in guarded pool allocator memory");
   MaybeSetMappingName(Ptr, Size, kGwpAsanAliveSlotName);
 }
 
@@ -91,10 +87,9 @@ void GuardedPoolAllocator::deallocateInGuardedPool(void *Ptr,
   // mmap() a PROT_NONE page over the address to release it to the system, if
   // we used mprotect() here the system would count pages in the quarantine
   // against the RSS.
-  checkWithErrorCode(
-      mmap(Ptr, Size, PROT_NONE, MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE, -1,
-           0) != MAP_FAILED,
-      "Failed to deallocate in guarded pool allocator memory", errno);
+  check(mmap(Ptr, Size, PROT_NONE, MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE, -1,
+             0) != MAP_FAILED,
+        "Failed to deallocate in guarded pool allocator memory");
   MaybeSetMappingName(Ptr, Size, kGwpAsanGuardPageName);
 }
 

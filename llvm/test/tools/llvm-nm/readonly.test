@@ -4,11 +4,9 @@
 # CHECK:      r myrodata0_local
 # CHECK-NEXT: r myrodata1_local
 # CHECK-NEXT: r myrodata2_local
-# CHECK-NEXT: r myrodata3_local
 # CHECK-NEXT: R myrodata0_global
 # CHECK-NEXT: R myrodata1_global
 # CHECK-NEXT: R myrodata2_global
-# CHECK-NEXT: R myrodata3_global
 
 !ELF
 FileHeader:
@@ -26,9 +24,6 @@ Sections:
   - Name: myrodata2
     Type: SHT_PROGBITS
     Flags: [ SHF_ALLOC, SHF_MERGE, SHF_STRINGS ]
-  - Name: myrodata3
-    Type: 0x1000
-    Flags: [ SHF_ALLOC ]
 Symbols:
   - Name:    myrodata0_local
     Section: myrodata0
@@ -36,8 +31,6 @@ Symbols:
     Section: myrodata1
   - Name:    myrodata2_local
     Section: myrodata2
-  - Name:    myrodata3_local
-    Section: myrodata3
 
   - Name:    myrodata0_global
     Binding: STB_GLOBAL
@@ -48,6 +41,3 @@ Symbols:
   - Name:    myrodata2_global
     Binding: STB_GLOBAL
     Section: myrodata2
-  - Name:    myrodata3_global
-    Binding: STB_GLOBAL
-    Section: myrodata3

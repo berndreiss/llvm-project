@@ -40,6 +40,9 @@ struct SparcRegisterInfo : public SparcGenRegisterInfo {
                            RegScavenger *RS = nullptr) const override;
 
   Register getFrameRegister(const MachineFunction &MF) const override;
+
+  bool canRealignStack(const MachineFunction &MF) const override;
+
 };
 
 } // end namespace llvm

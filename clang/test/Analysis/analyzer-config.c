@@ -9,6 +9,9 @@
 // CHECK-NEXT: alpha.clone.CloneChecker:ReportNormalClones = true
 // CHECK-NEXT: alpha.cplusplus.STLAlgorithmModeling:AggressiveStdFindModeling = false
 // CHECK-NEXT: alpha.osx.cocoa.DirectIvarAssignment:AnnotatedFunctions = false
+// CHECK-NEXT: alpha.security.MmapWriteExec:MmapProtExec = 0x04
+// CHECK-NEXT: alpha.security.MmapWriteExec:MmapProtRead = 0x01
+// CHECK-NEXT: alpha.security.taint.TaintPropagation:Config = ""
 // CHECK-NEXT: apply-fixits = false
 // CHECK-NEXT: assume-controlled-environment = false
 // CHECK-NEXT: avoid-suppressing-null-argument-paths = false
@@ -110,7 +113,6 @@
 // CHECK-NEXT: optin.cplusplus.VirtualCall:ShowFixIts = false
 // CHECK-NEXT: optin.osx.cocoa.localizability.NonLocalizedStringChecker:AggressiveReport = false
 // CHECK-NEXT: optin.performance.Padding:AllowedPad = 24
-// CHECK-NEXT: optin.taint.TaintPropagation:Config = ""
 // CHECK-NEXT: osx.NumberObjectConversion:Pedantic = false
 // CHECK-NEXT: osx.cocoa.RetainCount:TrackNSCFStartParam = false
 // CHECK-NEXT: prune-paths = true

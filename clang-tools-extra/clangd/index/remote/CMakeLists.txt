@@ -19,7 +19,7 @@ if (CLANGD_ENABLE_REMOTE)
   # target-local?
   add_definitions(-DGOOGLE_PROTOBUF_NO_RTTI=1)
 
-  add_clang_library(clangdRemoteIndex STATIC
+  add_clang_library(clangdRemoteIndex
     Client.cpp
 
     LINK_LIBS

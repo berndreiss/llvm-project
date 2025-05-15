@@ -87,9 +87,6 @@ void InterfaceFile::addDocument(std::shared_ptr<InterfaceFile> &&Document) {
                                   const std::shared_ptr<InterfaceFile> &RHS) {
                                  return LHS->InstallName < RHS->InstallName;
                                });
-  assert((Pos == Documents.end() ||
-          (*Pos)->InstallName != Document->InstallName) &&
-         "Unexpected duplicate document added");
   Document->Parent = this;
   Documents.insert(Pos, Document);
 }

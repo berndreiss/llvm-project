@@ -832,7 +832,7 @@ void SystemZELFFrameLowering::inlineStackProbe(
   }
 }
 
-bool SystemZELFFrameLowering::hasFPImpl(const MachineFunction &MF) const {
+bool SystemZELFFrameLowering::hasFP(const MachineFunction &MF) const {
   return (MF.getTarget().Options.DisableFramePointerElim(MF) ||
           MF.getFrameInfo().hasVarSizedObjects());
 }
@@ -1449,7 +1449,7 @@ void SystemZXPLINKFrameLowering::inlineStackProbe(
   fullyRecomputeLiveIns({StackExtMBB, NextMBB});
 }
 
-bool SystemZXPLINKFrameLowering::hasFPImpl(const MachineFunction &MF) const {
+bool SystemZXPLINKFrameLowering::hasFP(const MachineFunction &MF) const {
   return (MF.getFrameInfo().hasVarSizedObjects());
 }
 

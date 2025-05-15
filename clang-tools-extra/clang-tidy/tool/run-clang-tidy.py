@@ -49,7 +49,7 @@ import tempfile
 import time
 import traceback
 from types import ModuleType
-from typing import Any, Awaitable, Callable, List, Optional, TypeVar
+from typing import Any, Awaitable, Callable, List, Optional, Tuple, TypeVar
 
 
 yaml: Optional[ModuleType] = None
@@ -511,10 +511,12 @@ async def main() -> None:
         )
         invocation.append("-list-checks")
         invocation.append("-")
-        # Even with -quiet we still want to check if we can call clang-tidy.
-        subprocess.check_call(
-            invocation, stdout=subprocess.DEVNULL if args.quiet else None
-        )
+        if args.quiet:
+            # Even with -quiet we still want to check if we can call clang-tidy.
+            with open(os.devnull, "w") as dev_null:
+                subprocess.check_call(invocation, stdout=dev_null)
+        else:
+            subprocess.check_call(invocation)
     except:
         print("Unable to run clang-tidy.", file=sys.stderr)
         sys.exit(1)
@@ -621,7 +623,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(main())

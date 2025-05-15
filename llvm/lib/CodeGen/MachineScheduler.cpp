@@ -453,18 +453,26 @@ bool MachineScheduler::runOnMachineFunction(MachineFunction &mf) {
 
   if (VerifyScheduling) {
     LLVM_DEBUG(LIS->dump());
-    MF->verify(this, "Before machine scheduling.", &errs());
+    MF->verify(this, "Before machine scheduling.");
   }
   RegClassInfo->runOnMachineFunction(*MF);
 
   // Instantiate the selected scheduler for this target, function, and
   // optimization level.
   std::unique_ptr<ScheduleDAGInstrs> Scheduler(createMachineScheduler());
+  ScheduleDAGMI::DumpDirection D;
+  if (ForceTopDown)
+    D = ScheduleDAGMI::DumpDirection::TopDown;
+  else if (ForceBottomUp)
+    D = ScheduleDAGMI::DumpDirection::BottomUp;
+  else
+    D = ScheduleDAGMI::DumpDirection::Bidirectional;
+  Scheduler->setDumpDirection(D);
   scheduleRegions(*Scheduler, false);
 
   LLVM_DEBUG(LIS->dump());
   if (VerifyScheduling)
-    MF->verify(this, "After machine scheduling.", &errs());
+    MF->verify(this, "After machine scheduling.");
   return true;
 }
 
@@ -488,15 +496,23 @@ bool PostMachineScheduler::runOnMachineFunction(MachineFunction &mf) {
   AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
 
   if (VerifyScheduling)
-    MF->verify(this, "Before post machine scheduling.", &errs());
+    MF->verify(this, "Before post machine scheduling.");
 
   // Instantiate the selected scheduler for this target, function, and
   // optimization level.
   std::unique_ptr<ScheduleDAGInstrs> Scheduler(createPostMachineScheduler());
+  ScheduleDAGMI::DumpDirection D;
+  if (PostRADirection == MISchedPostRASched::TopDown)
+    D = ScheduleDAGMI::DumpDirection::TopDown;
+  else if (PostRADirection == MISchedPostRASched::BottomUp)
+    D = ScheduleDAGMI::DumpDirection::BottomUp;
+  else
+    D = ScheduleDAGMI::DumpDirection::Bidirectional;
+  Scheduler->setDumpDirection(D);
   scheduleRegions(*Scheduler, true);
 
   if (VerifyScheduling)
-    MF->verify(this, "After post machine scheduling.", &errs());
+    MF->verify(this, "After post machine scheduling.");
   return true;
 }
 
@@ -514,8 +530,7 @@ static bool isSchedBoundary(MachineBasicBlock::iterator MI,
                             MachineBasicBlock *MBB,
                             MachineFunction *MF,
                             const TargetInstrInfo *TII) {
-  return MI->isCall() || TII->isSchedulingBoundary(*MI, MBB, *MF) ||
-         MI->isFakeUse();
+  return MI->isCall() || TII->isSchedulingBoundary(*MI, MBB, *MF);
 }
 
 /// A region of an MBB for scheduling.
@@ -780,16 +795,6 @@ void ScheduleDAGMI::enterRegion(MachineBasicBlock *bb,
   ScheduleDAGInstrs::enterRegion(bb, begin, end, regioninstrs);
 
   SchedImpl->initPolicy(begin, end, regioninstrs);
-
-  // Set dump direction after initializing sched policy.
-  ScheduleDAGMI::DumpDirection D;
-  if (SchedImpl->getPolicy().OnlyTopDown)
-    D = ScheduleDAGMI::DumpDirection::TopDown;
-  else if (SchedImpl->getPolicy().OnlyBottomUp)
-    D = ScheduleDAGMI::DumpDirection::BottomUp;
-  else
-    D = ScheduleDAGMI::DumpDirection::Bidirectional;
-  setDumpDirection(D);
 }
 
 /// This is normally called from the main scheduler loop but may also be invoked
@@ -1737,8 +1742,8 @@ class BaseMemOpClusterMutation : public ScheduleDAGMutation {
 
     MemOpInfo(SUnit *SU, ArrayRef<const MachineOperand *> BaseOps,
               int64_t Offset, bool OffsetIsScalable, LocationSize Width)
-        : SU(SU), BaseOps(BaseOps), Offset(Offset), Width(Width),
-          OffsetIsScalable(OffsetIsScalable) {}
+        : SU(SU), BaseOps(BaseOps.begin(), BaseOps.end()), Offset(Offset),
+          Width(Width), OffsetIsScalable(OffsetIsScalable) {}
 
     static bool Compare(const MachineOperand *const &A,
                         const MachineOperand *const &B) {

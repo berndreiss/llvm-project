@@ -14,6 +14,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/SparseSet.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
+#include "llvm/CodeGen/MachineBranchProbabilityInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
@@ -39,66 +40,49 @@ using namespace llvm;
 
 #define DEBUG_TYPE "machine-trace-metrics"
 
-AnalysisKey MachineTraceMetricsAnalysis::Key;
+char MachineTraceMetrics::ID = 0;
 
-MachineTraceMetricsAnalysis::Result
-MachineTraceMetricsAnalysis::run(MachineFunction &MF,
-                                 MachineFunctionAnalysisManager &MFAM) {
-  return Result(MF, MFAM.getResult<MachineLoopAnalysis>(MF));
-}
+char &llvm::MachineTraceMetricsID = MachineTraceMetrics::ID;
 
-PreservedAnalyses
-MachineTraceMetricsVerifierPass::run(MachineFunction &MF,
-                                     MachineFunctionAnalysisManager &MFAM) {
-  MFAM.getResult<MachineTraceMetricsAnalysis>(MF).verifyAnalysis();
-  return PreservedAnalyses::all();
-}
-
-char MachineTraceMetricsWrapperPass::ID = 0;
-
-char &llvm::MachineTraceMetricsID = MachineTraceMetricsWrapperPass::ID;
-
-INITIALIZE_PASS_BEGIN(MachineTraceMetricsWrapperPass, DEBUG_TYPE,
+INITIALIZE_PASS_BEGIN(MachineTraceMetrics, DEBUG_TYPE,
                       "Machine Trace Metrics", false, true)
+INITIALIZE_PASS_DEPENDENCY(MachineBranchProbabilityInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfoWrapperPass)
-INITIALIZE_PASS_END(MachineTraceMetricsWrapperPass, DEBUG_TYPE,
+INITIALIZE_PASS_END(MachineTraceMetrics, DEBUG_TYPE,
                     "Machine Trace Metrics", false, true)
 
-MachineTraceMetricsWrapperPass::MachineTraceMetricsWrapperPass()
-    : MachineFunctionPass(ID) {}
+MachineTraceMetrics::MachineTraceMetrics() : MachineFunctionPass(ID) {
+  std::fill(std::begin(Ensembles), std::end(Ensembles), nullptr);
+}
 
-void MachineTraceMetricsWrapperPass::getAnalysisUsage(AnalysisUsage &AU) const {
+void MachineTraceMetrics::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
+  AU.addRequired<MachineBranchProbabilityInfoWrapperPass>();
   AU.addRequired<MachineLoopInfoWrapperPass>();
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
-void MachineTraceMetrics::init(MachineFunction &Func,
-                               const MachineLoopInfo &LI) {
+bool MachineTraceMetrics::runOnMachineFunction(MachineFunction &Func) {
   MF = &Func;
   const TargetSubtargetInfo &ST = MF->getSubtarget();
   TII = ST.getInstrInfo();
   TRI = ST.getRegisterInfo();
   MRI = &MF->getRegInfo();
-  Loops = &LI;
+  Loops = &getAnalysis<MachineLoopInfoWrapperPass>().getLI();
   SchedModel.init(&ST);
   BlockInfo.resize(MF->getNumBlockIDs());
   ProcReleaseAtCycles.resize(MF->getNumBlockIDs() *
                             SchedModel.getNumProcResourceKinds());
-}
-
-bool MachineTraceMetricsWrapperPass::runOnMachineFunction(MachineFunction &MF) {
-  MTM.init(MF, getAnalysis<MachineLoopInfoWrapperPass>().getLI());
   return false;
 }
 
-MachineTraceMetrics::~MachineTraceMetrics() { clear(); }
-
-void MachineTraceMetrics::clear() {
+void MachineTraceMetrics::releaseMemory() {
   MF = nullptr;
   BlockInfo.clear();
-  for (auto &E : Ensembles)
-    E.reset();
+  for (Ensemble *&E : Ensembles) {
+    delete E;
+    E = nullptr;
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -414,42 +398,27 @@ MachineTraceMetrics::Ensemble *
 MachineTraceMetrics::getEnsemble(MachineTraceStrategy strategy) {
   assert(strategy < MachineTraceStrategy::TS_NumStrategies &&
          "Invalid trace strategy enum");
-  std::unique_ptr<MachineTraceMetrics::Ensemble> &E =
-      Ensembles[static_cast<size_t>(strategy)];
+  Ensemble *&E = Ensembles[static_cast<size_t>(strategy)];
   if (E)
-    return E.get();
+    return E;
 
   // Allocate new Ensemble on demand.
   switch (strategy) {
   case MachineTraceStrategy::TS_MinInstrCount:
-    E = std::make_unique<MinInstrCountEnsemble>(MinInstrCountEnsemble(this));
-    break;
+    return (E = new MinInstrCountEnsemble(this));
   case MachineTraceStrategy::TS_Local:
-    E = std::make_unique<LocalEnsemble>(LocalEnsemble(this));
-    break;
+    return (E = new LocalEnsemble(this));
   default: llvm_unreachable("Invalid trace strategy enum");
   }
-  return E.get();
 }
 
 void MachineTraceMetrics::invalidate(const MachineBasicBlock *MBB) {
   LLVM_DEBUG(dbgs() << "Invalidate traces through " << printMBBReference(*MBB)
                     << '\n');
   BlockInfo[MBB->getNumber()].invalidate();
-  for (auto &E : Ensembles)
+  for (Ensemble *E : Ensembles)
     if (E)
       E->invalidate(MBB);
-}
-
-bool MachineTraceMetrics::invalidate(
-    MachineFunction &, const PreservedAnalyses &PA,
-    MachineFunctionAnalysisManager::Invalidator &) {
-  // Check whether the analysis, all analyses on machine functions, or the
-  // machine function's CFG have been preserved.
-  auto PAC = PA.getChecker<MachineTraceMetricsAnalysis>();
-  return !PAC.preserved() &&
-         !PAC.preservedSet<AllAnalysesOn<MachineFunction>>() &&
-         !PAC.preservedSet<CFGAnalyses>();
 }
 
 void MachineTraceMetrics::verifyAnalysis() const {
@@ -457,7 +426,7 @@ void MachineTraceMetrics::verifyAnalysis() const {
     return;
 #ifndef NDEBUG
   assert(BlockInfo.size() == MF->getNumBlockIDs() && "Outdated BlockInfo size");
-  for (auto &E : Ensembles)
+  for (Ensemble *E : Ensembles)
     if (E)
       E->verify();
 #endif

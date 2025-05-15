@@ -30,7 +30,6 @@
 #include "llvm/Support/Process.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
 
 #include <cstdlib>
 
@@ -50,7 +49,7 @@ public:
   serializeToObject(Attribute attribute, Operation *module,
                     const gpu::TargetOptions &options) const;
 
-  Attribute createObject(Attribute attribute, Operation *module,
+  Attribute createObject(Attribute attribute,
                          const SmallVector<char, 0> &object,
                          const gpu::TargetOptions &options) const;
 };
@@ -402,26 +401,6 @@ NVPTXSerializer::compileToBinary(const std::string &ptxCode) {
                                 /*MemoryLimit=*/0,
                                 /*ErrMsg=*/&message))
     return emitLogError("`ptxas`");
-#define DEBUG_TYPE "dump-sass"
-  LLVM_DEBUG({
-    std::optional<std::string> nvdisasm = findTool("nvdisasm");
-    SmallVector<StringRef> nvdisasmArgs(
-        {StringRef("nvdisasm"), StringRef(cubinFile.first)});
-    if (llvm::sys::ExecuteAndWait(nvdisasm.value(), nvdisasmArgs,
-                                  /*Env=*/std::nullopt,
-                                  /*Redirects=*/redirects,
-                                  /*SecondsToWait=*/0,
-                                  /*MemoryLimit=*/0,
-                                  /*ErrMsg=*/&message))
-      return emitLogError("`nvdisasm`");
-    llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> logBuffer =
-        llvm::MemoryBuffer::getFile(logFile->first);
-    if (logBuffer && !(*logBuffer)->getBuffer().empty()) {
-      llvm::dbgs() << "Output:\n" << (*logBuffer)->getBuffer() << "\n";
-      llvm::dbgs().flush();
-    }
-  });
-#undef DEBUG_TYPE
 
   // Invoke `fatbin`.
   message.clear();
@@ -612,7 +591,7 @@ NVVMTargetAttrImpl::serializeToObject(Attribute attribute, Operation *module,
 }
 
 Attribute
-NVVMTargetAttrImpl::createObject(Attribute attribute, Operation *module,
+NVVMTargetAttrImpl::createObject(Attribute attribute,
                                  const SmallVector<char, 0> &object,
                                  const gpu::TargetOptions &options) const {
   auto target = cast<NVVMTargetAttr>(attribute);
@@ -625,5 +604,5 @@ NVVMTargetAttrImpl::createObject(Attribute attribute, Operation *module,
   return builder.getAttr<gpu::ObjectAttr>(
       attribute, format,
       builder.getStringAttr(StringRef(object.data(), object.size())),
-      objectProps, /*kernels=*/nullptr);
+      objectProps);
 }

@@ -101,8 +101,6 @@
 // using std::atomic_fetch_sub_explicit                   // see below
 // using std::atomic_fetch_or                             // see below
 // using std::atomic_fetch_or_explicit                    // see below
-// using std::atomic_fetch_xor                            // see below
-// using std::atomic_fetch_xor_explicit                   // see below
 // using std::atomic_fetch_and                            // see below
 // using std::atomic_fetch_and_explicit                   // see below
 // using std::atomic_flag_test_and_set                    // see below
@@ -114,8 +112,6 @@
 // using std::atomic_signal_fence                         // see below
 
 #include <stdatomic.h>
-#include <cstddef>
-#include <cstdint>
 #include <type_traits>
 
 #include "test_macros.h"
@@ -168,7 +164,7 @@ void f() {
   static_assert(std::is_same_v<std::atomic<long long>, ::atomic_llong>);
   static_assert(std::is_same_v<std::atomic<unsigned long long>, ::atomic_ullong>);
 
-#if _LIBCPP_HAS_CHAR8_T
+#ifndef _LIBCPP_HAS_NO_CHAR8_T
   static_assert(std::is_same_v<std::atomic<char8_t>,  ::atomic_char8_t>);
 #endif
   static_assert(std::is_same_v<std::atomic<char16_t>, ::atomic_char16_t>);
@@ -226,8 +222,6 @@ void f() {
   using ::atomic_fetch_or_explicit;
   using ::atomic_fetch_sub;
   using ::atomic_fetch_sub_explicit;
-  using ::atomic_fetch_xor;
-  using ::atomic_fetch_xor_explicit;
   using ::atomic_flag_clear;
   using ::atomic_flag_clear_explicit;
   using ::atomic_flag_test_and_set;

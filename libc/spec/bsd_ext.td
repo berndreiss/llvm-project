@@ -20,12 +20,12 @@ def BsdExtensions : StandardSpec<"BSDExtensions"> {
         FunctionSpec<
             "strlcat",
             RetValSpec<SizeTType>,
-            [ArgSpec<CharRestrictedPtr>, ArgSpec<ConstCharRestrictedPtr>, ArgSpec<SizeTType>]
+            [ArgSpec<ConstCharRestrictedPtr>, ArgSpec<ConstCharRestrictedPtr>, ArgSpec<SizeTType>]
         >,
         FunctionSpec<
             "strlcpy",
             RetValSpec<SizeTType>,
-            [ArgSpec<CharRestrictedPtr>, ArgSpec<ConstCharRestrictedPtr>, ArgSpec<SizeTType>]
+            [ArgSpec<ConstCharRestrictedPtr>, ArgSpec<ConstCharRestrictedPtr>, ArgSpec<SizeTType>]
         >,
         FunctionSpec<
             "strsep",

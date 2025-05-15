@@ -56,7 +56,7 @@ public:
   explicit IterationSpace(const IterationSpace &from,
                           llvm::ArrayRef<mlir::Value> idxs)
       : inArg(from.inArg), outRes(from.outRes), element(from.element),
-        indices(idxs) {}
+        indices(idxs.begin(), idxs.end()) {}
 
   /// Create a copy of the \p from IterationSpace and prepend the \p prefix
   /// values and append the \p suffix values, respectively.

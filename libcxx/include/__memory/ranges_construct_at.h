@@ -38,33 +38,43 @@ namespace ranges {
 
 // construct_at
 
-struct __construct_at {
+namespace __construct_at {
+
+struct __fn {
   template <class _Tp, class... _Args, class = decltype(::new(std::declval<void*>()) _Tp(std::declval<_Args>()...))>
   _LIBCPP_HIDE_FROM_ABI constexpr _Tp* operator()(_Tp* __location, _Args&&... __args) const {
     return std::construct_at(__location, std::forward<_Args>(__args)...);
   }
 };
 
+} // namespace __construct_at
+
 inline namespace __cpo {
-inline constexpr auto construct_at = __construct_at{};
+inline constexpr auto construct_at = __construct_at::__fn{};
 } // namespace __cpo
 
 // destroy_at
 
-struct __destroy_at {
+namespace __destroy_at {
+
+struct __fn {
   template <destructible _Tp>
   _LIBCPP_HIDE_FROM_ABI constexpr void operator()(_Tp* __location) const noexcept {
     std::destroy_at(__location);
   }
 };
 
+} // namespace __destroy_at
+
 inline namespace __cpo {
-inline constexpr auto destroy_at = __destroy_at{};
+inline constexpr auto destroy_at = __destroy_at::__fn{};
 } // namespace __cpo
 
 // destroy
 
-struct __destroy {
+namespace __destroy {
+
+struct __fn {
   template <__nothrow_input_iterator _InputIterator, __nothrow_sentinel_for<_InputIterator> _Sentinel>
     requires destructible<iter_value_t<_InputIterator>>
   _LIBCPP_HIDE_FROM_ABI constexpr _InputIterator operator()(_InputIterator __first, _Sentinel __last) const noexcept {
@@ -78,13 +88,17 @@ struct __destroy {
   }
 };
 
+} // namespace __destroy
+
 inline namespace __cpo {
-inline constexpr auto destroy = __destroy{};
+inline constexpr auto destroy = __destroy::__fn{};
 } // namespace __cpo
 
 // destroy_n
 
-struct __destroy_n {
+namespace __destroy_n {
+
+struct __fn {
   template <__nothrow_input_iterator _InputIterator>
     requires destructible<iter_value_t<_InputIterator>>
   _LIBCPP_HIDE_FROM_ABI constexpr _InputIterator
@@ -93,8 +107,10 @@ struct __destroy_n {
   }
 };
 
+} // namespace __destroy_n
+
 inline namespace __cpo {
-inline constexpr auto destroy_n = __destroy_n{};
+inline constexpr auto destroy_n = __destroy_n::__fn{};
 } // namespace __cpo
 
 } // namespace ranges

@@ -4,16 +4,8 @@ types: []
 enums: []
 objects: []
 functions:
-  - name: bcmp
-    standards:
-      - llvm_libc_ext
-    return_type: int
-    arguments:
-      - type: const void *
-      - type: const void *
-      - type: size_t
   - name: bcopy
-    standards:
+    standards: 
       - llvm_libc_ext
     return_type: void
     arguments:
@@ -21,38 +13,46 @@ functions:
       - type: void *
       - type: size_t
   - name: bzero
-    standards:
+    standards: 
       - llvm_libc_ext
     return_type: void
     arguments:
       - type: void *
       - type: size_t
-  - name: index
-    standards:
-      - BSDExtensions
-    return_type: char *
+  - name: bcmp
+    standards: 
+      - llvm_libc_ext
+    return_type: int
     arguments:
-      - type: const char *
-      - type: int
-  - name: rindex
-    standards:
-      - BSDExtensions
-    return_type: char *
-    arguments:
-      - type: const char *
-      - type: int
+      - type: const void *
+      - type: const void *
+      - type: size_t
   - name: strcasecmp
-    standards:
+    standards: 
       - BSDExtensions
     return_type: int
     arguments:
       - type: const char *
       - type: const char *
   - name: strncasecmp
-    standards:
+    standards: 
       - BSDExtensions
     return_type: int
     arguments:
       - type: const char *
       - type: const char *
       - type: size_t
+  - name: index
+    standards: 
+      - BSDExtensions
+    return_type: char *
+    arguments:
+      - type: const char *
+      - type: int
+  - name: rindex
+    standards: 
+      - BSDExtensions
+    return_type: char *
+    arguments:
+      - type: const char *
+      - type: int

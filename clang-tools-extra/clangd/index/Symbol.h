@@ -145,11 +145,9 @@ struct Symbol {
     ImplementationDetail = 1 << 2,
     /// Symbol is visible to other files (not e.g. a static helper function).
     VisibleOutsideFile = 1 << 3,
-    /// Symbol has an attached documentation comment.
-    HasDocComment = 1 << 4
   };
-  SymbolFlag Flags = SymbolFlag::None;
 
+  SymbolFlag Flags = SymbolFlag::None;
   /// FIXME: also add deprecation message and fixit?
 };
 

@@ -78,6 +78,8 @@ TABLE_ROW = """\
      - {style2}`{percent}%`
 """
 
+FNULL = open(os.devnull, "w")
+
 
 with open(DOC_FILE, "wb") as output:
     cleanfiles = open(CLEAN_FILE, "wb")
@@ -99,8 +101,8 @@ with open(DOC_FILE, "wb") as output:
                 # interested in it, just the return code.
                 git_check = subprocess.Popen(
                     ["git", "ls-files", "--error-unmatch", act_sub_dir],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    stdout=FNULL,
+                    stderr=FNULL,
                 )
                 if git_check.wait() != 0:
                     print("Skipping directory: ", act_sub_dir)

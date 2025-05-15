@@ -79,7 +79,6 @@ static_library("Sema") {
     "SemaExprMember.cpp",
     "SemaExprObjC.cpp",
     "SemaFixItUtils.cpp",
-    "SemaFunctionEffects.cpp",
     "SemaHLSL.cpp",
     "SemaHexagon.cpp",
     "SemaInit.cpp",

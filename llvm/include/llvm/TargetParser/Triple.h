@@ -88,6 +88,8 @@ public:
     xtensa,         // Tensilica: Xtensa
     nvptx,          // NVPTX: 32-bit
     nvptx64,        // NVPTX: 64-bit
+    le32,           // le32: generic little-endian 32-bit CPU (PNaCl)
+    le64,           // le64: generic little-endian 64-bit CPU (PNaCl)
     amdil,          // AMDIL
     amdil64,        // AMDIL with 64-bit pointers
     hsail,          // AMD HSAIL
@@ -110,7 +112,6 @@ public:
   enum SubArchType {
     NoSubArch,
 
-    ARMSubArch_v9_6a,
     ARMSubArch_v9_5a,
     ARMSubArch_v9_4a,
     ARMSubArch_v9_3a,
@@ -244,13 +245,10 @@ public:
     UnknownEnvironment,
 
     GNU,
-    GNUT64,
     GNUABIN32,
     GNUABI64,
     GNUEABI,
-    GNUEABIT64,
     GNUEABIHF,
-    GNUEABIHFT64,
     GNUF32,
     GNUF64,
     GNUSF,
@@ -261,12 +259,8 @@ public:
     EABIHF,
     Android,
     Musl,
-    MuslABIN32,
-    MuslABI64,
     MuslEABI,
     MuslEABIHF,
-    MuslF32,
-    MuslSF,
     MuslX32,
 
     MSVC,
@@ -300,7 +294,11 @@ public:
 
     PAuthTest,
 
-    LastEnvironmentType = PAuthTest
+    GNUT64,
+    GNUEABIT64,
+    GNUEABIHFT64,
+
+    LastEnvironmentType = GNUEABIHFT64
   };
   enum ObjectFormatType {
     UnknownObjectFormat,
@@ -792,12 +790,8 @@ public:
   /// Tests whether the environment is musl-libc
   bool isMusl() const {
     return getEnvironment() == Triple::Musl ||
-           getEnvironment() == Triple::MuslABIN32 ||
-           getEnvironment() == Triple::MuslABI64 ||
            getEnvironment() == Triple::MuslEABI ||
            getEnvironment() == Triple::MuslEABIHF ||
-           getEnvironment() == Triple::MuslF32 ||
-           getEnvironment() == Triple::MuslSF ||
            getEnvironment() == Triple::MuslX32 ||
            getEnvironment() == Triple::OpenHOS || isOSLiteOS();
   }
@@ -1046,12 +1040,6 @@ public:
   bool isArm64e() const {
     return getArch() == Triple::aarch64 &&
            getSubArch() == Triple::AArch64SubArch_arm64e;
-  }
-
-  // Tests whether the target is N32.
-  bool isABIN32() const {
-    EnvironmentType Env = getEnvironment();
-    return Env == Triple::GNUABIN32 || Env == Triple::MuslABIN32;
   }
 
   /// Tests whether the target is X32.

@@ -15,7 +15,6 @@
 #include "lldb/Target/Target.h"
 #include "lldb/Utility/LLDBLog.h"
 #include "lldb/Utility/Log.h"
-#include "lldb/Utility/RealpathPrefixes.h"
 #include "lldb/Utility/StreamString.h"
 #include <optional>
 
@@ -46,16 +45,14 @@ BreakpointResolverSP BreakpointResolverFileLine::CreateFromStructuredData(
   success = options_dict.GetValueForKeyAsString(GetKey(OptionNames::FileName),
                                                 filename);
   if (!success) {
-    error =
-        Status::FromErrorString("BRFL::CFSD: Couldn't find filename entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find filename entry.");
     return nullptr;
   }
 
   success = options_dict.GetValueForKeyAsInteger(
       GetKey(OptionNames::LineNumber), line);
   if (!success) {
-    error =
-        Status::FromErrorString("BRFL::CFSD: Couldn't find line number entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find line number entry.");
     return nullptr;
   }
 
@@ -69,24 +66,21 @@ BreakpointResolverSP BreakpointResolverFileLine::CreateFromStructuredData(
   success = options_dict.GetValueForKeyAsBoolean(GetKey(OptionNames::Inlines),
                                                  check_inlines);
   if (!success) {
-    error = Status::FromErrorString(
-        "BRFL::CFSD: Couldn't find check inlines entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find check inlines entry.");
     return nullptr;
   }
 
   success = options_dict.GetValueForKeyAsBoolean(
       GetKey(OptionNames::SkipPrologue), skip_prologue);
   if (!success) {
-    error = Status::FromErrorString(
-        "BRFL::CFSD: Couldn't find skip prologue entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find skip prologue entry.");
     return nullptr;
   }
 
   success = options_dict.GetValueForKeyAsBoolean(
       GetKey(OptionNames::ExactMatch), exact_match);
   if (!success) {
-    error =
-        Status::FromErrorString("BRFL::CFSD: Couldn't find exact match entry.");
+    error.SetErrorString("BRFL::CFSD: Couldn't find exact match entry.");
     return nullptr;
   }
 
@@ -296,24 +290,15 @@ Searcher::CallbackReturn BreakpointResolverFileLine::SearchCallback(
   const uint32_t line = m_location_spec.GetLine().value_or(0);
   const std::optional<uint16_t> column = m_location_spec.GetColumn();
 
-  Target &target = GetBreakpoint()->GetTarget();
-  RealpathPrefixes realpath_prefixes = target.GetSourceRealpathPrefixes();
-
   const size_t num_comp_units = context.module_sp->GetNumCompileUnits();
   for (size_t i = 0; i < num_comp_units; i++) {
     CompUnitSP cu_sp(context.module_sp->GetCompileUnitAtIndex(i));
     if (cu_sp) {
       if (filter.CompUnitPasses(*cu_sp))
         cu_sp->ResolveSymbolContext(m_location_spec, eSymbolContextEverything,
-                                    sc_list, &realpath_prefixes);
+                                    sc_list);
     }
   }
-
-  // Gather stats into the Target
-  target.GetStatistics().IncreaseSourceRealpathAttemptCount(
-      realpath_prefixes.GetSourceRealpathAttemptCount());
-  target.GetStatistics().IncreaseSourceRealpathCompatibleCount(
-      realpath_prefixes.GetSourceRealpathCompatibleCount());
 
   FilterContexts(sc_list);
 

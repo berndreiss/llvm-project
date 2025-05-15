@@ -18,7 +18,6 @@ add_object_library(
     libc.src.__support.error_or
     libc.hdr.types.off_t
     libc.hdr.stdio_macros
-    libc.hdr.func.realloc
 )
 
 add_object_library(

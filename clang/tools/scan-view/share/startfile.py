@@ -48,7 +48,7 @@ class Controller(BaseController):
             or sys.platform[:3] == "win"
             or sys.platform == "darwin"
         ):
-            inout = subprocess.DEVNULL
+            inout = file(os.devnull, "r+")
         else:
             # for TTY programs, we need stdin/out
             inout = None

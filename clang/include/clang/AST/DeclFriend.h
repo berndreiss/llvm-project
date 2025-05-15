@@ -70,9 +70,6 @@ private:
   // Location of the 'friend' specifier.
   SourceLocation FriendLoc;
 
-  // Location of the '...', if present.
-  SourceLocation EllipsisLoc;
-
   /// True if this 'friend' declaration is unsupported.  Eventually we
   /// will support every possible friend declaration, but for now we
   /// silently ignore some and set this flag to authorize all access.
@@ -85,11 +82,10 @@ private:
   unsigned NumTPLists : 31;
 
   FriendDecl(DeclContext *DC, SourceLocation L, FriendUnion Friend,
-             SourceLocation FriendL, SourceLocation EllipsisLoc,
+             SourceLocation FriendL,
              ArrayRef<TemplateParameterList *> FriendTypeTPLists)
       : Decl(Decl::Friend, DC, L), Friend(Friend), FriendLoc(FriendL),
-        EllipsisLoc(EllipsisLoc), UnsupportedFriend(false),
-        NumTPLists(FriendTypeTPLists.size()) {
+        UnsupportedFriend(false), NumTPLists(FriendTypeTPLists.size()) {
     for (unsigned i = 0; i < NumTPLists; ++i)
       getTrailingObjects<TemplateParameterList *>()[i] = FriendTypeTPLists[i];
   }
@@ -114,8 +110,8 @@ public:
 
   static FriendDecl *
   Create(ASTContext &C, DeclContext *DC, SourceLocation L, FriendUnion Friend_,
-         SourceLocation FriendL, SourceLocation EllipsisLoc = {},
-         ArrayRef<TemplateParameterList *> FriendTypeTPLists = {});
+         SourceLocation FriendL,
+         ArrayRef<TemplateParameterList *> FriendTypeTPLists = std::nullopt);
   static FriendDecl *CreateDeserialized(ASTContext &C, GlobalDeclID ID,
                                         unsigned FriendTypeNumTPLists);
 
@@ -147,24 +143,8 @@ public:
     return FriendLoc;
   }
 
-  /// Retrieves the location of the '...', if present.
-  SourceLocation getEllipsisLoc() const { return EllipsisLoc; }
-
   /// Retrieves the source range for the friend declaration.
   SourceRange getSourceRange() const override LLVM_READONLY {
-    if (TypeSourceInfo *TInfo = getFriendType()) {
-      SourceLocation StartL =
-          (NumTPLists == 0) ? getFriendLoc()
-                            : getTrailingObjects<TemplateParameterList *>()[0]
-                                  ->getTemplateLoc();
-      SourceLocation EndL = isPackExpansion() ? getEllipsisLoc()
-                                              : TInfo->getTypeLoc().getEndLoc();
-      return SourceRange(StartL, EndL);
-    }
-
-    if (isPackExpansion())
-      return SourceRange(getFriendLoc(), getEllipsisLoc());
-
     if (NamedDecl *ND = getFriendDecl()) {
       if (const auto *FD = dyn_cast<FunctionDecl>(ND))
         return FD->getSourceRange();
@@ -178,8 +158,15 @@ public:
       }
       return SourceRange(getFriendLoc(), ND->getEndLoc());
     }
-
-    return SourceRange(getFriendLoc(), getLocation());
+    else if (TypeSourceInfo *TInfo = getFriendType()) {
+      SourceLocation StartL =
+          (NumTPLists == 0) ? getFriendLoc()
+                            : getTrailingObjects<TemplateParameterList *>()[0]
+                                  ->getTemplateLoc();
+      return SourceRange(StartL, TInfo->getTypeLoc().getEndLoc());
+    }
+    else
+      return SourceRange(getFriendLoc(), getLocation());
   }
 
   /// Determines if this friend kind is unsupported.
@@ -189,8 +176,6 @@ public:
   void setUnsupportedFriend(bool Unsupported) {
     UnsupportedFriend = Unsupported;
   }
-
-  bool isPackExpansion() const { return EllipsisLoc.isValid(); }
 
   // Implement isa/cast/dyncast/etc.
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }

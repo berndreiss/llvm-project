@@ -386,7 +386,7 @@ SBError SBPlatform::ConnectRemote(SBPlatformConnectOptions &connect_options) {
     args.AppendArgument(connect_options.GetURL());
     sb_error.ref() = platform_sp->ConnectRemote(args);
   } else {
-    sb_error = Status::FromErrorString("invalid platform");
+    sb_error.SetErrorString("invalid platform");
   }
   return sb_error;
 }
@@ -503,7 +503,7 @@ SBError SBPlatform::Get(SBFileSpec &src, SBFileSpec &dst) {
   if (platform_sp) {
     sb_error.ref() = platform_sp->GetFile(src.ref(), dst.ref());
   } else {
-    sb_error = Status::FromErrorString("invalid platform");
+    sb_error.SetErrorString("invalid platform");
   }
   return sb_error;
 }
@@ -523,8 +523,10 @@ SBError SBPlatform::Put(SBFileSpec &src, SBFileSpec &dst) {
       return platform_sp->PutFile(src.ref(), dst.ref(), permissions);
     }
 
-    return Status::FromErrorStringWithFormat(
-        "'src' argument doesn't exist: '%s'", src.ref().GetPath().c_str());
+    Status error;
+    error.SetErrorStringWithFormat("'src' argument doesn't exist: '%s'",
+                                   src.ref().GetPath().c_str());
+    return error;
   });
 }
 
@@ -535,8 +537,8 @@ SBError SBPlatform::Install(SBFileSpec &src, SBFileSpec &dst) {
       return platform_sp->Install(src.ref(), dst.ref());
 
     Status error;
-    error = Status::FromErrorStringWithFormat(
-        "'src' argument doesn't exist: '%s'", src.ref().GetPath().c_str());
+    error.SetErrorStringWithFormat("'src' argument doesn't exist: '%s'",
+                                   src.ref().GetPath().c_str());
     return error;
   });
 }
@@ -547,7 +549,7 @@ SBError SBPlatform::Run(SBPlatformShellCommand &shell_command) {
       [&](const lldb::PlatformSP &platform_sp) {
         const char *command = shell_command.GetCommand();
         if (!command)
-          return Status::FromErrorString("invalid shell command (empty)");
+          return Status("invalid shell command (empty)");
 
         if (shell_command.GetWorkingDirectory() == nullptr) {
           std::string platform_working_dir =
@@ -586,15 +588,15 @@ SBProcess SBPlatform::Attach(SBAttachInfo &attach_info,
       Status status;
       ProcessSP process_sp = platform_sp->Attach(info, debugger.ref(),
                                                  target.GetSP().get(), status);
-      error.SetError(std::move(status));
+      error.SetError(status);
       return SBProcess(process_sp);
     }
 
-    error = Status::FromErrorString("not connected");
+    error.SetErrorString("not connected");
     return {};
   }
 
-  error = Status::FromErrorString("invalid platform");
+  error.SetErrorString("invalid platform");
   return {};
 }
 
@@ -604,11 +606,11 @@ SBProcessInfoList SBPlatform::GetAllProcesses(SBError &error) {
       ProcessInstanceInfoList list = platform_sp->GetAllProcesses();
       return SBProcessInfoList(list);
     }
-    error = Status::FromErrorString("not connected");
+    error.SetErrorString("not connected");
     return {};
   }
 
-  error = Status::FromErrorString("invalid platform");
+  error.SetErrorString("invalid platform");
   return {};
 }
 
@@ -627,9 +629,9 @@ SBError SBPlatform::ExecuteConnected(
     if (platform_sp->IsConnected())
       sb_error.ref() = func(platform_sp);
     else
-      sb_error = Status::FromErrorString("not connected");
+      sb_error.SetErrorString("not connected");
   } else
-    sb_error = Status::FromErrorString("invalid platform");
+    sb_error.SetErrorString("invalid platform");
 
   return sb_error;
 }
@@ -643,7 +645,7 @@ SBError SBPlatform::MakeDirectory(const char *path, uint32_t file_permissions) {
     sb_error.ref() =
         platform_sp->MakeDirectory(FileSpec(path), file_permissions);
   } else {
-    sb_error = Status::FromErrorString("invalid platform");
+    sb_error.SetErrorString("invalid platform");
   }
   return sb_error;
 }
@@ -670,7 +672,7 @@ SBError SBPlatform::SetFilePermissions(const char *path,
     sb_error.ref() =
         platform_sp->SetFilePermissions(FileSpec(path), file_permissions);
   } else {
-    sb_error = Status::FromErrorString("invalid platform");
+    sb_error.SetErrorString("invalid platform");
   }
   return sb_error;
 }
@@ -728,7 +730,7 @@ SBError SBPlatform::SetLocateModuleCallback(
           symbol_file_spec = symbol_file_spec_sb.ref();
         }
 
-        return error.ref().Clone();
+        return error.ref();
       });
   return SBError();
 }

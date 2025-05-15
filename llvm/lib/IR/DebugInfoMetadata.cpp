@@ -663,16 +663,14 @@ DIEnumerator *DIEnumerator::getImpl(LLVMContext &Context, const APInt &Value,
 DIBasicType *DIBasicType::getImpl(LLVMContext &Context, unsigned Tag,
                                   MDString *Name, uint64_t SizeInBits,
                                   uint32_t AlignInBits, unsigned Encoding,
-                                  uint32_t NumExtraInhabitants, DIFlags Flags,
-                                  StorageType Storage, bool ShouldCreate) {
+                                  DIFlags Flags, StorageType Storage,
+                                  bool ShouldCreate) {
   assert(isCanonical(Name) && "Expected canonical MDString");
-  DEFINE_GETIMPL_LOOKUP(DIBasicType, (Tag, Name, SizeInBits, AlignInBits,
-                                      Encoding, NumExtraInhabitants, Flags));
+  DEFINE_GETIMPL_LOOKUP(DIBasicType,
+                        (Tag, Name, SizeInBits, AlignInBits, Encoding, Flags));
   Metadata *Ops[] = {nullptr, nullptr, Name};
-  DEFINE_GETIMPL_STORE(
-      DIBasicType,
-      (Tag, SizeInBits, AlignInBits, Encoding, NumExtraInhabitants, Flags),
-      Ops);
+  DEFINE_GETIMPL_STORE(DIBasicType,
+                       (Tag, SizeInBits, AlignInBits, Encoding, Flags), Ops);
 }
 
 std::optional<DIBasicType::Signedness> DIBasicType::getSignedness() const {
@@ -770,8 +768,8 @@ DICompositeType *DICompositeType::getImpl(
     Metadata *Elements, unsigned RuntimeLang, Metadata *VTableHolder,
     Metadata *TemplateParams, MDString *Identifier, Metadata *Discriminator,
     Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
-    Metadata *Rank, Metadata *Annotations, uint32_t NumExtraInhabitants,
-    StorageType Storage, bool ShouldCreate) {
+    Metadata *Rank, Metadata *Annotations, StorageType Storage,
+    bool ShouldCreate) {
   assert(isCanonical(Name) && "Expected canonical MDString");
 
   // Keep this in sync with buildODRType.
@@ -780,25 +778,25 @@ DICompositeType *DICompositeType::getImpl(
                          AlignInBits, OffsetInBits, Flags, Elements,
                          RuntimeLang, VTableHolder, TemplateParams, Identifier,
                          Discriminator, DataLocation, Associated, Allocated,
-                         Rank, Annotations, NumExtraInhabitants));
+                         Rank, Annotations));
   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
                      Elements,      VTableHolder, TemplateParams, Identifier,
                      Discriminator, DataLocation, Associated,     Allocated,
                      Rank,          Annotations};
-  DEFINE_GETIMPL_STORE(DICompositeType,
-                       (Tag, Line, RuntimeLang, SizeInBits, AlignInBits,
-                        OffsetInBits, NumExtraInhabitants, Flags),
-                       Ops);
+  DEFINE_GETIMPL_STORE(
+      DICompositeType,
+      (Tag, Line, RuntimeLang, SizeInBits, AlignInBits, OffsetInBits, Flags),
+      Ops);
 }
 
 DICompositeType *DICompositeType::buildODRType(
     LLVMContext &Context, MDString &Identifier, unsigned Tag, MDString *Name,
     Metadata *File, unsigned Line, Metadata *Scope, Metadata *BaseType,
     uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits,
-    uint32_t NumExtraInhabitants, DIFlags Flags, Metadata *Elements,
-    unsigned RuntimeLang, Metadata *VTableHolder, Metadata *TemplateParams,
-    Metadata *Discriminator, Metadata *DataLocation, Metadata *Associated,
-    Metadata *Allocated, Metadata *Rank, Metadata *Annotations) {
+    DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
+    Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
+    Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+    Metadata *Rank, Metadata *Annotations) {
   assert(!Identifier.getString().empty() && "Expected valid identifier");
   if (!Context.isODRUniquingDebugTypes())
     return nullptr;
@@ -808,8 +806,7 @@ DICompositeType *DICompositeType::buildODRType(
                Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
                AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang,
                VTableHolder, TemplateParams, &Identifier, Discriminator,
-               DataLocation, Associated, Allocated, Rank, Annotations,
-               NumExtraInhabitants);
+               DataLocation, Associated, Allocated, Rank, Annotations);
 
   if (CT->getTag() != Tag)
     return nullptr;
@@ -821,7 +818,7 @@ DICompositeType *DICompositeType::buildODRType(
 
   // Mutate CT in place.  Keep this in sync with getImpl.
   CT->mutate(Tag, Line, RuntimeLang, SizeInBits, AlignInBits, OffsetInBits,
-             NumExtraInhabitants, Flags);
+             Flags);
   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
                      Elements,      VTableHolder, TemplateParams, &Identifier,
                      Discriminator, DataLocation, Associated,     Allocated,
@@ -838,10 +835,10 @@ DICompositeType *DICompositeType::getODRType(
     LLVMContext &Context, MDString &Identifier, unsigned Tag, MDString *Name,
     Metadata *File, unsigned Line, Metadata *Scope, Metadata *BaseType,
     uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits,
-    uint32_t NumExtraInhabitants, DIFlags Flags, Metadata *Elements,
-    unsigned RuntimeLang, Metadata *VTableHolder, Metadata *TemplateParams,
-    Metadata *Discriminator, Metadata *DataLocation, Metadata *Associated,
-    Metadata *Allocated, Metadata *Rank, Metadata *Annotations) {
+    DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
+    Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
+    Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+    Metadata *Rank, Metadata *Annotations) {
   assert(!Identifier.getString().empty() && "Expected valid identifier");
   if (!Context.isODRUniquingDebugTypes())
     return nullptr;
@@ -851,7 +848,7 @@ DICompositeType *DICompositeType::getODRType(
         Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
         AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder,
         TemplateParams, &Identifier, Discriminator, DataLocation, Associated,
-        Allocated, Rank, Annotations, NumExtraInhabitants);
+        Allocated, Rank, Annotations);
   } else {
     if (CT->getTag() != Tag)
       return nullptr;
@@ -870,7 +867,7 @@ DISubroutineType::DISubroutineType(LLVMContext &C, StorageType Storage,
                                    DIFlags Flags, uint8_t CC,
                                    ArrayRef<Metadata *> Ops)
     : DIType(C, DISubroutineTypeKind, Storage, dwarf::DW_TAG_subroutine_type, 0,
-             0, 0, 0, 0, Flags, Ops),
+             0, 0, 0, Flags, Ops),
       CC(CC) {}
 
 DISubroutineType *DISubroutineType::getImpl(LLVMContext &Context, DIFlags Flags,
@@ -1864,7 +1861,7 @@ DIExpression *DIExpression::appendOpsToArg(const DIExpression *Expr,
               [](auto Op) { return Op.getOp() == dwarf::DW_OP_LLVM_arg; })) {
     assert(ArgNo == 0 &&
            "Location Index must be 0 for a non-variadic expression.");
-    SmallVector<uint64_t, 8> NewOps(Ops);
+    SmallVector<uint64_t, 8> NewOps(Ops.begin(), Ops.end());
     return DIExpression::prependOpcodes(Expr, NewOps, StackValue);
   }
 
@@ -1957,7 +1954,7 @@ DIExpression *DIExpression::append(const DIExpression *Expr,
       NewOps.append(Ops.begin(), Ops.end());
 
       // Ensure that the new opcodes are only appended once.
-      Ops = {};
+      Ops = std::nullopt;
     }
     Op.appendToVector(NewOps);
   }

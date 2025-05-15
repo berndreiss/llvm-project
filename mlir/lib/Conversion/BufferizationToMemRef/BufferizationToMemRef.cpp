@@ -134,7 +134,8 @@ struct BufferizationToMemRefPass
 
     bufferization::DeallocHelperMap deallocHelperFuncMap;
     if (auto module = dyn_cast<ModuleOp>(getOperation())) {
-      OpBuilder builder = OpBuilder::atBlockBegin(module.getBody());
+      OpBuilder builder =
+          OpBuilder::atBlockBegin(&module.getBodyRegion().front());
 
       // Build dealloc helper function if there are deallocs.
       getOperation()->walk([&](bufferization::DeallocOp deallocOp) {

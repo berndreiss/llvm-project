@@ -50,11 +50,6 @@
 #if defined(__sun__) && defined(__svr4__)
 #include <kstat.h>
 #endif
-#if defined(__GNUC__) || defined(__clang__)
-#if (defined(__i386__) || defined(__x86_64__)) && !defined(_MSC_VER)
-#include <cpuid.h>
-#endif
-#endif
 
 #define DEBUG_TYPE "host-detection"
 
@@ -342,12 +337,6 @@ StringRef sys::detail::getHostCPUNameForARM(StringRef ProcCpuinfoContent) {
     }
   }
 
-  if (Implementer == "0x63") { // Arm China.
-    return StringSwitch<const char *>(Part)
-        .Case("0x132", "star-mc1")
-        .Default("generic");
-  }
-
   if (Implementer == "0x6d") { // Microsoft Corporation.
     // The Microsoft Azure Cobalt 100 CPU is handled as a Neoverse N2.
     return StringSwitch<const char *>(Part)
@@ -533,15 +522,68 @@ StringRef sys::detail::getHostCPUNameForBPF() {
 #endif
 }
 
-#if defined(__i386__) || defined(_M_IX86) || defined(__x86_64__) ||            \
-    defined(_M_X64)
+#if defined(__i386__) || defined(_M_IX86) || \
+    defined(__x86_64__) || defined(_M_X64)
+
+// The check below for i386 was copied from clang's cpuid.h (__get_cpuid_max).
+// Check motivated by bug reports for OpenSSL crashing on CPUs without CPUID
+// support. Consequently, for i386, the presence of CPUID is checked first
+// via the corresponding eflags bit.
+// Removal of cpuid.h header motivated by PR30384
+// Header cpuid.h and method __get_cpuid_max are not used in llvm, clang, openmp
+// or test-suite, but are used in external projects e.g. libstdcxx
+static bool isCpuIdSupported() {
+#if defined(__GNUC__) || defined(__clang__)
+#if defined(__i386__)
+  int __cpuid_supported;
+  __asm__("  pushfl\n"
+          "  popl   %%eax\n"
+          "  movl   %%eax,%%ecx\n"
+          "  xorl   $0x00200000,%%eax\n"
+          "  pushl  %%eax\n"
+          "  popfl\n"
+          "  pushfl\n"
+          "  popl   %%eax\n"
+          "  movl   $0,%0\n"
+          "  cmpl   %%eax,%%ecx\n"
+          "  je     1f\n"
+          "  movl   $1,%0\n"
+          "1:"
+          : "=r"(__cpuid_supported)
+          :
+          : "eax", "ecx");
+  if (!__cpuid_supported)
+    return false;
+#endif
+  return true;
+#endif
+  return true;
+}
 
 /// getX86CpuIDAndInfo - Execute the specified cpuid and return the 4 values in
 /// the specified arguments.  If we can't run cpuid on the host, return true.
 static bool getX86CpuIDAndInfo(unsigned value, unsigned *rEAX, unsigned *rEBX,
                                unsigned *rECX, unsigned *rEDX) {
-#if (defined(__i386__) || defined(__x86_64__)) && !defined(_MSC_VER)
-  return !__get_cpuid(value, rEAX, rEBX, rECX, rEDX);
+#if defined(__GNUC__) || defined(__clang__)
+#if defined(__x86_64__)
+  // gcc doesn't know cpuid would clobber ebx/rbx. Preserve it manually.
+  // FIXME: should we save this for Clang?
+  __asm__("movq\t%%rbx, %%rsi\n\t"
+          "cpuid\n\t"
+          "xchgq\t%%rbx, %%rsi\n\t"
+          : "=a"(*rEAX), "=S"(*rEBX), "=c"(*rECX), "=d"(*rEDX)
+          : "a"(value));
+  return false;
+#elif defined(__i386__)
+  __asm__("movl\t%%ebx, %%esi\n\t"
+          "cpuid\n\t"
+          "xchgl\t%%ebx, %%esi\n\t"
+          : "=a"(*rEAX), "=S"(*rEBX), "=c"(*rECX), "=d"(*rEDX)
+          : "a"(value));
+  return false;
+#else
+  return true;
+#endif
 #elif defined(_MSC_VER)
   // The MSVC intrinsic is portable across x86 and x64.
   int registers[4];
@@ -567,6 +609,9 @@ VendorSignatures getVendorSignature(unsigned *MaxLeaf) {
     MaxLeaf = &EAX;
   else
     *MaxLeaf = 0;
+
+  if (!isCpuIdSupported())
+    return VendorSignatures::UNKNOWN;
 
   if (getX86CpuIDAndInfo(0, MaxLeaf, &EBX, &ECX, &EDX) || *MaxLeaf < 1)
     return VendorSignatures::UNKNOWN;
@@ -595,12 +640,26 @@ using namespace llvm::sys::detail::x86;
 static bool getX86CpuIDAndInfoEx(unsigned value, unsigned subleaf,
                                  unsigned *rEAX, unsigned *rEBX, unsigned *rECX,
                                  unsigned *rEDX) {
-  // TODO(boomanaiden154): When the minimum toolchain versions for gcc and clang
-  // are such that __cpuidex is defined within cpuid.h for both, we can remove
-  // the __get_cpuid_count function and share the MSVC implementation between
-  // all three.
-#if (defined(__i386__) || defined(__x86_64__)) && !defined(_MSC_VER)
-  return !__get_cpuid_count(value, subleaf, rEAX, rEBX, rECX, rEDX);
+#if defined(__GNUC__) || defined(__clang__)
+#if defined(__x86_64__)
+  // gcc doesn't know cpuid would clobber ebx/rbx. Preserve it manually.
+  // FIXME: should we save this for Clang?
+  __asm__("movq\t%%rbx, %%rsi\n\t"
+          "cpuid\n\t"
+          "xchgq\t%%rbx, %%rsi\n\t"
+          : "=a"(*rEAX), "=S"(*rEBX), "=c"(*rECX), "=d"(*rEDX)
+          : "a"(value), "c"(subleaf));
+  return false;
+#elif defined(__i386__)
+  __asm__("movl\t%%ebx, %%esi\n\t"
+          "cpuid\n\t"
+          "xchgl\t%%ebx, %%esi\n\t"
+          : "=a"(*rEAX), "=S"(*rEBX), "=c"(*rECX), "=d"(*rEDX)
+          : "a"(value), "c"(subleaf));
+  return false;
+#else
+  return true;
+#endif
 #elif defined(_MSC_VER)
   int registers[4];
   __cpuidex(registers, value, subleaf);
@@ -616,9 +675,6 @@ static bool getX86CpuIDAndInfoEx(unsigned value, unsigned subleaf,
 
 // Read control register 0 (XCR0). Used to detect features such as AVX.
 static bool getX86XCR0(unsigned *rEAX, unsigned *rEDX) {
-  // TODO(boomanaiden154): When the minimum toolchain versions for gcc and clang
-  // are such that _xgetbv is supported by both, we can unify the implementation
-  // with MSVC and remove all inline assembly.
 #if defined(__GNUC__) || defined(__clang__)
   // Check xgetbv; this uses a .byte sequence instead of the instruction
   // directly because older assemblers do not include support for xgetbv and
@@ -820,8 +876,6 @@ static StringRef getIntelProcessorTypeAndSubtype(unsigned Family,
 
     // Arrowlake:
     case 0xc5:
-    // Arrowlake U:
-    case 0xb5:
       CPU = "arrowlake";
       *Type = X86::INTEL_COREI7;
       *Subtype = X86::INTEL_COREI7_ARROWLAKE;
@@ -1058,7 +1112,6 @@ static const char *getAMDProcessorTypeAndSubtype(unsigned Family,
     CPU = "k8";
     break;
   case 16:
-  case 18:
     CPU = "amdfam10";
     *Type = X86::AMDFAM10H; // "amdfam10"
     switch (Model) {
@@ -1841,23 +1894,20 @@ const StringMap<bool> sys::getHostCPUFeatures() {
   Features["cmpccxadd"]  = HasLeaf7Subleaf1 && ((EAX >> 7) & 1);
   Features["hreset"]     = HasLeaf7Subleaf1 && ((EAX >> 22) & 1);
   Features["avxifma"]    = HasLeaf7Subleaf1 && ((EAX >> 23) & 1) && HasAVXSave;
-  Features["movrs"] = HasLeaf7Subleaf1 && ((EAX >> 31) & 1);
   Features["avxvnniint8"] = HasLeaf7Subleaf1 && ((EDX >> 4) & 1) && HasAVXSave;
   Features["avxneconvert"] = HasLeaf7Subleaf1 && ((EDX >> 5) & 1) && HasAVXSave;
   Features["amx-complex"] = HasLeaf7Subleaf1 && ((EDX >> 8) & 1) && HasAMXSave;
   Features["avxvnniint16"] = HasLeaf7Subleaf1 && ((EDX >> 10) & 1) && HasAVXSave;
   Features["prefetchi"]  = HasLeaf7Subleaf1 && ((EDX >> 14) & 1);
   Features["usermsr"]  = HasLeaf7Subleaf1 && ((EDX >> 15) & 1);
-  bool HasAVX10 = HasLeaf7Subleaf1 && ((EDX >> 19) & 1);
+  Features["avx10.1-256"] = HasLeaf7Subleaf1 && ((EDX >> 19) & 1);
   bool HasAPXF = HasLeaf7Subleaf1 && ((EDX >> 21) & 1);
   Features["egpr"] = HasAPXF;
   Features["push2pop2"] = HasAPXF;
   Features["ppx"] = HasAPXF;
   Features["ndd"] = HasAPXF;
   Features["ccmp"] = HasAPXF;
-  Features["nf"] = HasAPXF;
   Features["cf"] = HasAPXF;
-  Features["zu"] = HasAPXF;
 
   bool HasLeafD = MaxLevel >= 0xd &&
                   !getX86CpuIDAndInfoEx(0xd, 0x1, &EAX, &EBX, &ECX, &EDX);
@@ -1876,21 +1926,10 @@ const StringMap<bool> sys::getHostCPUFeatures() {
       MaxLevel >= 0x19 && !getX86CpuIDAndInfo(0x19, &EAX, &EBX, &ECX, &EDX);
   Features["widekl"] = HasLeaf7 && HasLeaf19 && ((EBX >> 2) & 1);
 
-  bool HasLeaf1E = MaxLevel >= 0x1e &&
-                   !getX86CpuIDAndInfoEx(0x1e, 0x1, &EAX, &EBX, &ECX, &EDX);
-  Features["amx-fp8"] = HasLeaf1E && ((EAX >> 4) & 1) && HasAMXSave;
-  Features["amx-transpose"] = HasLeaf1E && ((EAX >> 5) & 1) && HasAMXSave;
-  Features["amx-avx512"] = HasLeaf1E && ((EAX >> 7) & 1) && HasAMXSave;
-
   bool HasLeaf24 =
       MaxLevel >= 0x24 && !getX86CpuIDAndInfo(0x24, &EAX, &EBX, &ECX, &EDX);
-
-  int AVX10Ver = HasLeaf24 && (EBX & 0xff);
-  int Has512Len = HasLeaf24 && ((EBX >> 18) & 1);
-  Features["avx10.1-256"] = HasAVX10 && AVX10Ver >= 1;
-  Features["avx10.1-512"] = HasAVX10 && AVX10Ver >= 1 && Has512Len;
-  Features["avx10.2-256"] = HasAVX10 && AVX10Ver >= 2;
-  Features["avx10.2-512"] = HasAVX10 && AVX10Ver >= 2 && Has512Len;
+  Features["avx10.1-512"] =
+      Features["avx10.1-256"] && HasLeaf24 && ((EBX >> 18) & 1);
 
   return Features;
 }
@@ -1914,8 +1953,7 @@ const StringMap<bool> sys::getHostCPUFeatures() {
     }
 
 #if defined(__aarch64__)
-  // All of these are "crypto" features, but we must sift out actual features
-  // as the former meaning of "crypto" as a single feature is no more.
+  // Keep track of which crypto features we have seen
   enum { CAP_AES = 0x1, CAP_PMULL = 0x2, CAP_SHA1 = 0x4, CAP_SHA2 = 0x8 };
   uint32_t crypto = 0;
 #endif
@@ -1958,13 +1996,9 @@ const StringMap<bool> sys::getHostCPUFeatures() {
   }
 
 #if defined(__aarch64__)
-  // LLVM has decided some AArch64 CPUs have all the instructions they _may_
-  // have, as opposed to all the instructions they _must_ have, so allow runtime
-  // information to correct us on that.
-  uint32_t Aes = CAP_AES | CAP_PMULL;
-  uint32_t Sha2 = CAP_SHA1 | CAP_SHA2;
-  Features["aes"] = (crypto & Aes) == Aes;
-  Features["sha2"] = (crypto & Sha2) == Sha2;
+  // If we have all crypto bits we can add the feature
+  if (crypto == (CAP_AES | CAP_PMULL | CAP_SHA1 | CAP_SHA2))
+    Features["crypto"] = true;
 #endif
 
   return Features;
@@ -1973,17 +2007,12 @@ const StringMap<bool> sys::getHostCPUFeatures() {
 const StringMap<bool> sys::getHostCPUFeatures() {
   StringMap<bool> Features;
 
-  // If we're asking the OS at runtime, believe what the OS says
-  Features["neon"] =
-      IsProcessorFeaturePresent(PF_ARM_NEON_INSTRUCTIONS_AVAILABLE);
-  Features["crc"] =
-      IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE);
-
-  // Avoid inferring "crypto" means more than the traditional AES + SHA2
-  bool TradCrypto =
-      IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE);
-  Features["aes"] = TradCrypto;
-  Features["sha2"] = TradCrypto;
+  if (IsProcessorFeaturePresent(PF_ARM_NEON_INSTRUCTIONS_AVAILABLE))
+    Features["neon"] = true;
+  if (IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE))
+    Features["crc"] = true;
+  if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE))
+    Features["crypto"] = true;
 
   return Features;
 }
@@ -2014,8 +2043,7 @@ struct RISCVHwProbe {
 };
 const StringMap<bool> sys::getHostCPUFeatures() {
   RISCVHwProbe Query[]{{/*RISCV_HWPROBE_KEY_BASE_BEHAVIOR=*/3, 0},
-                       {/*RISCV_HWPROBE_KEY_IMA_EXT_0=*/4, 0},
-                       {/*RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF=*/9, 0}};
+                       {/*RISCV_HWPROBE_KEY_IMA_EXT_0=*/4, 0}};
   int Ret = syscall(/*__NR_riscv_hwprobe=*/258, /*pairs=*/Query,
                     /*pair_count=*/std::size(Query), /*cpu_count=*/0,
                     /*cpus=*/0, /*flags=*/0);
@@ -2067,30 +2095,14 @@ const StringMap<bool> sys::getHostCPUFeatures() {
   Features["zvfhmin"] = ExtMask & (1ULL << 31); // RISCV_HWPROBE_EXT_ZVFHMIN
   Features["zfa"] = ExtMask & (1ULL << 32);     // RISCV_HWPROBE_EXT_ZFA
   Features["ztso"] = ExtMask & (1ULL << 33);    // RISCV_HWPROBE_EXT_ZTSO
-  Features["zacas"] = ExtMask & (1ULL << 34);   // RISCV_HWPROBE_EXT_ZACAS
+  // TODO: Re-enable zacas when it is marked non-experimental again.
+  // Features["zacas"] = ExtMask & (1ULL << 34);   // RISCV_HWPROBE_EXT_ZACAS
   Features["zicond"] = ExtMask & (1ULL << 35);  // RISCV_HWPROBE_EXT_ZICOND
   Features["zihintpause"] =
       ExtMask & (1ULL << 36); // RISCV_HWPROBE_EXT_ZIHINTPAUSE
-  Features["zve32x"] = ExtMask & (1ULL << 37); // RISCV_HWPROBE_EXT_ZVE32X
-  Features["zve32f"] = ExtMask & (1ULL << 38); // RISCV_HWPROBE_EXT_ZVE32F
-  Features["zve64x"] = ExtMask & (1ULL << 39); // RISCV_HWPROBE_EXT_ZVE64X
-  Features["zve64f"] = ExtMask & (1ULL << 40); // RISCV_HWPROBE_EXT_ZVE64F
-  Features["zve64d"] = ExtMask & (1ULL << 41); // RISCV_HWPROBE_EXT_ZVE64D
-  Features["zimop"] = ExtMask & (1ULL << 42);  // RISCV_HWPROBE_EXT_ZIMOP
-  Features["zca"] = ExtMask & (1ULL << 43);    // RISCV_HWPROBE_EXT_ZCA
-  Features["zcb"] = ExtMask & (1ULL << 44);    // RISCV_HWPROBE_EXT_ZCB
-  Features["zcd"] = ExtMask & (1ULL << 45);    // RISCV_HWPROBE_EXT_ZCD
-  Features["zcf"] = ExtMask & (1ULL << 46);    // RISCV_HWPROBE_EXT_ZCF
-  Features["zcmop"] = ExtMask & (1ULL << 47);  // RISCV_HWPROBE_EXT_ZCMOP
-  Features["zawrs"] = ExtMask & (1ULL << 48);  // RISCV_HWPROBE_EXT_ZAWRS
 
-  // Check whether the processor supports fast misaligned scalar memory access.
-  // NOTE: RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF is only available on
-  // Linux 6.11 or later. If it is not recognized, the key field will be cleared
-  // to -1.
-  if (Query[2].Key != -1 &&
-      Query[2].Value == /*RISCV_HWPROBE_MISALIGNED_SCALAR_FAST=*/3)
-    Features["unaligned-scalar-mem"] = true;
+  // TODO: set unaligned-scalar-mem if RISCV_HWPROBE_KEY_MISALIGNED_PERF returns
+  // RISCV_HWPROBE_MISALIGNED_FAST.
 
   return Features;
 }

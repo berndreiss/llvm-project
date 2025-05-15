@@ -1,7 +1,7 @@
-; RUN: llc -verify-machineinstrs -O0 -mtriple=spirv64-unknown-unknown %s -o - | FileCheck %s
+; RUN: llc -O0 -mtriple=spirv64-unknown-unknown %s -o - | FileCheck %s
 ; RUN: %if spirv-tools %{ llc -O0 -mtriple=spirv64-unknown-unknown %s -o - -filetype=obj | spirv-val %}
 
-; RUN: llc -verify-machineinstrs -O0 -mtriple=spirv32-unknown-unknown %s -o - | FileCheck %s
+; RUN: llc -O0 -mtriple=spirv32-unknown-unknown %s -o - | FileCheck %s
 ; RUN: %if spirv-tools %{ llc -O0 -mtriple=spirv32-unknown-unknown %s -o - -filetype=obj | spirv-val %}
 
 ; CHECK-DAG: OpName [[ADD:%.*]] "test_add"
@@ -18,15 +18,16 @@
 ; CHECK-DAG: [[PtrI32Ty:%.*]] = OpTypePointer Function [[I32Ty]]
 ; CHECK-DAG: [[I64Ty:%.*]] = OpTypeInt 64 0
 ; CHECK-DAG: [[PtrI64Ty:%.*]] = OpTypePointer Generic [[I64Ty]]
-; CHECK-DAG: [[CROSSDEVICESCOPE:%.*]] = OpConstantNull [[I32Ty]]
-; CHECK-DAG: [[DEVICESCOPE:%.*]] = OpConstant [[I32Ty]] 1
+;; Device scope is encoded with constant 1
+; CHECK-DAG: [[SCOPE:%.*]] = OpConstant [[I32Ty]] 1
 ;; "monotonic" maps to the relaxed memory semantics, encoded with constant 0
+; CHECK-DAG: [[RELAXED:%.*]] = OpConstantNull [[I32Ty]]
 
 ; CHECK:      [[ADD]] = OpFunction [[I32Ty]]
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicIAdd [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicIAdd [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_add(i32* %ptr, i32 %val) {
@@ -38,7 +39,7 @@ define i32 @test_add(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicISub [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicISub [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_sub(i32* %ptr, i32 %val) {
@@ -50,7 +51,7 @@ define i32 @test_sub(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicSMin [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicSMin [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_min(i32* %ptr, i32 %val) {
@@ -62,7 +63,7 @@ define i32 @test_min(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicSMax [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicSMax [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_max(i32* %ptr, i32 %val) {
@@ -74,7 +75,7 @@ define i32 @test_max(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicUMin [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicUMin [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_umin(i32* %ptr, i32 %val) {
@@ -86,7 +87,7 @@ define i32 @test_umin(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicUMax [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicUMax [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_umax(i32* %ptr, i32 %val) {
@@ -98,7 +99,7 @@ define i32 @test_umax(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicAnd [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicAnd [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_and(i32* %ptr, i32 %val) {
@@ -110,7 +111,7 @@ define i32 @test_and(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicOr [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicOr [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_or(i32* %ptr, i32 %val) {
@@ -122,7 +123,7 @@ define i32 @test_or(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[A:%.*]] = OpFunctionParameter [[PtrI32Ty]]
 ; CHECK-NEXT: [[B:%.*]] = OpFunctionParameter [[I32Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: [[R:%.*]] = OpAtomicXor [[I32Ty]] [[A]] [[CROSSDEVICESCOPE]] {{.+}} [[B]]
+; CHECK-NEXT: [[R:%.*]] = OpAtomicXor [[I32Ty]] [[A]] [[SCOPE]] [[RELAXED]] [[B]]
 ; CHECK-NEXT: OpReturnValue [[R]]
 ; CHECK-NEXT: OpFunctionEnd
 define i32 @test_xor(i32* %ptr, i32 %val) {
@@ -134,10 +135,10 @@ define i32 @test_xor(i32* %ptr, i32 %val) {
 ; CHECK-NEXT: [[Arg1:%.*]] = OpFunctionParameter [[PtrI64Ty]]
 ; CHECK-NEXT: [[Arg2:%.*]] = OpFunctionParameter [[I64Ty]]
 ; CHECK-NEXT: OpLabel
-; CHECK-NEXT: OpAtomicSMin [[I64Ty]] [[Arg1]] [[DEVICESCOPE]] {{.+}} [[Arg2]]
-; CHECK-NEXT: OpAtomicSMax [[I64Ty]] [[Arg1]] [[DEVICESCOPE]] {{.+}} [[Arg2]]
-; CHECK-NEXT: OpAtomicUMin [[I64Ty]] [[Arg1]] [[DEVICESCOPE]] {{.+}} [[Arg2]]
-; CHECK-NEXT: OpAtomicUMax [[I64Ty]] [[Arg1]] [[DEVICESCOPE]] {{.+}} [[Arg2]]
+; CHECK-NEXT: OpAtomicSMin [[I64Ty]] [[Arg1]] [[SCOPE]] [[RELAXED]] [[Arg2]]
+; CHECK-NEXT: OpAtomicSMax [[I64Ty]] [[Arg1]] [[SCOPE]] [[RELAXED]] [[Arg2]]
+; CHECK-NEXT: OpAtomicUMin [[I64Ty]] [[Arg1]] [[SCOPE]] [[RELAXED]] [[Arg2]]
+; CHECK-NEXT: OpAtomicUMax [[I64Ty]] [[Arg1]] [[SCOPE]] [[RELAXED]] [[Arg2]]
 ; CHECK-NEXT: OpReturn
 ; CHECK-NEXT: OpFunctionEnd
 define dso_local spir_kernel void @test_wrappers(ptr addrspace(4) %arg, i64 %val) {

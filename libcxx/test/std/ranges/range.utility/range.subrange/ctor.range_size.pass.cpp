@@ -27,8 +27,10 @@ private:
   int* end_;
 };
 
-template <>
-inline constexpr bool std::ranges::enable_borrowed_range<BorrowedRange> = true;
+namespace std::ranges {
+  template <>
+  inline constexpr bool enable_borrowed_range<::BorrowedRange> = true;
+}
 
 constexpr bool test() {
   int buff[] = {1, 2, 3, 4, 5, 6, 7, 8};

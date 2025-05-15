@@ -137,7 +137,7 @@ TEST(AddressSanitizer, DISABLED_InternalPrintShadow) {
 }
 
 TEST(AddressSanitizer, QuarantineTest) {
-  UNINITIALIZED BufferedStackTrace stack;
+  BufferedStackTrace stack;
   stack.trace_buffer[0] = 0x890;
   stack.size = 1;
 
@@ -159,7 +159,7 @@ TEST(AddressSanitizer, QuarantineTest) {
 void *ThreadedQuarantineTestWorker(void *unused) {
   (void)unused;
   u32 seed = my_rand();
-  UNINITIALIZED BufferedStackTrace stack;
+  BufferedStackTrace stack;
   stack.trace_buffer[0] = 0x890;
   stack.size = 1;
 
@@ -194,7 +194,7 @@ TEST(AddressSanitizer, ThreadedQuarantineTest) {
 
 void *ThreadedOneSizeMallocStress(void *unused) {
   (void)unused;
-  UNINITIALIZED BufferedStackTrace stack;
+  BufferedStackTrace stack;
   stack.trace_buffer[0] = 0x890;
   stack.size = 1;
   const size_t kNumMallocs = 1000;
@@ -238,7 +238,7 @@ static void TestLoadStoreCallbacks(CB cb[2][5]) {
   uptr buggy_ptr;
 
   __asan_test_only_reported_buggy_pointer = &buggy_ptr;
-  UNINITIALIZED BufferedStackTrace stack;
+  BufferedStackTrace stack;
   stack.trace_buffer[0] = 0x890;
   stack.size = 1;
 

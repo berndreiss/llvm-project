@@ -125,7 +125,7 @@ json::Array renderRegions(ArrayRef<coverage::CountedRegion> Regions) {
 json::Array renderBranchRegions(ArrayRef<coverage::CountedRegion> Regions) {
   json::Array RegionArray;
   for (const auto &Region : Regions)
-    if (!Region.TrueFolded || !Region.FalseFolded)
+    if (!Region.Folded)
       RegionArray.push_back(renderBranch(Region));
   return RegionArray;
 }

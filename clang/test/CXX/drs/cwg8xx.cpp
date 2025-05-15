@@ -30,9 +30,3 @@ void g(int i) {
 }
 #endif
 } // namespace cwg873
-
-// cwg882: 3.5
-#if __cplusplus >= 201103L
-int main() = delete;
-// since-cxx11-error@-1 {{'main' is not allowed to be deleted}}
-#endif

@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // UNSUPPORTED: no-threads
+// UNSUPPORTED: libcpp-has-no-experimental-stop_token
 // UNSUPPORTED: c++03, c++11, c++14, c++17
 // XFAIL: availability-synchronization_library-missing
 
@@ -17,7 +18,6 @@
 #include <stop_token>
 #include <thread>
 #include <type_traits>
-#include <utility>
 
 #include "test_macros.h"
 

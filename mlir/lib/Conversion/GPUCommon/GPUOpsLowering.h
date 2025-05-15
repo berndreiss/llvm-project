@@ -35,41 +35,16 @@ private:
   unsigned alignmentBit;
 };
 
-struct GPUFuncOpLoweringOptions {
-  /// The address space to use for `alloca`s in private memory.
-  unsigned allocaAddrSpace;
-  /// The address space to use declaring workgroup memory.
-  unsigned workgroupAddrSpace;
-
-  /// The attribute name to use instead of `gpu.kernel`. Null if no attribute
-  /// should be used.
-  StringAttr kernelAttributeName;
-  /// The attribute name to to set block size. Null if no attribute should be
-  /// used.
-  StringAttr kernelBlockSizeAttributeName;
-
-  /// The calling convention to use for kernel functions.
-  LLVM::CConv kernelCallingConvention = LLVM::CConv::C;
-  /// The calling convention to use for non-kernel functions.
-  LLVM::CConv nonKernelCallingConvention = LLVM::CConv::C;
-
-  /// Whether to encode workgroup attributions as additional arguments instead
-  /// of a global variable.
-  bool encodeWorkgroupAttributionsAsArguments = false;
-};
-
 struct GPUFuncOpLowering : ConvertOpToLLVMPattern<gpu::GPUFuncOp> {
-  GPUFuncOpLowering(const LLVMTypeConverter &converter,
-                    const GPUFuncOpLoweringOptions &options)
+  GPUFuncOpLowering(
+      const LLVMTypeConverter &converter, unsigned allocaAddrSpace,
+      unsigned workgroupAddrSpace, StringAttr kernelAttributeName,
+      std::optional<StringAttr> kernelBlockSizeAttributeName = std::nullopt)
       : ConvertOpToLLVMPattern<gpu::GPUFuncOp>(converter),
-        allocaAddrSpace(options.allocaAddrSpace),
-        workgroupAddrSpace(options.workgroupAddrSpace),
-        kernelAttributeName(options.kernelAttributeName),
-        kernelBlockSizeAttributeName(options.kernelBlockSizeAttributeName),
-        kernelCallingConvention(options.kernelCallingConvention),
-        nonKernelCallingConvention(options.nonKernelCallingConvention),
-        encodeWorkgroupAttributionsAsArguments(
-            options.encodeWorkgroupAttributionsAsArguments) {}
+        allocaAddrSpace(allocaAddrSpace),
+        workgroupAddrSpace(workgroupAddrSpace),
+        kernelAttributeName(kernelAttributeName),
+        kernelBlockSizeAttributeName(kernelBlockSizeAttributeName) {}
 
   LogicalResult
   matchAndRewrite(gpu::GPUFuncOp gpuFuncOp, OpAdaptor adaptor,
@@ -81,21 +56,11 @@ private:
   /// The address space to use declaring workgroup memory.
   unsigned workgroupAddrSpace;
 
-  /// The attribute name to use instead of `gpu.kernel`. Null if no attribute
-  /// should be used.
+  /// The attribute name to use instead of `gpu.kernel`.
   StringAttr kernelAttributeName;
-  /// The attribute name to to set block size. Null if no attribute should be
-  /// used.
-  StringAttr kernelBlockSizeAttributeName;
 
-  /// The calling convention to use for kernel functions
-  LLVM::CConv kernelCallingConvention;
-  /// The calling convention to use for non-kernel functions
-  LLVM::CConv nonKernelCallingConvention;
-
-  /// Whether to encode workgroup attributions as additional arguments instead
-  /// of a global variable.
-  bool encodeWorkgroupAttributionsAsArguments;
+  /// The attribute name to to set block size
+  std::optional<StringAttr> kernelBlockSizeAttributeName;
 };
 
 /// The lowering of gpu.printf to a call to HIP hostcalls

@@ -99,12 +99,14 @@ void PtxBuilder::insertValue(Value v, PTXRegisterMod itype) {
       } else {
         ss << getModifier() << getRegisterType(t) << ",";
       }
+      ss.flush();
     }
     return;
   }
   // Handle Scalars
   addValue(v);
   ss << getModifier() << getRegisterType(v) << ",";
+  ss.flush();
 }
 
 LLVM::InlineAsmOp PtxBuilder::build() {

@@ -133,7 +133,7 @@ PlatformWindows::PlatformWindows(bool is_host) : RemoteAwarePlatform(is_host) {
 Status PlatformWindows::ConnectRemote(Args &args) {
   Status error;
   if (IsHost()) {
-    error = Status::FromErrorStringWithFormatv(
+    error.SetErrorStringWithFormatv(
         "can't connect to the host platform '{0}', always connected",
         GetPluginName());
   } else {
@@ -147,13 +147,12 @@ Status PlatformWindows::ConnectRemote(Args &args) {
         if (m_remote_platform_sp) {
           error = m_remote_platform_sp->ConnectRemote(args);
         } else {
-          error = Status::FromErrorString(
+          error.SetErrorString(
               "\"platform connect\" takes a single argument: <connect-url>");
         }
       }
     } else
-      error = Status::FromErrorString(
-          "failed to create a 'remote-gdb-server' platform");
+      error.SetErrorString("failed to create a 'remote-gdb-server' platform");
 
     if (error.Fail())
       m_remote_platform_sp.reset();
@@ -173,8 +172,7 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
 
   ThreadSP thread = process->GetThreadList().GetExpressionExecutionThread();
   if (!thread) {
-    error = Status::FromErrorString(
-        "LoadLibrary error: no thread available to invoke LoadLibrary");
+    error.SetErrorString("LoadLibrary error: no thread available to invoke LoadLibrary");
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -191,16 +189,14 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
 
   FunctionCaller *invocation = loader->GetFunctionCaller();
   if (!invocation) {
-    error = Status::FromErrorString(
-        "LoadLibrary error: could not get function caller");
+    error.SetErrorString("LoadLibrary error: could not get function caller");
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
   /* Convert name */
   llvm::SmallVector<llvm::UTF16, 261> name;
   if (!llvm::convertUTF8ToUTF16String(remote_file.GetPath(), name)) {
-    error = Status::FromErrorString(
-        "LoadLibrary error: could not convert path to UCS2");
+    error.SetErrorString("LoadLibrary error: could not convert path to UCS2");
     return LLDB_INVALID_IMAGE_TOKEN;
   }
   name.emplace_back(L'\0');
@@ -211,9 +207,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
                               ePermissionsReadable | ePermissionsWritable,
                               status);
   if (injected_name == LLDB_INVALID_ADDRESS) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: unable to allocate memory for name: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: unable to allocate memory for name: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -224,8 +219,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
   process->WriteMemory(injected_name, name.data(),
                        name.size() * sizeof(llvm::UTF16), status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: unable to write name: %s", status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: unable to write name: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -253,9 +248,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
                                 ePermissionsReadable | ePermissionsWritable,
                                 status);
     if (injected_paths == LLDB_INVALID_ADDRESS) {
-      error = Status::FromErrorStringWithFormat(
-          "LoadLibrary error: unable to allocate memory for paths: %s",
-          status.AsCString());
+      error.SetErrorStringWithFormat("LoadLibrary error: unable to allocate memory for paths: %s",
+                                     status.AsCString());
       return LLDB_INVALID_IMAGE_TOKEN;
     }
 
@@ -266,8 +260,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
     process->WriteMemory(injected_paths, search_paths.data(),
                          search_paths.size() * sizeof(llvm::UTF16), status);
     if (status.Fail()) {
-      error = Status::FromErrorStringWithFormat(
-          "LoadLibrary error: unable to write paths: %s", status.AsCString());
+      error.SetErrorStringWithFormat("LoadLibrary error: unable to write paths: %s",
+                                     status.AsCString());
       return LLDB_INVALID_IMAGE_TOKEN;
     }
   }
@@ -283,9 +277,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
                               ePermissionsReadable | ePermissionsWritable,
                               status);
   if (injected_module_path == LLDB_INVALID_ADDRESS) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: unable to allocate memory for module location: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: unable to allocate memory for module location: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -301,9 +294,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
                               ePermissionsReadable | ePermissionsWritable,
                               status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not allocate memory for result: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: could not allocate memory for result: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -314,9 +306,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
   process->WritePointerToMemory(injected_result + word_size,
                                 injected_module_path, status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not initialize result: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: could not initialize result: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -325,9 +316,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
                                Scalar{injected_length}, sizeof(unsigned),
                                status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not initialize result: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: could not initialize result: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -341,9 +331,8 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
   diagnostics.Clear();
   if (!invocation->WriteFunctionArguments(context, injected_parameters,
                                           parameters, diagnostics)) {
-    error = Status::FromError(diagnostics.GetAsError(
-        eExpressionSetupError,
-        "LoadLibrary error: unable to write function parameters:"));
+    error.SetErrorStringWithFormat("LoadLibrary error: unable to write function parameters: %s",
+                                   diagnostics.GetString().c_str());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -355,8 +344,7 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
   TypeSystemClangSP scratch_ts_sp =
       ScratchTypeSystemClang::GetForTarget(process->GetTarget());
   if (!scratch_ts_sp) {
-    error = Status::FromErrorString(
-        "LoadLibrary error: unable to get (clang) type system");
+    error.SetErrorString("LoadLibrary error: unable to get (clang) type system");
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -384,17 +372,16 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
       invocation->ExecuteFunction(context, &injected_parameters, options,
                                   diagnostics, value);
   if (result != eExpressionCompleted) {
-    error = Status::FromError(diagnostics.GetAsError(
-        eExpressionSetupError,
-        "LoadLibrary error: failed to execute LoadLibrary helper:"));
+    error.SetErrorStringWithFormat("LoadLibrary error: failed to execute LoadLibrary helper: %s",
+                                   diagnostics.GetString().c_str());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
   /* Read result */
   lldb::addr_t token = process->ReadPointerFromMemory(injected_result, status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not read the result: %s", status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: could not read the result: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -404,23 +391,20 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
         process->ReadUnsignedIntegerFromMemory(injected_result + 2 * word_size + sizeof(unsigned),
                                                word_size, 0, status);
     if (status.Fail()) {
-      error = Status::FromErrorStringWithFormat(
-          "LoadLibrary error: could not read error status: %s",
-          status.AsCString());
+      error.SetErrorStringWithFormat("LoadLibrary error: could not read error status: %s",
+                                     status.AsCString());
       return LLDB_INVALID_IMAGE_TOKEN;
     }
 
-    error = Status::FromErrorStringWithFormat("LoadLibrary Error: %" PRIu64,
-                                              error_code);
+    error.SetErrorStringWithFormat("LoadLibrary Error: %" PRIu64, error_code);
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
   std::string module_path;
   process->ReadCStringFromMemory(injected_module_path, module_path, status);
   if (status.Fail()) {
-    error = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not read module path: %s",
-        status.AsCString());
+    error.SetErrorStringWithFormat("LoadLibrary error: could not read module path: %s",
+                                   status.AsCString());
     return LLDB_INVALID_IMAGE_TOKEN;
   }
 
@@ -432,7 +416,7 @@ uint32_t PlatformWindows::DoLoadImage(Process *process,
 Status PlatformWindows::UnloadImage(Process *process, uint32_t image_token) {
   const addr_t address = process->GetImagePtrFromToken(image_token);
   if (address == LLDB_INVALID_IMAGE_TOKEN)
-    return Status::FromErrorString("invalid image token");
+    return Status("invalid image token");
 
   StreamString expression;
   expression.Printf("FreeLibrary((HMODULE)0x%" PRIx64 ")", address);
@@ -444,13 +428,12 @@ Status PlatformWindows::UnloadImage(Process *process, uint32_t image_token) {
     return result;
 
   if (value->GetError().Fail())
-    return value->GetError().Clone();
+    return value->GetError();
 
   Scalar scalar;
   if (value->ResolveValue(scalar)) {
     if (scalar.UInt(1))
-      return Status::FromErrorStringWithFormat("expression failed: \"%s\"",
-                                               expression.GetData());
+      return Status("expression failed: \"%s\"", expression.GetData());
     process->ResetImageToken(image_token);
   }
 
@@ -461,15 +444,14 @@ Status PlatformWindows::DisconnectRemote() {
   Status error;
 
   if (IsHost()) {
-    error = Status::FromErrorStringWithFormatv(
+    error.SetErrorStringWithFormatv(
         "can't disconnect from the host platform '{0}', always connected",
         GetPluginName());
   } else {
     if (m_remote_platform_sp)
       error = m_remote_platform_sp->DisconnectRemote();
     else
-      error =
-          Status::FromErrorString("the platform is not currently connected");
+      error.SetErrorString("the platform is not currently connected");
   }
   return error;
 }
@@ -501,8 +483,7 @@ ProcessSP PlatformWindows::DebugProcess(ProcessLaunchInfo &launch_info,
       return m_remote_platform_sp->DebugProcess(launch_info, debugger, target,
                                                 error);
     else
-      error =
-          Status::FromErrorString("the platform is not currently connected");
+      error.SetErrorString("the platform is not currently connected");
   }
 
   if (launch_info.GetProcessID() != LLDB_INVALID_PROCESS_ID) {
@@ -535,8 +516,7 @@ lldb::ProcessSP PlatformWindows::Attach(ProcessAttachInfo &attach_info,
       process_sp =
           m_remote_platform_sp->Attach(attach_info, debugger, target, error);
     else
-      error =
-          Status::FromErrorString("the platform is not currently connected");
+      error.SetErrorString("the platform is not currently connected");
     return process_sp;
   }
 
@@ -700,9 +680,8 @@ void * __lldb_LoadLibraryHelper(const wchar_t *name, const wchar_t *paths,
                                                context);
   if (!function) {
     std::string error = llvm::toString(function.takeError());
-    status = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not create utility function: %s",
-        error.c_str());
+    status.SetErrorStringWithFormat("LoadLibrary error: could not create utility function: %s",
+                                    error.c_str());
     return nullptr;
   }
 
@@ -733,15 +712,13 @@ void * __lldb_LoadLibraryHelper(const wchar_t *name, const wchar_t *paths,
   utility->MakeFunctionCaller(VoidPtrTy, parameters, context.GetThreadSP(),
                               error);
   if (error.Fail()) {
-    status = Status::FromErrorStringWithFormat(
-        "LoadLibrary error: could not create function caller: %s",
-        error.AsCString());
+    status.SetErrorStringWithFormat("LoadLibrary error: could not create function caller: %s",
+                                    error.AsCString());
     return nullptr;
   }
 
   if (!utility->GetFunctionCaller()) {
-    status = Status::FromErrorString(
-        "LoadLibrary error: could not get function caller");
+    status.SetErrorString("LoadLibrary error: could not get function caller");
     return nullptr;
   }
 
@@ -778,11 +755,11 @@ extern "C" {
 
   ThreadSP thread = process->GetThreadList().GetExpressionExecutionThread();
   if (!thread)
-    return Status::FromErrorString("selected thread is invalid");
+    return Status("selected thread is invalid");
 
   StackFrameSP frame = thread->GetStackFrameAtIndex(0);
   if (!frame)
-    return Status::FromErrorString("frame 0 is invalid");
+    return Status("frame 0 is invalid");
 
   ExecutionContext context;
   frame->CalculateExecutionContext(context);
@@ -805,7 +782,7 @@ extern "C" {
     return error;
 
   if (value->GetError().Fail())
-    return value->GetError().Clone();
+    return value->GetError();
 
   return Status();
 }

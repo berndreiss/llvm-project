@@ -138,7 +138,6 @@ add_entrypoint_object(
   DEPENDS
     .strcpy
     .string_utils
-    libc.include.llvm-libc-types.size_t
 )
 
 add_entrypoint_object(
@@ -202,14 +201,6 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
-  strcoll_l
-  SRCS
-    strcoll_l.cpp
-  HDRS
-  strcoll_l.h
-)
-
-add_entrypoint_object(
   strcpy
   SRCS
     strcpy.cpp
@@ -239,9 +230,8 @@ add_entrypoint_object(
   DEPENDS
     .memory_utils.inline_memcpy
     .string_utils
-    libc.hdr.stdlib_macros
+    libc.include.stdlib
     libc.src.errno.errno
-    libc.include.llvm-libc-types.size_t
 )
 
 add_entrypoint_object(
@@ -272,7 +262,7 @@ add_entrypoint_object(
     strlcat.h
   DEPENDS
     .string_utils
-    libc.include.llvm-libc-types.size_t
+    libc.include.string
 )
 
 add_entrypoint_object(
@@ -283,7 +273,7 @@ add_entrypoint_object(
     strlcpy.h
   DEPENDS
     .string_utils
-    libc.include.llvm-libc-types.size_t
+    libc.include.string
 )
 
 add_entrypoint_object(
@@ -294,7 +284,7 @@ add_entrypoint_object(
     strlen.h
   DEPENDS
     .string_utils
-    libc.include.llvm-libc-types.size_t
+    libc.include.string
 )
 
 add_entrypoint_object(
@@ -306,7 +296,6 @@ add_entrypoint_object(
   DEPENDS
     .strncpy
     .string_utils
-    libc.include.llvm-libc-types.size_t
 )
 
 add_entrypoint_object(
@@ -349,7 +338,6 @@ add_entrypoint_object(
     .string_utils
     libc.include.stdlib
     libc.src.__support.CPP.new
-    libc.include.llvm-libc-types.size_t
 )
 
 add_entrypoint_object(
@@ -448,17 +436,6 @@ add_entrypoint_object(
     strxfrm.cpp
   HDRS
     strxfrm.h
-  DEPENDS
-    .string_utils
-    .memory_utils.inline_memcpy
-)
-
-add_entrypoint_object(
-  strxfrm_l
-  SRCS
-    strxfrm_l.cpp
-  HDRS
-    strxfrm_l.h
   DEPENDS
     .string_utils
     .memory_utils.inline_memcpy

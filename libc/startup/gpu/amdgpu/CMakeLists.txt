@@ -3,7 +3,6 @@ add_startup_object(
   SRC
     start.cpp
   DEPENDS
-    libc.config.app_h
     libc.src.__support.RPC.rpc_client
     libc.src.__support.GPU.utils
     libc.src.stdlib.exit

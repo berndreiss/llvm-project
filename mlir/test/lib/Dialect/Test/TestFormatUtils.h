@@ -160,8 +160,7 @@ void printSwitchCases(mlir::OpAsmPrinter &p, mlir::Operation *op,
 // CustomUsingPropertyInCustom
 //===----------------------------------------------------------------------===//
 
-bool parseUsingPropertyInCustom(mlir::OpAsmParser &parser,
-                                llvm::SmallVector<int64_t> &value);
+bool parseUsingPropertyInCustom(mlir::OpAsmParser &parser, int64_t value[3]);
 
 void printUsingPropertyInCustom(mlir::OpAsmPrinter &printer,
                                 mlir::Operation *op,

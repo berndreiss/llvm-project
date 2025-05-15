@@ -71,7 +71,10 @@ public:
 
 private:
   SectionRange &getSectionRange(Section &Sec) {
-    return SectionRanges.try_emplace(&Sec, Sec).first->second;
+    auto I = SectionRanges.find(&Sec);
+    if (I == SectionRanges.end())
+      I = SectionRanges.insert(std::make_pair(&Sec, SectionRange(Sec))).first;
+    return I->second;
   }
 
   DenseMap<Section *, SectionRange> SectionRanges;

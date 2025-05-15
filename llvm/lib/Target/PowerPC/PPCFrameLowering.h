@@ -107,6 +107,7 @@ public:
   void inlineStackProbe(MachineFunction &MF,
                         MachineBasicBlock &PrologMBB) const override;
 
+  bool hasFP(const MachineFunction &MF) const override;
   bool needsFP(const MachineFunction &MF) const;
   void replaceFPWithRealFP(MachineFunction &MF) const;
 
@@ -175,9 +176,6 @@ public:
   void updateCalleeSaves(const MachineFunction &MF, BitVector &SavedRegs) const;
 
   uint64_t getStackThreshold() const override;
-
-protected:
-  bool hasFPImpl(const MachineFunction &MF) const override;
 };
 } // End llvm namespace
 

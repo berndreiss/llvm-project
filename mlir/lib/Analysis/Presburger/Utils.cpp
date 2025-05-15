@@ -319,7 +319,7 @@ presburger::getDivUpperBound(ArrayRef<DynamicAPInt> dividend,
   assert(divisor > 0 && "divisor must be positive!");
   assert(dividend[localVarIdx] == 0 &&
          "Local to be set to division must have zero coeff!");
-  SmallVector<DynamicAPInt, 8> ineq(dividend);
+  SmallVector<DynamicAPInt, 8> ineq(dividend.begin(), dividend.end());
   ineq[localVarIdx] = -divisor;
   return ineq;
 }

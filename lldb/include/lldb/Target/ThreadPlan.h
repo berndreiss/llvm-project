@@ -302,8 +302,7 @@ public:
     eKindStepInRange,
     eKindRunToAddress,
     eKindStepThrough,
-    eKindStepUntil,
-    eKindSingleThreadTimeout,
+    eKindStepUntil
   };
 
   virtual ~ThreadPlan();
@@ -385,13 +384,7 @@ public:
   virtual void SetStopOthers(bool new_value);
 
   virtual bool StopOthers();
-
-  // Returns true if the thread plan supports ThreadPlanSingleThreadTimeout to
-  // resume other threads after timeout. If the thread plan returns false it
-  // will prevent ThreadPlanSingleThreadTimeout from being created when this
-  // thread plan is alive.
-  virtual bool SupportsResumeOthers() { return true; }
-
+  
   virtual bool ShouldRunBeforePublicStop() { return false; }
 
   // This is the wrapper for DoWillResume that does generic ThreadPlan logic,
@@ -401,11 +394,6 @@ public:
   virtual bool WillStop() = 0;
 
   bool IsControllingPlan() { return m_is_controlling_plan; }
-
-  // Returns true if this plan is a leaf plan, meaning the plan will be popped
-  // during each stop if it does not explain the stop and re-pushed before
-  // resuming to stay at the top of the stack.
-  virtual bool IsLeafPlan() { return false; }
 
   bool SetIsControllingPlan(bool value) {
     bool old_value = m_is_controlling_plan;
@@ -495,8 +483,6 @@ public:
     return m_takes_iteration_count;
   }
 
-  virtual lldb::StateType GetPlanRunState() = 0;
-
 protected:
   // Constructors and Destructors
   ThreadPlan(ThreadPlanKind kind, const char *name, Thread &thread,
@@ -535,6 +521,8 @@ protected:
   void SetStopInfo(lldb::StopInfoSP stop_reason_sp) {
     GetThread().SetStopInfo(stop_reason_sp);
   }
+
+  virtual lldb::StateType GetPlanRunState() = 0;
 
   bool IsUsuallyUnexplainedStopReason(lldb::StopReason);
 

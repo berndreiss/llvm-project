@@ -511,9 +511,8 @@ public:
 /// This node is the base class for sequential/in-order min/max selections.
 /// Note that their fundamental difference from SCEVMinMaxExpr's is that they
 /// are early-returning upon reaching saturation point.
-/// I.e. given `0 umin_seq poison`, the result will be `0`, while the result of
-/// `0 umin poison` is `poison`. When returning early, later expressions are not
-/// executed, so `0 umin_seq (%x u/ 0)` does not result in undefined behavior.
+/// I.e. given `0 umin_seq poison`, the result will be `0`,
+/// while the result of `0 umin poison` is `poison`.
 class SCEVSequentialMinMaxExpr : public SCEVNAryExpr {
   friend class ScalarEvolution;
 

@@ -2,14 +2,16 @@
 //
 // REQUIRES: has_sancovcc,stable-runtime,x86_64-linux
 //
-// RUN: rm -rf %t_workdir
-// RUN: mkdir -p %t_workdir
-// RUN: cd %t_workdir
-// RUN: %clangxx -DSHARED1 -O0 -fsanitize-coverage=trace-pc-guard -shared %s -o %t_1.so -fPIC
-// RUN: %clangxx -DSTATIC1 -O0 -fsanitize-coverage=trace-pc-guard %s -c -o %t_2.o
-// RUN: %clangxx -DMAIN -O0 -fsanitize-coverage=trace-pc-guard %s -o %t %t_1.so %t_2.o
+// RUN: DIR=%t_workdir
+// RUN: CLANG_ARGS="-O0 -fsanitize-coverage=trace-pc-guard"
+// RUN: rm -rf $DIR
+// RUN: mkdir -p $DIR
+// RUN: cd $DIR
+// RUN: %clangxx -DSHARED1 $CLANG_ARGS -shared %s -o %t_1.so -fPIC
+// RUN: %clangxx -DSTATIC1 $CLANG_ARGS %s -c -o %t_2.o
+// RUN: %clangxx -DMAIN $CLANG_ARGS %s -o %t %t_1.so %t_2.o
 // RUN: %env_tool_opts=coverage=1 %t 2>&1 | FileCheck %s
-// RUN: rm -rf %t_workdir
+// RUN: rm -rf $DIR
 
 #include <stdio.h>
 #include <stdint.h>

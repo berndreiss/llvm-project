@@ -353,15 +353,7 @@ bool ShouldMockFailureToOpen(const char *path) {
          internal_strncmp(path, "/proc/", 6) == 0;
 }
 
-bool OpenReadsVaArgs(int oflag) {
-#  ifdef O_TMPFILE
-  return (oflag & (O_CREAT | O_TMPFILE)) != 0;
-#  else
-  return (oflag & O_CREAT) != 0;
-#  endif
-}
-
-#  if SANITIZER_LINUX && !SANITIZER_ANDROID && !SANITIZER_GO
+#if SANITIZER_LINUX && !SANITIZER_ANDROID && !SANITIZER_GO
 int GetNamedMappingFd(const char *name, uptr size, int *flags) {
   if (!common_flags()->decorate_proc_maps || !name)
     return -1;

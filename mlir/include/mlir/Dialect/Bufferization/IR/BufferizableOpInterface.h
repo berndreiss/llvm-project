@@ -60,8 +60,7 @@ struct AliasingValue {
   bool isDefinite;
 };
 
-template <typename T>
-class AliasList {
+template <typename T> class AliasList {
 public:
   /// Create an empty list of aliases.
   AliasList() = default;
@@ -153,7 +152,7 @@ public:
   /// This function adds a DENY entry.
   void denyDialect(StringRef dialectNamespace) {
     Entry::FilterFn filterFn = [=](Operation *op) {
-      return op->getName().getDialectNamespace() == dialectNamespace;
+      return op->getDialect()->getNamespace() == dialectNamespace;
     };
     entries.push_back(Entry{filterFn, Entry::FilterType::DENY});
   }
@@ -260,7 +259,7 @@ struct BufferizationOptions {
   /// Initializer function for analysis state.
   using AnalysisStateInitFn = std::function<void(AnalysisState &)>;
   /// Tensor -> MemRef type converter.
-  /// Parameters: tensor type, memory space, func op, bufferization options
+  /// Parameters: Value, memory space, func op, bufferization options
   using FunctionArgTypeConverterFn =
       std::function<BaseMemRefType(TensorType, Attribute memorySpace,
                                    func::FuncOp, const BufferizationOptions &)>;
@@ -345,9 +344,9 @@ struct BufferizationOptions {
   void setFunctionBoundaryTypeConversion(LayoutMapOption layoutMapOption);
 
   /// Type converter from tensors to memrefs. This type converter is used to
-  /// determine bufferized function argument and result types. By default, a
-  /// type converter that returns a memref type with a fully dynamic layout map
-  /// is used.
+  /// determine bufferized function argument types. By default, a type
+  /// converter that returns a memref type with a fully dynamic layout map is
+  /// used.
   ///
   /// If `bufferizeFunctionBoundaries` is not set, this function isn't used.
   FunctionArgTypeConverterFn functionArgTypeConverterFn = nullptr;

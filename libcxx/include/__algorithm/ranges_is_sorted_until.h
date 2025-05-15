@@ -47,7 +47,8 @@ __is_sorted_until_impl(_Iter __first, _Sent __last, _Comp& __comp, _Proj& __proj
   return __i;
 }
 
-struct __is_sorted_until {
+namespace __is_sorted_until {
+struct __fn {
   template <forward_iterator _Iter,
             sentinel_for<_Iter> _Sent,
             class _Proj                                               = identity,
@@ -65,9 +66,10 @@ struct __is_sorted_until {
     return ranges::__is_sorted_until_impl(ranges::begin(__range), ranges::end(__range), __comp, __proj);
   }
 };
+} // namespace __is_sorted_until
 
 inline namespace __cpo {
-inline constexpr auto is_sorted_until = __is_sorted_until{};
+inline constexpr auto is_sorted_until = __is_sorted_until::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

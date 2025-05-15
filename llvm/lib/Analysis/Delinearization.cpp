@@ -15,6 +15,7 @@
 
 #include "llvm/Analysis/Delinearization.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionDivision.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -130,7 +131,7 @@ struct SCEVCollectAddRecMultiplies {
     if (auto *Mul = dyn_cast<SCEVMulExpr>(S)) {
       bool HasAddRec = false;
       SmallVector<const SCEV *, 0> Operands;
-      for (const SCEV *Op : Mul->operands()) {
+      for (const auto *Op : Mul->operands()) {
         const SCEVUnknown *Unknown = dyn_cast<SCEVUnknown>(Op);
         if (Unknown && !isa<CallInst>(Unknown->getValue())) {
           Operands.push_back(Op);

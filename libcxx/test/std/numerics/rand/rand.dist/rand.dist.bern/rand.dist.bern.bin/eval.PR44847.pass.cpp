@@ -18,15 +18,14 @@
 // Serializing/deserializing the state of the RNG requires iostreams
 // UNSUPPORTED: no-localization
 
-// Very slow when run in qemu.
-// REQUIRES: long_tests
+// This test appears to hang with picolibc & qemu.
+// UNSUPPORTED: LIBCXX-PICOLIBC-FIXME
 
 #include <random>
-#include <cassert>
-#include <cmath>
 #include <numeric>
-#include <sstream>
 #include <vector>
+#include <cassert>
+#include <sstream>
 
 #include "test_macros.h"
 

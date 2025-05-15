@@ -22,7 +22,6 @@
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/Dialect/OpenACC/OpenACCOpsDialect.h.inc"
 #include "mlir/Dialect/OpenACC/OpenACCOpsEnums.h.inc"
-#include "mlir/Dialect/OpenACC/OpenACCOpsInterfaces.h.inc"
 #include "mlir/Dialect/OpenACC/OpenACCTypeInterfaces.h.inc"
 #include "mlir/Dialect/OpenACCMPCommon/Interfaces/AtomicInterfaces.h"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
@@ -56,14 +55,14 @@
   mlir::acc::ParallelOp, mlir::acc::KernelsOp, mlir::acc::SerialOp
 #define ACC_COMPUTE_CONSTRUCT_AND_LOOP_OPS                                     \
   ACC_COMPUTE_CONSTRUCT_OPS, mlir::acc::LoopOp
-#define ACC_DATA_CONSTRUCT_STRUCTURED_OPS                                      \
+#define OPENACC_DATA_CONSTRUCT_STRUCTURED_OPS                                  \
   mlir::acc::DataOp, mlir::acc::DeclareOp
 #define ACC_DATA_CONSTRUCT_UNSTRUCTURED_OPS                                    \
   mlir::acc::EnterDataOp, mlir::acc::ExitDataOp, mlir::acc::UpdateOp,          \
       mlir::acc::HostDataOp, mlir::acc::DeclareEnterOp,                        \
       mlir::acc::DeclareExitOp
 #define ACC_DATA_CONSTRUCT_OPS                                                 \
-  ACC_DATA_CONSTRUCT_STRUCTURED_OPS, ACC_DATA_CONSTRUCT_UNSTRUCTURED_OPS
+  OPENACC_DATA_CONSTRUCT_STRUCTURED_OPS, ACC_DATA_CONSTRUCT_UNSTRUCTURED_OPS
 #define ACC_COMPUTE_AND_DATA_CONSTRUCT_OPS                                     \
   ACC_COMPUTE_CONSTRUCT_OPS, ACC_DATA_CONSTRUCT_OPS
 #define ACC_COMPUTE_LOOP_AND_DATA_CONSTRUCT_OPS                                \

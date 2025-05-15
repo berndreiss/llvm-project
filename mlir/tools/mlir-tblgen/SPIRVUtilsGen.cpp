@@ -98,21 +98,21 @@ public:
   StringRef getMergeInstance() const;
 
   // Returns the underlying LLVM TableGen Record.
-  const Record *getDef() const { return def; }
+  const llvm::Record *getDef() const { return def; }
 
 private:
   // The TableGen definition of this availability.
-  const Record *def;
+  const llvm::Record *def;
 };
 } // namespace
 
-Availability::Availability(const Record *def) : def(def) {
+Availability::Availability(const llvm::Record *def) : def(def) {
   assert(def->isSubClassOf("Availability") &&
          "must be subclass of TableGen 'Availability' class");
 }
 
 StringRef Availability::getClass() const {
-  SmallVector<const Record *, 1> parentClass;
+  SmallVector<Record *, 1> parentClass;
   def->getDirectSuperClasses(parentClass);
   if (parentClass.size() != 1) {
     PrintFatalError(def->getLoc(),
@@ -166,8 +166,7 @@ std::vector<Availability> getAvailabilities(const Record &def) {
   std::vector<Availability> availabilities;
 
   if (def.getValue("availability")) {
-    std::vector<const Record *> availDefs =
-        def.getValueAsListOfDefs("availability");
+    std::vector<Record *> availDefs = def.getValueAsListOfDefs("availability");
     availabilities.reserve(availDefs.size());
     for (const Record *avail : availDefs)
       availabilities.emplace_back(avail);
@@ -196,13 +195,15 @@ static void emitInterfaceDef(const Availability &availability,
      << "}\n";
 }
 
-static bool emitInterfaceDefs(const RecordKeeper &records, raw_ostream &os) {
-  llvm::emitSourceFileHeader("Availability Interface Definitions", os, records);
+static bool emitInterfaceDefs(const RecordKeeper &recordKeeper,
+                              raw_ostream &os) {
+  llvm::emitSourceFileHeader("Availability Interface Definitions", os,
+                             recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("Availability");
+  auto defs = recordKeeper.getAllDerivedDefinitions("Availability");
   SmallVector<const Record *, 1> handledClasses;
   for (const Record *def : defs) {
-    SmallVector<const Record *, 1> parent;
+    SmallVector<Record *, 1> parent;
     def->getDirectSuperClasses(parent);
     if (parent.size() != 1) {
       PrintFatalError(def->getLoc(),
@@ -284,14 +285,15 @@ static void emitInterfaceDecl(const Availability &availability,
   os << "};\n\n";
 }
 
-static bool emitInterfaceDecls(const RecordKeeper &records, raw_ostream &os) {
+static bool emitInterfaceDecls(const RecordKeeper &recordKeeper,
+                               raw_ostream &os) {
   llvm::emitSourceFileHeader("Availability Interface Declarations", os,
-                             records);
+                             recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("Availability");
+  auto defs = recordKeeper.getAllDerivedDefinitions("Availability");
   SmallVector<const Record *, 4> handledClasses;
   for (const Record *def : defs) {
-    SmallVector<const Record *, 1> parent;
+    SmallVector<Record *, 1> parent;
     def->getDirectSuperClasses(parent);
     if (parent.size() != 1) {
       PrintFatalError(def->getLoc(),
@@ -448,11 +450,11 @@ static void emitEnumDecl(const Record &enumDef, raw_ostream &os) {
     os << "} // namespace " << ns << "\n";
 }
 
-static bool emitEnumDecls(const RecordKeeper &records, raw_ostream &os) {
+static bool emitEnumDecls(const RecordKeeper &recordKeeper, raw_ostream &os) {
   llvm::emitSourceFileHeader("SPIR-V Enum Availability Declarations", os,
-                             records);
+                             recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("EnumAttrInfo");
+  auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   for (const auto *def : defs)
     emitEnumDecl(*def, os);
 
@@ -480,11 +482,11 @@ static void emitEnumDef(const Record &enumDef, raw_ostream &os) {
   os << "\n";
 }
 
-static bool emitEnumDefs(const RecordKeeper &records, raw_ostream &os) {
+static bool emitEnumDefs(const RecordKeeper &recordKeeper, raw_ostream &os) {
   llvm::emitSourceFileHeader("SPIR-V Enum Availability Definitions", os,
-                             records);
+                             recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("EnumAttrInfo");
+  auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   for (const auto *def : defs)
     emitEnumDef(*def, os);
 
@@ -778,7 +780,8 @@ static void emitSerializationFunction(const Record *attrClass,
     os << formatv("  (void)emitDebugLine(functionBody, {0}.getLoc());\n",
                   opVar);
     os << formatv("  (void)encodeInstructionInto("
-                  "functionBody, spirv::Opcode::{0}, {1});\n",
+                  "functionBody, spirv::Opcode::{1}, {2});\n",
+                  op.getQualCppClassName(),
                   record->getValueAsString("spirvOpName"), operands);
   }
 
@@ -1118,8 +1121,9 @@ static void initExtendedSetDeserializationDispatch(StringRef extensionSetName,
                 extensionSetName, instructionID, words);
 }
 
-static void emitExtendedSetDeserializationDispatch(const RecordKeeper &records,
-                                                   raw_ostream &os) {
+static void
+emitExtendedSetDeserializationDispatch(const RecordKeeper &recordKeeper,
+                                       raw_ostream &os) {
   StringRef extensionSetName("extensionSetName"),
       instructionID("instructionID"), words("words");
 
@@ -1135,7 +1139,7 @@ static void emitExtendedSetDeserializationDispatch(const RecordKeeper &records,
 
   initExtendedSetDeserializationDispatch(extensionSetName, instructionID, words,
                                          os);
-  auto defs = records.getAllDerivedDefinitions("SPIRV_ExtInstOp");
+  auto defs = recordKeeper.getAllDerivedDefinitions("SPIRV_ExtInstOp");
   for (const auto *def : defs) {
     if (!def->getValueAsBit("autogenSerialization")) {
       continue;
@@ -1176,15 +1180,16 @@ static void emitExtendedSetDeserializationDispatch(const RecordKeeper &records,
 
 /// Emits all the autogenerated serialization/deserializations functions for the
 /// SPIRV_Ops.
-static bool emitSerializationFns(const RecordKeeper &records, raw_ostream &os) {
+static bool emitSerializationFns(const RecordKeeper &recordKeeper,
+                                 raw_ostream &os) {
   llvm::emitSourceFileHeader("SPIR-V Serialization Utilities/Functions", os,
-                             records);
+                             recordKeeper);
 
   std::string dSerFnString, dDesFnString, serFnString, deserFnString,
       utilsString;
   raw_string_ostream dSerFn(dSerFnString), dDesFn(dDesFnString),
       serFn(serFnString), deserFn(deserFnString);
-  const Record *attrClass = records.getClass("Attr");
+  Record *attrClass = recordKeeper.getClass("Attr");
 
   // Emit the serialization and deserialization functions simultaneously.
   StringRef opVar("op");
@@ -1193,7 +1198,7 @@ static bool emitSerializationFns(const RecordKeeper &records, raw_ostream &os) {
   // Handle the SPIR-V ops.
   initDispatchSerializationFn(opVar, dSerFn);
   initDispatchDeserializationFn(opcode, words, dDesFn);
-  auto defs = records.getAllDerivedDefinitions("SPIRV_Op");
+  auto defs = recordKeeper.getAllDerivedDefinitions("SPIRV_Op");
   for (const auto *def : defs) {
     Operator op(def);
     emitSerializationFunction(attrClass, def, op, serFn);
@@ -1209,7 +1214,7 @@ static bool emitSerializationFns(const RecordKeeper &records, raw_ostream &os) {
   finalizeDispatchSerializationFn(opVar, dSerFn);
   finalizeDispatchDeserializationFn(opcode, dDesFn);
 
-  emitExtendedSetDeserializationDispatch(records, dDesFn);
+  emitExtendedSetDeserializationDispatch(recordKeeper, dDesFn);
 
   os << "#ifdef GET_SERIALIZATION_FNS\n\n";
   os << serFn.str();
@@ -1256,10 +1261,10 @@ static void emitEnumGetAttrNameFnDefn(const EnumAttr &enumAttr,
   os << "}\n";
 }
 
-static bool emitAttrUtils(const RecordKeeper &records, raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Attribute Utilities", os, records);
+static bool emitAttrUtils(const RecordKeeper &recordKeeper, raw_ostream &os) {
+  llvm::emitSourceFileHeader("SPIR-V Attribute Utilities", os, recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("EnumAttrInfo");
+  auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   os << "#ifndef MLIR_DIALECT_SPIRV_IR_ATTR_UTILS_H_\n";
   os << "#define MLIR_DIALECT_SPIRV_IR_ATTR_UTILS_H_\n";
   emitEnumGetAttrNameFnDecl(os);
@@ -1400,11 +1405,12 @@ static void emitAvailabilityImpl(const Operator &srcOp, raw_ostream &os) {
   }
 }
 
-static bool emitAvailabilityImpl(const RecordKeeper &records, raw_ostream &os) {
+static bool emitAvailabilityImpl(const RecordKeeper &recordKeeper,
+                                 raw_ostream &os) {
   llvm::emitSourceFileHeader("SPIR-V Op Availability Implementations", os,
-                             records);
+                             recordKeeper);
 
-  auto defs = records.getAllDerivedDefinitions("SPIRV_Op");
+  auto defs = recordKeeper.getAllDerivedDefinitions("SPIRV_Op");
   for (const auto *def : defs) {
     Operator op(def);
     if (def->getValueAsBit("autogenAvailability"))
@@ -1428,12 +1434,12 @@ static mlir::GenRegistration
 // SPIR-V Capability Implication AutoGen
 //===----------------------------------------------------------------------===//
 
-static bool emitCapabilityImplication(const RecordKeeper &records,
+static bool emitCapabilityImplication(const RecordKeeper &recordKeeper,
                                       raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Capability Implication", os, records);
+  llvm::emitSourceFileHeader("SPIR-V Capability Implication", os, recordKeeper);
 
   EnumAttr enumAttr(
-      records.getDef("SPIRV_CapabilityAttr")->getValueAsDef("enum"));
+      recordKeeper.getDef("SPIRV_CapabilityAttr")->getValueAsDef("enum"));
 
   os << "ArrayRef<spirv::Capability> "
         "spirv::getDirectImpliedCapabilities(spirv::Capability cap) {\n"
@@ -1444,8 +1450,7 @@ static bool emitCapabilityImplication(const RecordKeeper &records,
     if (!def.getValue("implies"))
       continue;
 
-    std::vector<const Record *> impliedCapsDefs =
-        def.getValueAsListOfDefs("implies");
+    std::vector<Record *> impliedCapsDefs = def.getValueAsListOfDefs("implies");
     os << "  case spirv::Capability::" << enumerant.getSymbol()
        << ": {static const spirv::Capability implies[" << impliedCapsDefs.size()
        << "] = {";

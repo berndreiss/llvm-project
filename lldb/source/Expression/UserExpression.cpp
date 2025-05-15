@@ -14,6 +14,7 @@
 #include <string>
 
 #include "lldb/Core/Module.h"
+#include "lldb/Core/ValueObjectConstResult.h"
 #include "lldb/Expression/DiagnosticManager.h"
 #include "lldb/Expression/ExpressionVariable.h"
 #include "lldb/Expression/IRExecutionUnit.h"
@@ -38,7 +39,6 @@
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/State.h"
 #include "lldb/Utility/StreamString.h"
-#include "lldb/ValueObject/ValueObjectConstResult.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 
 using namespace lldb_private;
@@ -102,7 +102,7 @@ lldb::ValueObjectSP UserExpression::GetObjectPointerValueObject(
   err.Clear();
 
   if (!frame_sp) {
-    err = Status::FromErrorStringWithFormatv(
+    err.SetErrorStringWithFormatv(
         "Couldn't load '{0}' because the context is incomplete", object_name);
     return {};
   }
@@ -131,7 +131,7 @@ lldb::addr_t UserExpression::GetObjectPointer(lldb::StackFrameSP frame_sp,
   lldb::addr_t ret = valobj_sp->GetValueAsUnsigned(LLDB_INVALID_ADDRESS);
 
   if (ret == LLDB_INVALID_ADDRESS) {
-    err = Status::FromErrorStringWithFormatv(
+    err.SetErrorStringWithFormatv(
         "Couldn't load '{0}' because its value couldn't be evaluated",
         object_name);
     return LLDB_INVALID_ADDRESS;
@@ -155,8 +155,7 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
     if (!(ctx_obj->GetTypeInfo() & ctx_type_mask)) {
       LLDB_LOG(log, "== [UserExpression::Evaluate] Passed a context object of "
                     "an invalid type, can't run expressions.");
-      error =
-          Status::FromErrorString("a context object of an invalid type passed");
+      error.SetErrorString("a context object of an invalid type passed");
       return lldb::eExpressionSetupError;
     }
   }
@@ -168,7 +167,7 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
       LLDB_LOG(log, "== [UserExpression::Evaluate] Passed a context object of "
                     "a reference type that can't be dereferenced, can't run "
                     "expressions.");
-      error = Status::FromErrorString(
+      error.SetErrorString(
           "passed context object of an reference type cannot be deferenced");
       return lldb::eExpressionSetupError;
     }
@@ -187,7 +186,7 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
   if (!target) {
     LLDB_LOG(log, "== [UserExpression::Evaluate] Passed a NULL target, can't "
                   "run expressions.");
-    error = Status::FromErrorString("expression passed a null target");
+    error.SetErrorString("expression passed a null target");
     return lldb::eExpressionSetupError;
   }
 
@@ -197,8 +196,7 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
     LLDB_LOG(log, "== [UserExpression::Evaluate] No process, but the policy is "
                   "eExecutionPolicyAlways");
 
-    error = Status::FromErrorString(
-        "expression needed to run but couldn't: no process");
+    error.SetErrorString("expression needed to run but couldn't: no process");
 
     return execution_results;
   }
@@ -206,7 +204,7 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
   // Since we might need to allocate memory, we need to be stopped to run
   // an expression.
   if (process != nullptr && process->GetState() != lldb::eStateStopped) {
-    error = Status::FromErrorStringWithFormatv(
+    error.SetErrorStringWithFormatv(
         "unable to evaluate expression while the process is {0}: the process "
         "must be stopped because the expression might require allocating "
         "memory.",
@@ -268,10 +266,9 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
   const bool generate_debug_info = options.GetGenerateDebugInfo();
 
   if (options.InvokeCancelCallback(lldb::eExpressionEvaluationParse)) {
-    Status error = Status::FromErrorString(
-        "expression interrupted by callback before parse");
+    error.SetErrorString("expression interrupted by callback before parse");
     result_valobj_sp = ValueObjectConstResult::Create(
-        exe_ctx.GetBestExecutionContextScope(), std::move(error));
+        exe_ctx.GetBestExecutionContextScope(), error);
     return lldb::eExpressionInterrupted;
   }
 
@@ -328,20 +325,18 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
     }
 
     if (!parse_success) {
-      if (target->GetEnableNotifyAboutFixIts() && fixed_expression &&
-          !fixed_expression->empty()) {
-        std::string fixit =
-            "fixed expression suggested:\n  " + *fixed_expression;
-        diagnostic_manager.AddDiagnostic(fixit, lldb::eSeverityInfo,
-                                         eDiagnosticOriginLLDB);
+      std::string msg;
+      {
+        llvm::raw_string_ostream os(msg);
+        if (!diagnostic_manager.Diagnostics().empty())
+          os << diagnostic_manager.GetString();
+        else
+          os << "expression failed to parse (no further compiler diagnostics)";
+        if (target->GetEnableNotifyAboutFixIts() && fixed_expression &&
+            !fixed_expression->empty())
+          os << "\nfixed expression suggested:\n  " << *fixed_expression;
       }
-      if (diagnostic_manager.Diagnostics().empty())
-        error = Status::FromError(llvm::make_error<ExpressionError>(
-            execution_results,
-            "expression failed to parse (no further compiler diagnostics)"));
-      else
-        error =
-            Status::FromError(diagnostic_manager.GetAsError(execution_results));
+      error.SetExpressionError(execution_results, msg.c_str());
     }
   }
 
@@ -353,20 +348,19 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
       LLDB_LOG(log, "== [UserExpression::Evaluate] Expression may not run, but "
                     "is not constant ==");
 
-      if (diagnostic_manager.Diagnostics().empty())
-        error = Status::FromError(llvm::make_error<ExpressionError>(
-            lldb::eExpressionSetupError,
-            "expression needed to run but couldn't"));
+      if (!diagnostic_manager.Diagnostics().size())
+        error.SetExpressionError(lldb::eExpressionSetupError,
+                                 "expression needed to run but couldn't");
     } else if (execution_policy == eExecutionPolicyTopLevel) {
-      error = Status(UserExpression::kNoResult, lldb::eErrorTypeGeneric);
+      error.SetError(UserExpression::kNoResult, lldb::eErrorTypeGeneric);
       return lldb::eExpressionCompleted;
     } else {
       if (options.InvokeCancelCallback(lldb::eExpressionEvaluationExecution)) {
-        error = Status::FromError(llvm::make_error<ExpressionError>(
+        error.SetExpressionError(
             lldb::eExpressionInterrupted,
-            "expression interrupted by callback before execution"));
+            "expression interrupted by callback before execution");
         result_valobj_sp = ValueObjectConstResult::Create(
-            exe_ctx.GetBestExecutionContextScope(), std::move(error));
+            exe_ctx.GetBestExecutionContextScope(), error);
         return lldb::eExpressionInterrupted;
       }
 
@@ -382,13 +376,12 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
         LLDB_LOG(log, "== [UserExpression::Evaluate] Execution completed "
                       "abnormally ==");
 
-        if (diagnostic_manager.Diagnostics().empty())
-          error = Status::FromError(llvm::make_error<ExpressionError>(
-              execution_results,
-              "expression failed to execute, unknown error"));
+        if (!diagnostic_manager.Diagnostics().size())
+          error.SetExpressionError(
+              execution_results, "expression failed to execute, unknown error");
         else
-          error = Status::FromError(
-              diagnostic_manager.GetAsError(execution_results));
+          error.SetExpressionError(execution_results,
+                                   diagnostic_manager.GetString().c_str());
       } else {
         if (expr_result) {
           result_valobj_sp = expr_result->GetValueObject();
@@ -403,22 +396,22 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
           LLDB_LOG(log, "== [UserExpression::Evaluate] Execution completed "
                         "normally with no result ==");
 
-          error = Status(UserExpression::kNoResult, lldb::eErrorTypeGeneric);
+          error.SetError(UserExpression::kNoResult, lldb::eErrorTypeGeneric);
         }
       }
     }
   }
 
   if (options.InvokeCancelCallback(lldb::eExpressionEvaluationComplete)) {
-    error = Status::FromError(llvm::make_error<ExpressionError>(
+    error.SetExpressionError(
         lldb::eExpressionInterrupted,
-        "expression interrupted by callback after complete"));
+        "expression interrupted by callback after complete");
     return lldb::eExpressionInterrupted;
   }
 
   if (result_valobj_sp.get() == nullptr) {
     result_valobj_sp = ValueObjectConstResult::Create(
-        exe_ctx.GetBestExecutionContextScope(), std::move(error));
+        exe_ctx.GetBestExecutionContextScope(), error);
   }
 
   return execution_results;

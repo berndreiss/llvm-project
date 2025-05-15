@@ -15,7 +15,6 @@
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
-#include "clang/AST/NestedNameSpecifier.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/TemplateBase.h"
 #include "clang/AST/TemplateName.h"
@@ -28,7 +27,6 @@
 #include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/ErrorHandling.h"
 
 namespace clang::include_cleaner {
 namespace {
@@ -128,24 +126,6 @@ public:
     return true;
   }
 
-  bool qualifierIsNamespaceOrNone(DeclRefExpr *DRE) {
-    const auto *Qual = DRE->getQualifier();
-    if (!Qual)
-      return true;
-    switch (Qual->getKind()) {
-    case NestedNameSpecifier::Namespace:
-    case NestedNameSpecifier::NamespaceAlias:
-    case NestedNameSpecifier::Global:
-      return true;
-    case NestedNameSpecifier::TypeSpec:
-    case NestedNameSpecifier::TypeSpecWithTemplate:
-    case NestedNameSpecifier::Super:
-    case NestedNameSpecifier::Identifier:
-      return false;
-    }
-    llvm_unreachable("Unknown value for NestedNameSpecifierKind");
-  }
-
   bool VisitDeclRefExpr(DeclRefExpr *DRE) {
     auto *FD = DRE->getFoundDecl();
     // Prefer the underlying decl if FoundDecl isn't a shadow decl, e.g:
@@ -167,8 +147,10 @@ public:
     //
     // If it's an enum constant, it must be due to prior decl. Report references
     // to it when qualifier isn't a type.
-    if (llvm::isa<EnumConstantDecl>(FD) && qualifierIsNamespaceOrNone(DRE))
-      report(DRE->getLocation(), FD);
+    if (llvm::isa<EnumConstantDecl>(FD)) {
+      if (!DRE->getQualifier() || DRE->getQualifier()->getAsNamespace())
+        report(DRE->getLocation(), FD);
+    }
     return true;
   }
 
@@ -222,12 +204,7 @@ public:
   bool VisitUsingDecl(UsingDecl *UD) {
     for (const auto *Shadow : UD->shadows()) {
       auto *TD = Shadow->getTargetDecl();
-      // For function-decls, we might have overloads brought in due to
-      // transitive dependencies. Hence we only want to report explicit
-      // references for those if they're used.
-      // But for record decls, spelling of the type always refers to primary
-      // decl non-ambiguously. Hence spelling is already a use.
-      auto IsUsed = TD->isUsed() || TD->isReferenced() || !TD->getAsFunction();
+      auto IsUsed = TD->isUsed() || TD->isReferenced();
       report(UD->getLocation(), TD,
              IsUsed ? RefType::Explicit : RefType::Ambiguous);
 
@@ -294,6 +271,7 @@ public:
   // specialized template. Implicit ones are filtered out by RAV.
   bool
   VisitClassTemplateSpecializationDecl(ClassTemplateSpecializationDecl *CTSD) {
+    // if (CTSD->isExplicitSpecialization())
     if (clang::isTemplateExplicitInstantiationOrSpecialization(
             CTSD->getTemplateSpecializationKind()))
       report(CTSD->getLocation(),
@@ -301,6 +279,7 @@ public:
     return true;
   }
   bool VisitVarTemplateSpecializationDecl(VarTemplateSpecializationDecl *VTSD) {
+    // if (VTSD->isExplicitSpecialization())
     if (clang::isTemplateExplicitInstantiationOrSpecialization(
             VTSD->getTemplateSpecializationKind()))
       report(VTSD->getLocation(),
@@ -371,15 +350,6 @@ public:
     report(E->getExprLoc(),
            const_cast<CXXRecordDecl *>(E->getBestDynamicClassType()),
            RefType::Implicit);
-    return true;
-  }
-
-  bool VisitCXXNewExpr(CXXNewExpr *E) {
-    report(E->getExprLoc(), E->getOperatorNew(), RefType::Ambiguous);
-    return true;
-  }
-  bool VisitCXXDeleteExpr(CXXDeleteExpr *E) {
-    report(E->getExprLoc(), E->getOperatorDelete(), RefType::Ambiguous);
     return true;
   }
 };

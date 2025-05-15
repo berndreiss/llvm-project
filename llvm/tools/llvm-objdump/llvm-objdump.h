@@ -50,7 +50,6 @@ extern DebugVarsFormat DbgVariables;
 extern bool Demangle;
 extern bool Disassemble;
 extern bool DisassembleAll;
-extern std::vector<std::string> DisassemblerOptions;
 extern DIDumpType DwarfDumpType;
 extern std::vector<std::string> FilterSections;
 extern bool LeadingAddr;

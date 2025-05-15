@@ -857,9 +857,7 @@ static void getLiveOutRegsAt(LivePhysRegs &Regs, const MachineInstr &MI) {
 void HexagonInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator I,
                                    const DebugLoc &DL, MCRegister DestReg,
-                                   MCRegister SrcReg, bool KillSrc,
-                                   bool RenamableDest,
-                                   bool RenamableSrc) const {
+                                   MCRegister SrcReg, bool KillSrc) const {
   const HexagonRegisterInfo &HRI = *Subtarget.getRegisterInfo();
   unsigned KillFlag = getKillRegState(KillSrc);
 

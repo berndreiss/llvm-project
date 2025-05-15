@@ -22,31 +22,28 @@
 #include "make_string.h"
 #include "test_allocator.h"
 #include "test_macros.h"
-#include "operator_hijacker.h"
 
 #define STR(S) MAKE_STRING(CharT, S)
 #define SV(S) MAKE_STRING_VIEW(CharT, S)
 
-template <class CharT, class Allocator>
+template <class CharT>
 static void test() {
   {
     const std::basic_string<CharT> s(STR("testing"));
-    const std::basic_ostringstream<CharT, std::char_traits<CharT>, Allocator> ss(s);
+    const std::basic_ostringstream<CharT, std::char_traits<CharT>, test_allocator<CharT>> ss(s);
     assert(ss.view() == SV("testing"));
   }
   {
     const std::basic_string<CharT> s(STR("testing"));
-    const std::basic_ostringstream<CharT, std::char_traits<CharT>, Allocator> ss(s, std::ios_base::binary);
+    const std::basic_ostringstream<CharT, std::char_traits<CharT>, test_allocator<CharT>> ss(s, std::ios_base::binary);
     assert(ss.view() == SV("testing"));
   }
 }
 
 int main(int, char**) {
-  test<char, test_allocator<char>>();
-  test<char, operator_hijacker_allocator<char>>();
+  test<char>();
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
-  test<wchar_t, test_allocator<wchar_t>>();
-  test<wchar_t, operator_hijacker_allocator<wchar_t>>();
+  test<wchar_t>();
 #endif
   return 0;
 }

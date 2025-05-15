@@ -34,7 +34,6 @@ module m
   real y
   common /blk/ y
   protected y
-  logical,protected,external,pointer :: z
 
 contains
 
@@ -61,8 +60,3 @@ contains
     end subroutine testProcDecl
 
 end module m
-
-subroutine subb()
-  !Ensure no spurious error from a benign UseError
-  use m, testProcDecl=>z
-end

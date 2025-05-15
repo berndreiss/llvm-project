@@ -122,10 +122,6 @@ public:
     }
     return true;
   }
-  bool Pre(const parser::ConcurrentHeader &) {
-    // handled in CheckConcurrentHeader
-    return false;
-  }
   template <typename T> void Post(const T &) {}
 
   // C1140 -- Can't deallocate a polymorphic entity in a DO CONCURRENT.
@@ -273,7 +269,8 @@ public:
       const parser::CharBlock statementLocation{
           GetImageControlStmtLocation(construct)};
       auto &msg{context_.Say(statementLocation,
-          "An image control statement is not allowed in DO CONCURRENT"_err_en_US)};
+          "An image control statement is not allowed in DO"
+          " CONCURRENT"_err_en_US)};
       if (auto coarrayMsg{GetImageControlStmtCoarrayMsg(construct)}) {
         msg.Attach(statementLocation, *coarrayMsg);
       }
@@ -289,32 +286,19 @@ public:
         .Attach(doConcurrentSourcePosition_, GetEnclosingDoMsg());
   }
 
-  // C1145, C1146: cannot call ieee_[gs]et_flag, ieee_[gs]et_halting_mode,
-  // ieee_[gs]et_status, ieee_set_rounding_mode, or ieee_set_underflow_mode
+  // C1139: call to impure procedure and ...
+  // C1141: cannot call ieee_get_flag, ieee_[gs]et_halting_mode
+  // It's not necessary to check the ieee_get* procedures because they're
+  // not pure, and impure procedures are caught by checks for constraint C1139
   void Post(const parser::ProcedureDesignator &procedureDesignator) {
     if (auto *name{std::get_if<parser::Name>(&procedureDesignator.u)}) {
-      if (name->symbol) {
-        const Symbol &ultimate{name->symbol->GetUltimate()};
-        const Scope &scope{ultimate.owner()};
-        if (const Symbol * module{scope.IsModule() ? scope.symbol() : nullptr};
-            module &&
-            (module->name() == "__fortran_ieee_arithmetic" ||
-                module->name() == "__fortran_ieee_exceptions")) {
-          std::string s{ultimate.name().ToString()};
-          static constexpr const char *badName[]{"ieee_get_flag",
-              "ieee_set_flag", "ieee_get_halting_mode", "ieee_set_halting_mode",
-              "ieee_get_status", "ieee_set_status", "ieee_set_rounding_mode",
-              "ieee_set_underflow_mode", nullptr};
-          for (std::size_t j{0}; badName[j]; ++j) {
-            if (s.find(badName[j]) != s.npos) {
-              context_
-                  .Say(name->source,
-                      "'%s' may not be called in DO CONCURRENT"_err_en_US,
-                      badName[j])
-                  .Attach(doConcurrentSourcePosition_, GetEnclosingDoMsg());
-              break;
-            }
-          }
+      if (name->symbol &&
+          fromScope(*name->symbol, "__fortran_ieee_exceptions"s)) {
+        if (name->source == "ieee_set_halting_mode") {
+          SayWithDo(context_, currentStatementSourcePosition_,
+              "IEEE_SET_HALTING_MODE is not allowed in DO "
+              "CONCURRENT"_err_en_US,
+              doConcurrentSourcePosition_);
         }
       }
     }
@@ -335,6 +319,15 @@ public:
   }
 
 private:
+  bool fromScope(const Symbol &symbol, const std::string &moduleName) {
+    if (symbol.GetUltimate().owner().IsModule() &&
+        symbol.GetUltimate().owner().GetName().value().ToString() ==
+            moduleName) {
+      return true;
+    }
+    return false;
+  }
+
   std::set<parser::Label> labels_;
   parser::CharBlock currentStatementSourcePosition_;
   SemanticsContext &context_;
@@ -379,13 +372,8 @@ private:
 // Find a DO or FORALL and enforce semantics checks on its body
 class DoContext {
 public:
-  DoContext(SemanticsContext &context, IndexVarKind kind,
-      const std::list<IndexVarKind> nesting)
-      : context_{context}, kind_{kind} {
-    if (!nesting.empty()) {
-      concurrentNesting_ = nesting.back();
-    }
-  }
+  DoContext(SemanticsContext &context, IndexVarKind kind)
+      : context_{context}, kind_{kind} {}
 
   // Mark this DO construct as a point of definition for the DO variables
   // or index-names it contains.  If they're already defined, emit an error
@@ -448,8 +436,8 @@ public:
             common::visitors{[&](const auto &x) { return GetAssignment(x); }},
             stmt.u)}) {
       CheckForallIndexesUsed(*assignment);
-      CheckForImpureCall(assignment->lhs, kind_);
-      CheckForImpureCall(assignment->rhs, kind_);
+      CheckForImpureCall(assignment->lhs);
+      CheckForImpureCall(assignment->rhs);
 
       if (IsVariable(assignment->lhs)) {
         if (const Symbol * symbol{GetLastSymbol(assignment->lhs)}) {
@@ -464,23 +452,23 @@ public:
 
       if (const auto *proc{
               std::get_if<evaluate::ProcedureRef>(&assignment->u)}) {
-        CheckForImpureCall(*proc, kind_);
+        CheckForImpureCall(*proc);
       }
       common::visit(
           common::visitors{
               [](const evaluate::Assignment::Intrinsic &) {},
               [&](const evaluate::ProcedureRef &proc) {
-                CheckForImpureCall(proc, kind_);
+                CheckForImpureCall(proc);
               },
               [&](const evaluate::Assignment::BoundsSpec &bounds) {
                 for (const auto &bound : bounds) {
-                  CheckForImpureCall(SomeExpr{bound}, kind_);
+                  CheckForImpureCall(SomeExpr{bound});
                 }
               },
               [&](const evaluate::Assignment::BoundsRemapping &bounds) {
                 for (const auto &bound : bounds) {
-                  CheckForImpureCall(SomeExpr{bound.first}, kind_);
-                  CheckForImpureCall(SomeExpr{bound.second}, kind_);
+                  CheckForImpureCall(SomeExpr{bound.first});
+                  CheckForImpureCall(SomeExpr{bound.second});
                 }
               },
           },
@@ -495,8 +483,10 @@ private:
 
   void CheckDoControl(const parser::CharBlock &sourceLocation, bool isReal) {
     if (isReal) {
-      context_.Warn(common::LanguageFeature::RealDoControls, sourceLocation,
-          "DO controls should be INTEGER"_port_en_US);
+      if (context_.ShouldWarn(common::LanguageFeature::RealDoControls)) {
+        context_.Say(
+            sourceLocation, "DO controls should be INTEGER"_port_en_US);
+      }
     } else {
       SayBadDoControl(sourceLocation);
     }
@@ -550,9 +540,9 @@ private:
     CheckDoExpression(bounds.upper);
     if (bounds.step) {
       CheckDoExpression(*bounds.step);
-      if (IsZero(*bounds.step)) {
-        context_.Warn(common::UsageWarning::ZeroDoStep,
-            bounds.step->thing.value().source,
+      if (IsZero(*bounds.step) &&
+          context_.ShouldWarn(common::UsageWarning::ZeroDoStep)) {
+        context_.Say(bounds.step->thing.value().source,
             "DO step expression should not be zero"_warn_en_US);
       }
     }
@@ -677,9 +667,10 @@ private:
       if (std::holds_alternative<parser::LocalitySpec::DefaultNone>(ls.u)) {
         if (hasDefaultNone) {
           // F'2023 C1129, you can only have one DEFAULT(NONE)
-          context_.Warn(common::LanguageFeature::BenignRedundancy,
-              currentStatementSourcePosition_,
-              "Only one DEFAULT(NONE) may appear"_port_en_US);
+          if (context_.ShouldWarn(common::LanguageFeature::BenignRedundancy)) {
+            context_.Say(currentStatementSourcePosition_,
+                "Only one DEFAULT(NONE) may appear"_port_en_US);
+          }
           break;
         }
         hasDefaultNone = true;
@@ -752,18 +743,12 @@ private:
             std::get<std::optional<parser::ScalarLogicalExpr>>(header.t)}) {
       CheckMaskIsPure(*mask);
     }
-    const auto &controls{
-        std::get<std::list<parser::ConcurrentControl>>(header.t)};
+    auto &controls{std::get<std::list<parser::ConcurrentControl>>(header.t)};
     UnorderedSymbolSet indexNames;
     for (const parser::ConcurrentControl &control : controls) {
       const auto &indexName{std::get<parser::Name>(control.t)};
       if (indexName.symbol) {
         indexNames.insert(*indexName.symbol);
-      }
-      CheckForImpureCall(std::get<1>(control.t), concurrentNesting_);
-      CheckForImpureCall(std::get<2>(control.t), concurrentNesting_);
-      if (const auto &stride{std::get<3>(control.t)}) {
-        CheckForImpureCall(*stride, concurrentNesting_);
       }
     }
     if (!indexNames.empty()) {
@@ -823,32 +808,12 @@ private:
     CheckConcurrentHeader(std::get<parser::ConcurrentHeader>(concurrent.t));
   }
 
-  template <typename T>
-  void CheckForImpureCall(
-      const T &x, std::optional<IndexVarKind> nesting) const {
+  template <typename T> void CheckForImpureCall(const T &x) {
     if (auto bad{FindImpureCall(context_.foldingContext(), x)}) {
-      if (nesting) {
-        context_.Say(
-            "Impure procedure '%s' may not be referenced in a %s"_err_en_US,
-            *bad, LoopKindName(*nesting));
-      } else {
-        context_.Say(
-            "Impure procedure '%s' should not be referenced in a %s header"_warn_en_US,
-            *bad, LoopKindName(kind_));
-      }
+      context_.Say(
+          "Impure procedure '%s' may not be referenced in a %s"_err_en_US, *bad,
+          LoopKindName());
     }
-  }
-  void CheckForImpureCall(const parser::ScalarIntExpr &x,
-      std::optional<IndexVarKind> nesting) const {
-    const auto &parsedExpr{x.thing.thing.value()};
-    auto oldLocation{context_.location()};
-    context_.set_location(parsedExpr.source);
-    if (const auto &typedExpr{parsedExpr.typedExpr}) {
-      if (const auto &expr{typedExpr->v}) {
-        CheckForImpureCall(*expr, nesting);
-      }
-    }
-    context_.set_location(oldLocation);
   }
 
   // Each index should be used on the LHS of each assignment in a FORALL
@@ -887,9 +852,10 @@ private:
           },
           assignment.u);
       for (const Symbol &index : indexVars) {
-        if (symbols.count(index) == 0) {
-          context_.Warn(common::UsageWarning::UnusedForallIndex,
-              "FORALL index variable '%s' not used on left-hand side of assignment"_warn_en_US,
+        if (symbols.count(index) == 0 &&
+            context_.ShouldWarn(common::UsageWarning::UnusedForallIndex)) {
+          context_.Say("FORALL index variable '%s' not used on left-hand side"
+                       " of assignment"_warn_en_US,
               index.name());
         }
       }
@@ -897,59 +863,47 @@ private:
   }
 
   // For messages where the DO loop must be DO CONCURRENT, make that explicit.
-  const char *LoopKindName(IndexVarKind kind) const {
-    return kind == IndexVarKind::DO ? "DO CONCURRENT" : "FORALL";
+  const char *LoopKindName() const {
+    return kind_ == IndexVarKind::DO ? "DO CONCURRENT" : "FORALL";
   }
-  const char *LoopKindName() const { return LoopKindName(kind_); }
 
   SemanticsContext &context_;
   const IndexVarKind kind_;
   parser::CharBlock currentStatementSourcePosition_;
-  std::optional<IndexVarKind> concurrentNesting_;
 }; // class DoContext
 
 void DoForallChecker::Enter(const parser::DoConstruct &doConstruct) {
-  DoContext doContext{context_, IndexVarKind::DO, nestedWithinConcurrent_};
-  if (doConstruct.IsDoConcurrent()) {
-    nestedWithinConcurrent_.push_back(IndexVarKind::DO);
-  }
+  DoContext doContext{context_, IndexVarKind::DO};
   doContext.DefineDoVariables(doConstruct);
-  doContext.Check(doConstruct);
 }
 
 void DoForallChecker::Leave(const parser::DoConstruct &doConstruct) {
-  DoContext doContext{context_, IndexVarKind::DO, nestedWithinConcurrent_};
+  DoContext doContext{context_, IndexVarKind::DO};
+  doContext.Check(doConstruct);
   doContext.ResetDoVariables(doConstruct);
-  if (doConstruct.IsDoConcurrent()) {
-    nestedWithinConcurrent_.pop_back();
-  }
 }
 
 void DoForallChecker::Enter(const parser::ForallConstruct &construct) {
-  DoContext doContext{context_, IndexVarKind::FORALL, nestedWithinConcurrent_};
+  DoContext doContext{context_, IndexVarKind::FORALL};
   doContext.ActivateIndexVars(GetControls(construct));
-  nestedWithinConcurrent_.push_back(IndexVarKind::FORALL);
-  doContext.Check(construct);
 }
 void DoForallChecker::Leave(const parser::ForallConstruct &construct) {
-  DoContext doContext{context_, IndexVarKind::FORALL, nestedWithinConcurrent_};
+  DoContext doContext{context_, IndexVarKind::FORALL};
+  doContext.Check(construct);
   doContext.DeactivateIndexVars(GetControls(construct));
-  nestedWithinConcurrent_.pop_back();
 }
 
 void DoForallChecker::Enter(const parser::ForallStmt &stmt) {
-  DoContext doContext{context_, IndexVarKind::FORALL, nestedWithinConcurrent_};
-  nestedWithinConcurrent_.push_back(IndexVarKind::FORALL);
-  doContext.Check(stmt);
+  DoContext doContext{context_, IndexVarKind::FORALL};
   doContext.ActivateIndexVars(GetControls(stmt));
 }
 void DoForallChecker::Leave(const parser::ForallStmt &stmt) {
-  DoContext doContext{context_, IndexVarKind::FORALL, nestedWithinConcurrent_};
+  DoContext doContext{context_, IndexVarKind::FORALL};
+  doContext.Check(stmt);
   doContext.DeactivateIndexVars(GetControls(stmt));
-  nestedWithinConcurrent_.pop_back();
 }
 void DoForallChecker::Leave(const parser::ForallAssignmentStmt &stmt) {
-  DoContext doContext{context_, IndexVarKind::FORALL, nestedWithinConcurrent_};
+  DoContext doContext{context_, IndexVarKind::FORALL};
   doContext.Check(stmt);
 }
 

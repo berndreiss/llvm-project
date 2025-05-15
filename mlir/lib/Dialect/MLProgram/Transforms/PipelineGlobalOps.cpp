@@ -100,8 +100,10 @@ LogicalResult MLProgramPipelineGlobals::buildGlobalMap(ModuleOp module) {
     for (size_t i = 0; i < work.size(); ++i) {
       callableMap[work[i]]->walk([&](CallOpInterface call) {
         auto symbol = dyn_cast<SymbolRefAttr>(call.getCallableForCallee());
-        if (visited.insert(symbol).second)
+        if (!visited.contains(symbol)) {
+          visited.insert(symbol);
           work.push_back(symbol);
+        }
       });
 
       for (auto load : opLoadSymbols[work[i]])
@@ -148,9 +150,8 @@ void MLProgramPipelineGlobals::processBlock(
     if (auto store = mlir::dyn_cast<GlobalStoreOp>(op)) {
       auto ref = store.getGlobal();
       symbolStore.insert(ref);
-      auto it = previousStores.find(ref);
-      if (it != previousStores.end()) {
-        toDelete.push_back(it->getSecond());
+      if (previousStores.contains(ref)) {
+        toDelete.push_back(previousStores.find(ref)->getSecond());
       }
 
       previousLoads[ref] = store.getValue();

@@ -575,7 +575,7 @@ entry:
 ; Test 4
 ;-------------------------------------------------------------------------------
 
-define void @test4() nounwind "frame-pointer"="none" {
+define void @test4() nounwind {
 entry:
   ret void
 }

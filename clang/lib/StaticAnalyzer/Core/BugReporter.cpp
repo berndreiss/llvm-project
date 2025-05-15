@@ -804,7 +804,8 @@ PathDiagnosticPieceRef PathDiagnosticBuilder::generateDiagForSwitchOP(
     os << "'Default' branch taken. ";
     End = ExecutionContinues(os, C);
   }
-  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf);
+  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
+                                                       os.str());
 }
 
 PathDiagnosticPieceRef PathDiagnosticBuilder::generateDiagForGotoOP(
@@ -815,7 +816,7 @@ PathDiagnosticPieceRef PathDiagnosticBuilder::generateDiagForGotoOP(
   const PathDiagnosticLocation &End =
       getEnclosingStmtLocation(S, C.getCurrLocationContext());
   os << "Control jumps to line " << End.asLocation().getExpansionLineNumber();
-  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf);
+  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, os.str());
 }
 
 PathDiagnosticPieceRef PathDiagnosticBuilder::generateDiagForBinaryOP(
@@ -862,7 +863,8 @@ PathDiagnosticPieceRef PathDiagnosticBuilder::generateDiagForBinaryOP(
         PathDiagnosticLocation::createOperatorLoc(B, SM);
     }
   }
-  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf);
+  return std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
+                                                         os.str());
 }
 
 void PathDiagnosticBuilder::generateMinimalDiagForBlockEdge(
@@ -898,7 +900,7 @@ void PathDiagnosticBuilder::generateMinimalDiagForBlockEdge(
     llvm::raw_string_ostream os(sbuf);
     PathDiagnosticLocation End = ExecutionContinues(os, C);
     C.getActivePath().push_front(
-        std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf));
+        std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, os.str()));
     break;
   }
 
@@ -920,7 +922,7 @@ void PathDiagnosticBuilder::generateMinimalDiagForBlockEdge(
       End = getEnclosingStmtLocation(S, C.getCurrLocationContext());
 
     C.getActivePath().push_front(
-        std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf));
+        std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, os.str()));
     break;
   }
 
@@ -945,7 +947,8 @@ void PathDiagnosticBuilder::generateMinimalDiagForBlockEdge(
         End = getEnclosingStmtLocation(S, C.getCurrLocationContext());
 
       C.getActivePath().push_front(
-          std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf));
+          std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
+                                                           os.str()));
     } else {
       PathDiagnosticLocation End = ExecutionContinues(C);
 
@@ -970,7 +973,8 @@ void PathDiagnosticBuilder::generateMinimalDiagForBlockEdge(
         End = getEnclosingStmtLocation(S, C.getCurrLocationContext());
 
       C.getActivePath().push_front(
-          std::make_shared<PathDiagnosticControlFlowPiece>(Start, End, sbuf));
+          std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
+                                                           os.str()));
     } else {
       PathDiagnosticLocation End = ExecutionContinues(C);
       if (const Stmt *S = End.asStmt())
@@ -2432,19 +2436,8 @@ PathSensitiveBugReport::getLocation() const {
     if (auto FE = P.getAs<FunctionExitPoint>()) {
       if (const ReturnStmt *RS = FE->getStmt())
         return PathDiagnosticLocation::createBegin(RS, SM, LC);
-
-      // If we are exiting a destructor call, it is more useful to point to the
-      // next stmt which is usually the temporary declaration.
-      // For non-destructor and non-top-level calls, the next stmt will still
-      // refer to the last executed stmt of the body.
-      S = ErrorNode->getNextStmtForDiagnostics();
-      // If next stmt is not found, it is likely the end of a top-level function
-      // analysis. find the last execution statement then.
-      if (!S)
-        S = ErrorNode->getPreviousStmtForDiagnostics();
     }
-    if (!S)
-      S = ErrorNode->getNextStmtForDiagnostics();
+    S = ErrorNode->getNextStmtForDiagnostics();
   }
 
   if (S) {

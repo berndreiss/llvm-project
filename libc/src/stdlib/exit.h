@@ -10,6 +10,7 @@
 #define LLVM_LIBC_SRC_STDLIB_EXIT_H
 
 #include "src/__support/macros/config.h"
+#include <stdlib.h>
 
 namespace LIBC_NAMESPACE_DECL {
 

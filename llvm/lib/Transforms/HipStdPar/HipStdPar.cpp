@@ -41,12 +41,13 @@
 
 #include "llvm/Transforms/HipStdPar/HipStdPar.h"
 
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
@@ -79,19 +80,21 @@ static inline bool checkIfSupported(GlobalVariable &G) {
     << G.getName();
 
   Instruction *I = nullptr;
-  SmallVector<User *> Tmp(G.users());
+  SmallVector<User *> Tmp(G.user_begin(), G.user_end());
   SmallPtrSet<User *, 5> Visited;
   do {
     auto U = std::move(Tmp.back());
     Tmp.pop_back();
 
-    if (!Visited.insert(U).second)
+    if (Visited.contains(U))
       continue;
 
     if (isa<Instruction>(U))
       I = cast<Instruction>(U);
     else
       Tmp.insert(Tmp.end(), U->user_begin(), U->user_end());
+
+    Visited.insert(U);
   } while (!I && !Tmp.empty());
 
   assert(I && "thread_local global should have at least one non-constant use.");

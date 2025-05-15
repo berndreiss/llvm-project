@@ -47,6 +47,7 @@ define i128 @load_global_with_offset() nounwind {
 ; CHECK-AVX-NEXT:    vmovq %xmm0, %rax
 ; CHECK-AVX-NEXT:    vpextrq $1, %xmm0, %rdx
 ; CHECK-AVX-NEXT:    retq
+;
 entry:
   %0 = load atomic i128, ptr getelementptr inbounds ({i128, i128}, ptr @cmpxchg16b_global, i64 0, i32 1) acquire, align 16
   ret i128 %0
@@ -61,7 +62,7 @@ define void @fetch_and_nand(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB2_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    movq %rdx, %rcx
@@ -91,7 +92,7 @@ define void @fetch_and_or(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB3_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    movq %rax, %rbx
@@ -119,7 +120,7 @@ define void @fetch_and_add(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB4_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    movq %rax, %rbx
@@ -147,7 +148,7 @@ define void @fetch_and_sub(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB5_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    movq %rax, %rbx
@@ -175,7 +176,7 @@ define void @fetch_and_min(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB6_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    cmpq %rax, %rsi
@@ -206,7 +207,7 @@ define void @fetch_and_max(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB7_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    cmpq %rax, %rsi
@@ -237,7 +238,7 @@ define void @fetch_and_umin(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB8_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    cmpq %rax, %rsi
@@ -268,7 +269,7 @@ define void @fetch_and_umax(ptr %p, i128 %bits) {
 ; CHECK-NEXT:    movq %rdx, %r8
 ; CHECK-NEXT:    movq (%rdi), %rax
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NEXT:    .p2align 4
+; CHECK-NEXT:    .p2align 4, 0x90
 ; CHECK-NEXT:  LBB9_1: ## %atomicrmw.start
 ; CHECK-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    cmpq %rax, %rsi
@@ -348,7 +349,7 @@ define void @atomic_store_seq_cst(ptr %p, i128 %in) {
 ; CHECK-NOAVX-NEXT:    movq %rsi, %rbx
 ; CHECK-NOAVX-NEXT:    movq (%rdi), %rax
 ; CHECK-NOAVX-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NOAVX-NEXT:    .p2align 4
+; CHECK-NOAVX-NEXT:    .p2align 4, 0x90
 ; CHECK-NOAVX-NEXT:  LBB12_1: ## %atomicrmw.start
 ; CHECK-NOAVX-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NOAVX-NEXT:    lock cmpxchg16b (%rdi)
@@ -379,7 +380,7 @@ define void @atomic_store_release(ptr %p, i128 %in) {
 ; CHECK-NOAVX-NEXT:    movq %rsi, %rbx
 ; CHECK-NOAVX-NEXT:    movq (%rdi), %rax
 ; CHECK-NOAVX-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NOAVX-NEXT:    .p2align 4
+; CHECK-NOAVX-NEXT:    .p2align 4, 0x90
 ; CHECK-NOAVX-NEXT:  LBB13_1: ## %atomicrmw.start
 ; CHECK-NOAVX-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NOAVX-NEXT:    lock cmpxchg16b (%rdi)
@@ -409,7 +410,7 @@ define void @atomic_store_relaxed(ptr %p, i128 %in) {
 ; CHECK-NOAVX-NEXT:    movq %rsi, %rbx
 ; CHECK-NOAVX-NEXT:    movq (%rdi), %rax
 ; CHECK-NOAVX-NEXT:    movq 8(%rdi), %rdx
-; CHECK-NOAVX-NEXT:    .p2align 4
+; CHECK-NOAVX-NEXT:    .p2align 4, 0x90
 ; CHECK-NOAVX-NEXT:  LBB14_1: ## %atomicrmw.start
 ; CHECK-NOAVX-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; CHECK-NOAVX-NEXT:    lock cmpxchg16b (%rdi)

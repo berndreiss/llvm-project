@@ -176,6 +176,9 @@ void append_hexified_string(std::ostream &ostrm, const std::string &string) {
   }
 }
 
+extern void ASLLogCallback(void *baton, uint32_t flags, const char *format,
+                           va_list args);
+
 // from System.framework/Versions/B/PrivateHeaders/sys/codesign.h
 extern "C" {
 #define CS_OPS_STATUS 0       /* return status */
@@ -1770,6 +1773,8 @@ static std::string get_value(std::string &line) {
 
 extern void FileLogCallback(void *baton, uint32_t flags, const char *format,
                             va_list args);
+extern void ASLLogCallback(void *baton, uint32_t flags, const char *format,
+                           va_list args);
 
 rnb_err_t RNBRemote::HandlePacket_qRcmd(const char *p) {
   const char *c = p + strlen("qRcmd,");
@@ -1804,8 +1809,8 @@ rnb_err_t RNBRemote::HandlePacket_qRcmd(const char *p) {
             static_cast<uint32_t>(strtoul(value.c_str(), &end, 0));
         if (errno == 0 && end && *end == '\0') {
           DNBLogSetLogMask(logmask);
-          if (auto log_callback = OsLogger::GetLogFunction())
-            DNBLogSetLogCallback(log_callback, nullptr);
+          if (!DNBLogGetLogCallback())
+            DNBLogSetLogCallback(ASLLogCallback, NULL);
           return SendPacket("OK");
         }
         errno = 0;
@@ -2172,8 +2177,13 @@ rnb_err_t set_logging(const char *p) {
         // Enable DNB logging.
         // Use the existing log callback if one was already configured.
         if (!DNBLogGetLogCallback()) {
-          if (auto log_callback = OsLogger::GetLogFunction())
+          // Use the os_log()-based logger if available; otherwise,
+          // fallback to ASL.
+          auto log_callback = OsLogger::GetLogFunction();
+          if (log_callback)
             DNBLogSetLogCallback(log_callback, nullptr);
+          else
+            DNBLogSetLogCallback(ASLLogCallback, nullptr);
         }
 
         // Update logging to use the configured log channel bitmask.

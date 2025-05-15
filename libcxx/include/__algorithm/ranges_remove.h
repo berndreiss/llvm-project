@@ -33,7 +33,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __remove {
+namespace __remove {
+struct __fn {
   template <permutable _Iter, sentinel_for<_Iter> _Sent, class _Type, class _Proj = identity>
     requires indirect_binary_predicate<ranges::equal_to, projected<_Iter, _Proj>, const _Type*>
   [[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr subrange<_Iter>
@@ -51,9 +52,10 @@ struct __remove {
     return ranges::__remove_if_impl(ranges::begin(__range), ranges::end(__range), __pred, __proj);
   }
 };
+} // namespace __remove
 
 inline namespace __cpo {
-inline constexpr auto remove = __remove{};
+inline constexpr auto remove = __remove::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

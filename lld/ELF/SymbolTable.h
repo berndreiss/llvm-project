@@ -15,7 +15,7 @@
 #include "llvm/Support/Compiler.h"
 
 namespace lld::elf {
-struct Ctx;
+
 class InputFile;
 class SharedFile;
 
@@ -38,7 +38,6 @@ struct ArmCmseEntryFunction {
 // is one add* function per symbol type.
 class SymbolTable {
 public:
-  SymbolTable(Ctx &ctx) : ctx(ctx) {}
   ArrayRef<Symbol *> getSymbols() const { return symVector; }
 
   void wrap(Symbol *sym, Symbol *real, Symbol *wrap);
@@ -47,10 +46,10 @@ public:
 
   template <typename T> Symbol *addSymbol(const T &newSym) {
     Symbol *sym = insert(newSym.getName());
-    sym->resolve(ctx, newSym);
+    sym->resolve(newSym);
     return sym;
   }
-  Symbol *addAndCheckDuplicate(Ctx &, const Defined &newSym);
+  Symbol *addAndCheckDuplicate(const Defined &newSym);
 
   void scanVersionScript();
 
@@ -92,8 +91,6 @@ private:
   void assignWildcardVersion(SymbolVersion ver, uint16_t versionId,
                              bool includeNonDefault);
 
-  Ctx &ctx;
-
   // Global symbols and a map from symbol name to the index. The order is not
   // defined. We can use an arbitrary order, but it has to be deterministic even
   // when cross linking.
@@ -106,6 +103,8 @@ private:
   // directive in version scripts.
   std::optional<llvm::StringMap<SmallVector<Symbol *, 0>>> demangledSyms;
 };
+
+LLVM_LIBRARY_VISIBILITY extern SymbolTable symtab;
 
 } // namespace lld::elf
 

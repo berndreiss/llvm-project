@@ -411,11 +411,6 @@ enum class TemplateSubstitutionKind : char {
     /// lookup will search our outer scope.
     bool CombineWithOuterScope;
 
-    /// Whether this scope is being used to instantiate a lambda or block
-    /// expression, in which case it should be reused for instantiating the
-    /// lambda's FunctionProtoType.
-    bool InstantiatingLambdaOrBlock = false;
-
     /// If non-NULL, the template parameter pack that has been
     /// partially substituted per C++0x [temp.arg.explicit]p9.
     NamedDecl *PartiallySubstitutedPack = nullptr;
@@ -430,11 +425,9 @@ enum class TemplateSubstitutionKind : char {
     unsigned NumArgsInPartiallySubstitutedPack;
 
   public:
-    LocalInstantiationScope(Sema &SemaRef, bool CombineWithOuterScope = false,
-                            bool InstantiatingLambdaOrBlock = false)
+    LocalInstantiationScope(Sema &SemaRef, bool CombineWithOuterScope = false)
         : SemaRef(SemaRef), Outer(SemaRef.CurrentInstantiationScope),
-          CombineWithOuterScope(CombineWithOuterScope),
-          InstantiatingLambdaOrBlock(InstantiatingLambdaOrBlock) {
+          CombineWithOuterScope(CombineWithOuterScope) {
       SemaRef.CurrentInstantiationScope = this;
     }
 
@@ -560,9 +553,6 @@ enum class TemplateSubstitutionKind : char {
 
     /// Determine whether D is a pack expansion created in this scope.
     bool isLocalPackExpansion(const Decl *D);
-
-    /// Determine whether this scope is for instantiating a lambda or block.
-    bool isLambdaOrBlock() const { return InstantiatingLambdaOrBlock; }
   };
 
   class TemplateDeclInstantiator

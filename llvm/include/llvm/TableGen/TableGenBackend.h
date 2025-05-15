@@ -13,8 +13,9 @@
 #ifndef LLVM_TABLEGEN_TABLEGENBACKEND_H
 #define LLVM_TABLEGEN_TABLEGENBACKEND_H
 
-#include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/ManagedStatic.h"
 #include "llvm/TableGen/Record.h"
 
 namespace llvm {
@@ -23,30 +24,28 @@ class RecordKeeper;
 class raw_ostream;
 
 namespace TableGen::Emitter {
-using FnT = function_ref<void(const RecordKeeper &Records, raw_ostream &OS)>;
+using FnT = void (*)(RecordKeeper &Records, raw_ostream &OS);
 
-/// Creating an `Opt` object registers the command line option \p Name with
-/// TableGen backend and associates the callback \p CB with that option. If
-/// \p ByDefault is true, then that callback is applied by default if no
-/// command line option was specified.
-struct Opt {
-  Opt(StringRef Name, FnT CB, StringRef Desc, bool ByDefault = false);
+struct OptCreatorT {
+  static void *call();
 };
 
-/// Convienence wrapper around `Opt` that registers `EmitterClass::run` as the
-/// callback.
-template <class EmitterC> class OptClass : Opt {
-  static void run(const RecordKeeper &RK, raw_ostream &OS) {
-    EmitterC(RK).run(OS);
+extern ManagedStatic<cl::opt<FnT>, OptCreatorT> Action;
+
+struct Opt {
+  Opt(StringRef Name, FnT CB, StringRef Desc, bool ByDefault = false) {
+    if (ByDefault)
+      Action->setInitialValue(CB);
+    Action->getParser().addLiteralOption(Name, CB, Desc);
   }
+};
+
+template <class EmitterC> class OptClass : Opt {
+  static void run(RecordKeeper &RK, raw_ostream &OS) { EmitterC(RK).run(OS); }
 
 public:
   OptClass(StringRef Name, StringRef Desc) : Opt(Name, run, Desc) {}
 };
-
-/// Apply callback for any command line option registered above. Returns false
-/// is no callback was applied.
-bool ApplyCallback(const RecordKeeper &Records, raw_ostream &OS);
 
 } // namespace TableGen::Emitter
 
@@ -55,6 +54,6 @@ bool ApplyCallback(const RecordKeeper &Records, raw_ostream &OS);
 void emitSourceFileHeader(StringRef Desc, raw_ostream &OS,
                           const RecordKeeper &Record = RecordKeeper());
 
-} // namespace llvm
+} // End llvm namespace
 
-#endif // LLVM_TABLEGEN_TABLEGENBACKEND_H
+#endif

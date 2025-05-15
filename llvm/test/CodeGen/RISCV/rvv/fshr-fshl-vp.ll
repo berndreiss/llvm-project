@@ -231,9 +231,7 @@ define <vscale x 64 x i8> @fshr_v64i8(<vscale x 64 x i8> %a, <vscale x 64 x i8> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 64 x i8> @llvm.vp.fshr.nxv64i8(<vscale x 64 x i8> %a, <vscale x 64 x i8> %b, <vscale x 64 x i8> %c, <vscale x 64 x i1> %m, i32 %evl)
   ret <vscale x 64 x i8> %res
@@ -264,9 +262,7 @@ define <vscale x 64 x i8> @fshl_v64i8(<vscale x 64 x i8> %a, <vscale x 64 x i8> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 64 x i8> @llvm.vp.fshl.nxv64i8(<vscale x 64 x i8> %a, <vscale x 64 x i8> %b, <vscale x 64 x i8> %c, <vscale x 64 x i1> %m, i32 %evl)
   ret <vscale x 64 x i8> %res
@@ -467,9 +463,7 @@ define <vscale x 32 x i16> @fshr_v32i16(<vscale x 32 x i16> %a, <vscale x 32 x i
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 32 x i16> @llvm.vp.fshr.nxv32i16(<vscale x 32 x i16> %a, <vscale x 32 x i16> %b, <vscale x 32 x i16> %c, <vscale x 32 x i1> %m, i32 %evl)
   ret <vscale x 32 x i16> %res
@@ -500,9 +494,7 @@ define <vscale x 32 x i16> @fshl_v32i16(<vscale x 32 x i16> %a, <vscale x 32 x i
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 32 x i16> @llvm.vp.fshl.nxv32i16(<vscale x 32 x i16> %a, <vscale x 32 x i16> %b, <vscale x 32 x i16> %c, <vscale x 32 x i1> %m, i32 %evl)
   ret <vscale x 32 x i16> %res
@@ -679,9 +671,7 @@ define <vscale x 16 x i32> @fshr_v16i32(<vscale x 16 x i32> %a, <vscale x 16 x i
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 16 x i32> @llvm.vp.fshr.nxv16i32(<vscale x 16 x i32> %a, <vscale x 16 x i32> %b, <vscale x 16 x i32> %c, <vscale x 16 x i1> %m, i32 %evl)
   ret <vscale x 16 x i32> %res
@@ -715,9 +705,7 @@ define <vscale x 16 x i32> @fshl_v16i32(<vscale x 16 x i32> %a, <vscale x 16 x i
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 16 x i32> @llvm.vp.fshl.nxv16i32(<vscale x 16 x i32> %a, <vscale x 16 x i32> %b, <vscale x 16 x i32> %c, <vscale x 16 x i1> %m, i32 %evl)
   ret <vscale x 16 x i32> %res
@@ -858,9 +846,7 @@ define <vscale x 7 x i64> @fshr_v7i64(<vscale x 7 x i64> %a, <vscale x 7 x i64> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 7 x i64> @llvm.vp.fshr.nxv7i64(<vscale x 7 x i64> %a, <vscale x 7 x i64> %b, <vscale x 7 x i64> %c, <vscale x 7 x i1> %m, i32 %evl)
   ret <vscale x 7 x i64> %res
@@ -894,9 +880,7 @@ define <vscale x 7 x i64> @fshl_v7i64(<vscale x 7 x i64> %a, <vscale x 7 x i64> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 7 x i64> @llvm.vp.fshl.nxv7i64(<vscale x 7 x i64> %a, <vscale x 7 x i64> %b, <vscale x 7 x i64> %c, <vscale x 7 x i1> %m, i32 %evl)
   ret <vscale x 7 x i64> %res
@@ -929,9 +913,7 @@ define <vscale x 8 x i64> @fshr_v8i64(<vscale x 8 x i64> %a, <vscale x 8 x i64> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 8 x i64> @llvm.vp.fshr.nxv8i64(<vscale x 8 x i64> %a, <vscale x 8 x i64> %b, <vscale x 8 x i64> %c, <vscale x 8 x i1> %m, i32 %evl)
   ret <vscale x 8 x i64> %res
@@ -965,9 +947,7 @@ define <vscale x 8 x i64> @fshl_v8i64(<vscale x 8 x i64> %a, <vscale x 8 x i64> 
 ; CHECK-NEXT:    csrr a0, vlenb
 ; CHECK-NEXT:    slli a0, a0, 3
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 8 x i64> @llvm.vp.fshl.nxv8i64(<vscale x 8 x i64> %a, <vscale x 8 x i64> %b, <vscale x 8 x i64> %c, <vscale x 8 x i1> %m, i32 %evl)
   ret <vscale x 8 x i64> %res
@@ -1134,9 +1114,7 @@ define <vscale x 16 x i64> @fshr_v16i64(<vscale x 16 x i64> %a, <vscale x 16 x i
 ; CHECK-NEXT:    li a1, 48
 ; CHECK-NEXT:    mul a0, a0, a1
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 16 x i64> @llvm.vp.fshr.nxv16i64(<vscale x 16 x i64> %a, <vscale x 16 x i64> %b, <vscale x 16 x i64> %c, <vscale x 16 x i1> %m, i32 %evl)
   ret <vscale x 16 x i64> %res
@@ -1292,9 +1270,7 @@ define <vscale x 16 x i64> @fshl_v16i64(<vscale x 16 x i64> %a, <vscale x 16 x i
 ; CHECK-NEXT:    li a1, 40
 ; CHECK-NEXT:    mul a0, a0, a1
 ; CHECK-NEXT:    add sp, sp, a0
-; CHECK-NEXT:    .cfi_def_cfa sp, 16
 ; CHECK-NEXT:    addi sp, sp, 16
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-NEXT:    ret
   %res = call <vscale x 16 x i64> @llvm.vp.fshl.nxv16i64(<vscale x 16 x i64> %a, <vscale x 16 x i64> %b, <vscale x 16 x i64> %c, <vscale x 16 x i1> %m, i32 %evl)
   ret <vscale x 16 x i64> %res

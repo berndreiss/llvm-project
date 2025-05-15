@@ -20,106 +20,70 @@ void NormalUses() {
   // CHECK-NEXT: VarDecl{{.*}} SomeVar 'bool'
 
 #pragma acc loop device_type(SomeS) dtype(SomeImpl)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(SomeS)
   // CHECK-NEXT: dtype(SomeImpl)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(SomeVar) dtype(int)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(SomeVar)
   // CHECK-NEXT: dtype(int)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(private) dtype(struct)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(private)
   // CHECK-NEXT: dtype(struct)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(private) dtype(class)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(private)
   // CHECK-NEXT: dtype(class)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(float) dtype(*)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(float)
   // CHECK-NEXT: dtype(*)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(float, int) dtype(*)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(float, int)
   // CHECK-NEXT: dtype(*)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 }
 
@@ -130,21 +94,15 @@ void TemplUses() {
   // CHECK-NEXT: FunctionDecl{{.*}}TemplUses
   // CHECK-NEXT: CompoundStmt
 #pragma acc loop device_type(T) dtype(T)
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: device_type(T)
   // CHECK-NEXT: dtype(T)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 
 
@@ -158,16 +116,10 @@ void TemplUses() {
   // CHECK-NEXT: device_type(T)
   // CHECK-NEXT: dtype(T)
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 }
 

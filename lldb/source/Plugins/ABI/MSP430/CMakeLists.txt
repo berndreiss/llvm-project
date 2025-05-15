@@ -5,7 +5,6 @@ add_lldb_library(lldbPluginABIMSP430 PLUGIN
     lldbCore
     lldbSymbol
     lldbTarget
-    lldbValueObject
   LINK_COMPONENTS
     Support
     TargetParser

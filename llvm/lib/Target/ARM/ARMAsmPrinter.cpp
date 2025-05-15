@@ -1219,7 +1219,7 @@ void ARMAsmPrinter::EmitUnwindingInstruction(const MachineInstr *MI) {
     assert(DstReg == ARM::SP &&
            "Only stack pointer as a destination reg is supported");
 
-    SmallVector<MCRegister, 4> RegList;
+    SmallVector<unsigned, 4> RegList;
     // Skip src & dst reg, and pred ops.
     unsigned StartOp = 2 + 2;
     // Use all the operands.
@@ -1447,10 +1447,8 @@ void ARMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitUnwindingInstruction(MI);
 
   // Do any auto-generated pseudo lowerings.
-  if (MCInst OutInst; lowerPseudoInstExpansion(MI, OutInst)) {
-    EmitToStreamer(*OutStreamer, OutInst);
+  if (emitPseudoExpansionLowering(*OutStreamer, MI))
     return;
-  }
 
   assert(!convertAddSubFlagsOpcode(MI->getOpcode()) &&
          "Pseudo flag setting opcode should be expanded early");
@@ -2410,6 +2408,12 @@ void ARMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   case ARM::SEH_EpilogEnd:
     ATS.emitARMWinCFIEpilogEnd();
+    return;
+
+  case ARM::PseudoARMInitUndefMQPR:
+  case ARM::PseudoARMInitUndefSPR:
+  case ARM::PseudoARMInitUndefDPR_VFP2:
+  case ARM::PseudoARMInitUndefGPR:
     return;
   }
 

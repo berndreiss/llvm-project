@@ -15,6 +15,9 @@ using namespace clang::ast_matchers;
 namespace clang::tidy::bugprone {
 
 void ThrowKeywordMissingCheck::registerMatchers(MatchFinder *Finder) {
+  auto CtorInitializerList =
+      cxxConstructorDecl(hasAnyConstructorInitializer(anything()));
+
   Finder->addMatcher(
       cxxConstructExpr(
           hasType(cxxRecordDecl(
@@ -24,7 +27,7 @@ void ThrowKeywordMissingCheck::registerMatchers(MatchFinder *Finder) {
                   stmt(anyOf(cxxThrowExpr(), callExpr(), returnStmt()))),
               hasAncestor(decl(anyOf(varDecl(), fieldDecl()))),
               hasAncestor(expr(cxxNewExpr(hasAnyPlacementArg(anything())))),
-              allOf(hasAncestor(cxxConstructorDecl()),
+              allOf(hasAncestor(CtorInitializerList),
                     unless(hasAncestor(cxxCatchStmt()))))))
           .bind("temporary-exception-not-thrown"),
       this);

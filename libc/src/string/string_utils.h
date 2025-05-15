@@ -221,7 +221,7 @@ LIBC_INLINE size_t strlcpy(char *__restrict dst, const char *__restrict src,
     return len;
   size_t n = len < size - 1 ? len : size - 1;
   inline_memcpy(dst, src, n);
-  dst[n] = '\0';
+  inline_bzero(dst + n, size - n);
   return len;
 }
 
@@ -239,13 +239,11 @@ LIBC_INLINE constexpr static char *strrchr_implementation(const char *src,
                                                           int c) {
   char ch = static_cast<char>(c);
   char *last_occurrence = nullptr;
-  while (true) {
+  for (; *src; ++src) {
     if (*src == ch)
       last_occurrence = const_cast<char *>(src);
-    if (!*src)
-      return last_occurrence;
-    ++src;
   }
+  return last_occurrence;
 }
 
 } // namespace internal

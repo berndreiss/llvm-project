@@ -67,7 +67,7 @@ Status OptionValueFileSpec::SetValueFromString(llvm::StringRef value,
       m_data_mod_time = llvm::sys::TimePoint<>();
       NotifyValueChanged();
     } else {
-      error = Status::FromErrorString("invalid value string");
+      error.SetErrorString("invalid value string");
     }
     break;
 

@@ -178,8 +178,9 @@ ReductionProcessor::getReductionInitValue(mlir::Location loc, mlir::Type type,
   case ReductionIdentifier::OR:
   case ReductionIdentifier::EQV:
   case ReductionIdentifier::NEQV:
-    if (auto cplxTy = mlir::dyn_cast<mlir::ComplexType>(type)) {
-      mlir::Type realTy = cplxTy.getElementType();
+    if (auto cplxTy = mlir::dyn_cast<fir::ComplexType>(type)) {
+      mlir::Type realTy =
+          lower::convertReal(builder.getContext(), cplxTy.getFKind());
       mlir::Value initRe = builder.createRealConstant(
           loc, realTy, getOperationIdentity(redId, loc));
       mlir::Value initIm = builder.createRealConstant(loc, realTy, 0);
@@ -488,57 +489,23 @@ static mlir::Type unwrapSeqOrBoxedType(mlir::Type ty) {
   return ty;
 }
 
-static void createReductionAllocAndInitRegions(
-    fir::FirOpBuilder &builder, mlir::Location loc,
-    mlir::omp::DeclareReductionOp &reductionDecl,
-    const ReductionProcessor::ReductionIdentifier redId, mlir::Type type,
-    bool isByRef) {
-  auto yield = [&](mlir::Value ret) {
-    builder.create<mlir::omp::YieldOp>(loc, ret);
-  };
-
-  mlir::Block *allocBlock = nullptr;
-  mlir::Block *initBlock = nullptr;
-  if (isByRef) {
-    allocBlock =
-        builder.createBlock(&reductionDecl.getAllocRegion(),
-                            reductionDecl.getAllocRegion().end(), {}, {});
-    initBlock = builder.createBlock(&reductionDecl.getInitializerRegion(),
-                                    reductionDecl.getInitializerRegion().end(),
-                                    {type, type}, {loc, loc});
-  } else {
-    initBlock = builder.createBlock(&reductionDecl.getInitializerRegion(),
-                                    reductionDecl.getInitializerRegion().end(),
-                                    {type}, {loc});
-  }
-
+static mlir::Value
+createReductionInitRegion(fir::FirOpBuilder &builder, mlir::Location loc,
+                          mlir::omp::DeclareReductionOp &reductionDecl,
+                          const ReductionProcessor::ReductionIdentifier redId,
+                          mlir::Type type, bool isByRef) {
   mlir::Type ty = fir::unwrapRefType(type);
-  builder.setInsertionPointToEnd(initBlock);
   mlir::Value initValue = ReductionProcessor::getReductionInitValue(
       loc, unwrapSeqOrBoxedType(ty), redId, builder);
 
   if (fir::isa_trivial(ty)) {
     if (isByRef) {
-      // alloc region
-      {
-        builder.setInsertionPointToEnd(allocBlock);
-        mlir::Value alloca = builder.create<fir::AllocaOp>(loc, ty);
-        yield(alloca);
-      }
-
-      // init region
-      {
-        builder.setInsertionPointToEnd(initBlock);
-        // block arg is mapped to the alloca yielded from the alloc region
-        mlir::Value alloc = reductionDecl.getInitializerAllocArg();
-        builder.createStoreWithConvert(loc, initValue, alloc);
-        yield(alloc);
-      }
-      return;
+      mlir::Value alloca = builder.create<fir::AllocaOp>(loc, ty);
+      builder.createStoreWithConvert(loc, initValue, alloca);
+      return alloca;
     }
     // by val
-    yield(initValue);
-    return;
+    return initValue;
   }
 
   // check if an allocatable box is unallocated. If so, initialize the boxAlloca
@@ -553,10 +520,10 @@ static void createReductionAllocAndInitRegions(
   //   fir.store %something to %box_alloca
   // }
   // omp.yield %box_alloca
-  mlir::Value moldArg =
-      builder.loadIfRef(loc, reductionDecl.getInitializerMoldArg());
+  mlir::Value blockArg =
+      builder.loadIfRef(loc, builder.getBlock()->getArgument(0));
   auto handleNullAllocatable = [&](mlir::Value boxAlloca) -> fir::IfOp {
-    mlir::Value addr = builder.create<fir::BoxAddrOp>(loc, moldArg);
+    mlir::Value addr = builder.create<fir::BoxAddrOp>(loc, blockArg);
     mlir::Value isNotAllocated = builder.genIsNullAddr(loc, addr);
     fir::IfOp ifOp = builder.create<fir::IfOp>(loc, isNotAllocated,
                                                /*withElseRegion=*/true);
@@ -572,17 +539,7 @@ static void createReductionAllocAndInitRegions(
     assert(isByRef && "passing boxes by value is unsupported");
     bool isAllocatableOrPointer =
         mlir::isa<fir::HeapType, fir::PointerType>(boxTy.getEleTy());
-
-    // alloc region
-    {
-      builder.setInsertionPointToEnd(allocBlock);
-      mlir::Value boxAlloca = builder.create<fir::AllocaOp>(loc, ty);
-      yield(boxAlloca);
-    }
-
-    // init region
-    builder.setInsertionPointToEnd(initBlock);
-    mlir::Value boxAlloca = reductionDecl.getInitializerAllocArg();
+    mlir::Value boxAlloca = builder.create<fir::AllocaOp>(loc, ty);
     mlir::Type innerTy = fir::unwrapRefType(boxTy.getEleTy());
     if (fir::isa_trivial(innerTy)) {
       // boxed non-sequence value e.g. !fir.box<!fir.heap<i32>>
@@ -601,8 +558,7 @@ static void createReductionAllocAndInitRegions(
       createReductionCleanupRegion(builder, loc, reductionDecl);
       builder.restoreInsertionPoint(insPt);
       builder.setInsertionPointAfter(ifUnallocated);
-      yield(boxAlloca);
-      return;
+      return boxAlloca;
     }
     innerTy = fir::extractSequenceType(boxTy);
     if (!mlir::isa<fir::SequenceType>(innerTy))
@@ -615,7 +571,7 @@ static void createReductionAllocAndInitRegions(
     }
 
     // Create the private copy from the initial fir.box:
-    mlir::Value loadedBox = builder.loadIfRef(loc, moldArg);
+    mlir::Value loadedBox = builder.loadIfRef(loc, blockArg);
     hlfir::Entity source = hlfir::Entity{loadedBox};
 
     // Allocating on the heap in case the whole reduction is nested inside of a
@@ -660,8 +616,7 @@ static void createReductionAllocAndInitRegions(
     builder.create<fir::StoreOp>(loc, box, boxAlloca);
     if (ifUnallocated)
       builder.setInsertionPointAfter(ifUnallocated);
-    yield(boxAlloca);
-    return;
+    return boxAlloca;
   }
 
   TODO(loc, "createReductionInitRegion for unsupported type");
@@ -688,7 +643,13 @@ mlir::omp::DeclareReductionOp ReductionProcessor::createDeclareReduction(
 
   decl = modBuilder.create<mlir::omp::DeclareReductionOp>(loc, reductionOpName,
                                                           type);
-  createReductionAllocAndInitRegions(builder, loc, decl, redId, type, isByRef);
+  builder.createBlock(&decl.getInitializerRegion(),
+                      decl.getInitializerRegion().end(), {type}, {loc});
+  builder.setInsertionPointToEnd(&decl.getInitializerRegion().back());
+
+  mlir::Value init =
+      createReductionInitRegion(builder, loc, decl, redId, type, isByRef);
+  builder.create<mlir::omp::YieldOp>(loc, init);
 
   builder.createBlock(&decl.getReductionRegion(),
                       decl.getReductionRegion().end(), {type, type},
@@ -722,7 +683,7 @@ void ReductionProcessor::addDeclareReduction(
     llvm::SmallVectorImpl<mlir::Value> &reductionVars,
     llvm::SmallVectorImpl<bool> &reduceVarByRef,
     llvm::SmallVectorImpl<mlir::Attribute> &reductionDeclSymbols,
-    llvm::SmallVectorImpl<const semantics::Symbol *> &reductionSymbols) {
+    llvm::SmallVectorImpl<const semantics::Symbol *> *reductionSymbols) {
   fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
 
   if (std::get<std::optional<omp::clause::Reduction::ReductionModifier>>(
@@ -753,7 +714,8 @@ void ReductionProcessor::addDeclareReduction(
   fir::FirOpBuilder &builder = converter.getFirOpBuilder();
   for (const Object &object : objectList) {
     const semantics::Symbol *symbol = object.sym();
-    reductionSymbols.push_back(symbol);
+    if (reductionSymbols)
+      reductionSymbols->push_back(symbol);
     mlir::Value symVal = converter.getSymbolAddress(*symbol);
     mlir::Type eleType;
     auto refType = mlir::dyn_cast_or_null<fir::ReferenceType>(symVal.getType());

@@ -42,6 +42,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
@@ -49,6 +50,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopVersioning.h"
 #include "llvm/Transforms/Utils/ScalarEvolutionExpander.h"
@@ -190,7 +192,7 @@ public:
     // forward and backward dependences qualify.  Disqualify loads that have
     // other unknown dependences.
 
-    SmallPtrSet<Instruction *, 4> LoadsWithUnknownDependence;
+    SmallPtrSet<Instruction *, 4> LoadsWithUnknownDepedence;
 
     for (const auto &Dep : *Deps) {
       Instruction *Source = Dep.getSource(DepChecker);
@@ -199,9 +201,9 @@ public:
       if (Dep.Type == MemoryDepChecker::Dependence::Unknown ||
           Dep.Type == MemoryDepChecker::Dependence::IndirectUnsafe) {
         if (isa<LoadInst>(Source))
-          LoadsWithUnknownDependence.insert(Source);
+          LoadsWithUnknownDepedence.insert(Source);
         if (isa<LoadInst>(Destination))
-          LoadsWithUnknownDependence.insert(Destination);
+          LoadsWithUnknownDepedence.insert(Destination);
         continue;
       }
 
@@ -229,9 +231,9 @@ public:
       Candidates.emplace_front(Load, Store);
     }
 
-    if (!LoadsWithUnknownDependence.empty())
+    if (!LoadsWithUnknownDepedence.empty())
       Candidates.remove_if([&](const StoreToLoadForwardingCandidate &C) {
-        return LoadsWithUnknownDependence.count(C.Load);
+        return LoadsWithUnknownDepedence.count(C.Load);
       });
 
     return Candidates;
@@ -584,8 +586,11 @@ public:
       }
 
       auto *HeaderBB = L->getHeader();
-      if (llvm::shouldOptimizeForSize(HeaderBB, PSI, BFI,
-                                      PGSOQueryType::IRPass)) {
+      auto *F = HeaderBB->getParent();
+      bool OptForSize = F->hasOptSize() ||
+                        llvm::shouldOptimizeForSize(HeaderBB, PSI, BFI,
+                                                    PGSOQueryType::IRPass);
+      if (OptForSize) {
         LLVM_DEBUG(
             dbgs() << "Versioning is needed but not allowed when optimizing "
                       "for size.\n");

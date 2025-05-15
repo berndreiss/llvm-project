@@ -496,17 +496,6 @@ GDBRemoteCommunicationServerCommon::Handle_qSpeedTest(
   return SendErrorResponse(7);
 }
 
-static GDBErrno system_errno_to_gdb(int err) {
-  switch (err) {
-#define HANDLE_ERRNO(name, value)                                              \
-  case name:                                                                   \
-    return GDB_##name;
-#include "Plugins/Process/gdb-remote/GDBRemoteErrno.def"
-  default:
-    return GDB_EUNKNOWN;
-  }
-}
-
 GDBRemoteCommunication::PacketResult
 GDBRemoteCommunicationServerCommon::Handle_vFile_Open(
     StringExtractorGDBRemote &packet) {
@@ -533,7 +522,9 @@ GDBRemoteCommunicationServerCommon::Handle_vFile_Open(
         } else {
           response.PutCString("-1");
           std::error_code code = errorToErrorCode(file.takeError());
-          response.Printf(",%x", system_errno_to_gdb(code.value()));
+          if (code.category() == std::system_category()) {
+            response.Printf(",%x", code.value());
+          }
         }
 
         return SendPacketNoLock(response.GetString());
@@ -541,6 +532,17 @@ GDBRemoteCommunicationServerCommon::Handle_vFile_Open(
     }
   }
   return SendErrorResponse(18);
+}
+
+static GDBErrno system_errno_to_gdb(int err) {
+  switch (err) {
+#define HANDLE_ERRNO(name, value)                                              \
+  case name:                                                                   \
+    return GDB_##name;
+#include "Plugins/Process/gdb-remote/GDBRemoteErrno.def"
+  default:
+    return GDB_EUNKNOWN;
+  }
 }
 
 GDBRemoteCommunication::PacketResult
@@ -725,8 +727,7 @@ GDBRemoteCommunicationServerCommon::Handle_vFile_unlink(
   packet.GetHexByteString(path);
   Status error(llvm::sys::fs::remove(path));
   StreamString response;
-  response.Printf("F%x,%x", error.GetError(),
-                  system_errno_to_gdb(error.GetError()));
+  response.Printf("F%x,%x", error.GetError(), error.GetError());
   return SendPacketNoLock(response.GetString());
 }
 

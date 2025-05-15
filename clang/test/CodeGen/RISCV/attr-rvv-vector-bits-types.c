@@ -149,9 +149,15 @@ typedef vuint64m8_t fixed_uint64m8_t __attribute__((riscv_rvv_vector_bits(__risc
 typedef vfloat32m8_t fixed_float32m8_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen * 8)));
 typedef vfloat64m8_t fixed_float64m8_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen * 8)));
 
+#if __riscv_v_fixed_vlen / 64 >= 8
 typedef vbool64_t fixed_bool64_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 64)));
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
 typedef vbool32_t fixed_bool32_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 32)));
+#endif
+#if __riscv_v_fixed_vlen / 16 >= 8
 typedef vbool16_t fixed_bool16_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 16)));
+#endif
 typedef vbool8_t fixed_bool8_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 8)));
 typedef vbool4_t fixed_bool4_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 4)));
 typedef vbool2_t fixed_bool2_t __attribute__((riscv_rvv_vector_bits(__riscv_v_fixed_vlen / 2)));
@@ -218,9 +224,15 @@ DEFINE_STRUCT(bool1)
 DEFINE_STRUCT(bool2)
 DEFINE_STRUCT(bool4)
 DEFINE_STRUCT(bool8)
+#if __riscv_v_fixed_vlen / 16 >= 8
 DEFINE_STRUCT(bool16)
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
 DEFINE_STRUCT(bool32)
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
 DEFINE_STRUCT(bool64)
+#endif
 
 DEFINE_UNION(int8m1)
 DEFINE_UNION(int16m1)
@@ -270,9 +282,15 @@ DEFINE_UNION(bool1)
 DEFINE_UNION(bool2)
 DEFINE_UNION(bool4)
 DEFINE_UNION(bool8)
+#if __riscv_v_fixed_vlen / 16 >= 8
 DEFINE_UNION(bool16)
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
 DEFINE_UNION(bool32)
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
 DEFINE_UNION(bool64)
+#endif
 
 //===----------------------------------------------------------------------===//
 // Global variables
@@ -333,9 +351,15 @@ fixed_bool1_t global_bool1;
 fixed_bool2_t global_bool2;
 fixed_bool4_t global_bool4;
 fixed_bool8_t global_bool8;
+#if __riscv_v_fixed_vlen / 16 >= 8
 fixed_bool16_t global_bool16;
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
 fixed_bool32_t global_bool32;
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
 fixed_bool64_t global_bool64;
+#endif
 
 //===----------------------------------------------------------------------===//
 // Global arrays
@@ -396,9 +420,15 @@ fixed_bool1_t global_arr_bool1[3];
 fixed_bool2_t global_arr_bool2[3];
 fixed_bool4_t global_arr_bool4[3];
 fixed_bool8_t global_arr_bool8[3];
+#if __riscv_v_fixed_vlen / 16 >= 8
 fixed_bool16_t global_arr_bool16[3];
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
 fixed_bool32_t global_arr_bool32[3];
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
 fixed_bool64_t global_arr_bool64[3];
+#endif
 
 //===----------------------------------------------------------------------===//
 // Locals
@@ -453,9 +483,15 @@ void f() {
   fixed_bool2_t local_bool2;
   fixed_bool4_t local_bool4;
   fixed_bool8_t local_bool8;
+#if __riscv_v_fixed_vlen / 16 >= 8
   fixed_bool16_t local_bool16;
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
   fixed_bool32_t local_bool32;
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
   fixed_bool64_t local_bool64;
+#endif
 
   // Arrays
   fixed_int8m1_t local_arr_i8[3];
@@ -522,9 +558,15 @@ void f() {
   fixed_bool2_t local_arr_bool2[3];
   fixed_bool4_t local_arr_bool4[3];
   fixed_bool8_t local_arr_bool8[3];
+#if __riscv_v_fixed_vlen / 16 >= 8
   fixed_bool16_t local_arr_bool16[3];
+#endif
+#if __riscv_v_fixed_vlen / 32 >= 8
   fixed_bool32_t local_arr_bool32[3];
+#endif
+#if __riscv_v_fixed_vlen / 64 >= 8
   fixed_bool64_t local_arr_bool64[3];
+#endif
 }
 
 //===----------------------------------------------------------------------===//
@@ -574,9 +616,6 @@ void f() {
 // CHECK-64-NEXT: %struct.struct_bool2 = type { <4 x i8> }
 // CHECK-64-NEXT: %struct.struct_bool4 = type { <2 x i8> }
 // CHECK-64-NEXT: %struct.struct_bool8 = type { <1 x i8> }
-// CHECK-64-NEXT: %struct.struct_bool16 = type { <1 x i8> }
-// CHECK-64-NEXT: %struct.struct_bool32 = type { <1 x i8> }
-// CHECK-64-NEXT: %struct.struct_bool64 = type { <1 x i8> }
 
 // CHECK-128:      %struct.struct_int8m1 = type { <16 x i8> }
 // CHECK-128-NEXT: %struct.struct_int16m1 = type { <8 x i16> }
@@ -623,8 +662,6 @@ void f() {
 // CHECK-128-NEXT: %struct.struct_bool4 = type { <4 x i8> }
 // CHECK-128-NEXT: %struct.struct_bool8 = type { <2 x i8> }
 // CHECK-128-NEXT: %struct.struct_bool16 = type { <1 x i8> }
-// CHECK-128-NEXT: %struct.struct_bool32 = type { <1 x i8> }
-// CHECK-128-NEXT: %struct.struct_bool64 = type { <1 x i8> }
 
 // CHECK-256:      %struct.struct_int8m1 = type { <32 x i8> }
 // CHECK-256-NEXT: %struct.struct_int16m1 = type { <16 x i16> }
@@ -672,7 +709,6 @@ void f() {
 // CHECK-256-NEXT: %struct.struct_bool8 = type { <4 x i8> }
 // CHECK-256-NEXT: %struct.struct_bool16 = type { <2 x i8> }
 // CHECK-256-NEXT: %struct.struct_bool32 = type { <1 x i8> }
-// CHECK-256-NEXT: %struct.struct_bool64 = type { <1 x i8> }
 
 // CHECK-512:      %struct.struct_int8m1 = type { <64 x i8> }
 // CHECK-512-NEXT: %struct.struct_int16m1 = type { <32 x i16> }
@@ -814,9 +850,6 @@ void f() {
 // CHECK-64-NEXT: %union.union_bool2 = type { <4 x i8> }
 // CHECK-64-NEXT: %union.union_bool4 = type { <2 x i8> }
 // CHECK-64-NEXT: %union.union_bool8 = type { <1 x i8> }
-// CHECK-64-NEXT: %union.union_bool16 = type { <1 x i8> }
-// CHECK-64-NEXT: %union.union_bool32 = type { <1 x i8> }
-// CHECK-64-NEXT: %union.union_bool64 = type { <1 x i8> }
 
 // CHECK-128:      %union.union_int8m1 = type { <16 x i8> }
 // CHECK-128-NEXT: %union.union_int16m1 = type { <8 x i16> }
@@ -863,8 +896,6 @@ void f() {
 // CHECK-128-NEXT: %union.union_bool4 = type { <4 x i8> }
 // CHECK-128-NEXT: %union.union_bool8 = type { <2 x i8> }
 // CHECK-128-NEXT: %union.union_bool16 = type { <1 x i8> }
-// CHECK-128-NEXT: %union.union_bool32 = type { <1 x i8> }
-// CHECK-128-NEXT: %union.union_bool64 = type { <1 x i8> }
 
 // CHECK-256:      %union.union_int8m1 = type { <32 x i8> }
 // CHECK-256-NEXT: %union.union_int16m1 = type { <16 x i16> }
@@ -912,7 +943,6 @@ void f() {
 // CHECK-256-NEXT: %union.union_bool8 = type { <4 x i8> }
 // CHECK-256-NEXT: %union.union_bool16 = type { <2 x i8> }
 // CHECK-256-NEXT: %union.union_bool32 = type { <1 x i8> }
-// CHECK-256-NEXT: %union.union_bool64 = type { <1 x i8> }
 
 // CHECK-512:      %union.union_int8m1 = type { <64 x i8> }
 // CHECK-512-NEXT: %union.union_int16m1 = type { <32 x i16> }
@@ -1057,9 +1087,6 @@ void f() {
 // CHECK-64-NEXT: @global_bool2 ={{.*}} global <4 x i8> zeroinitializer, align 4
 // CHECK-64-NEXT: @global_bool4 ={{.*}} global <2 x i8> zeroinitializer, align 2
 // CHECK-64-NEXT: @global_bool8 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-64-NEXT: @global_bool16 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-64-NEXT: @global_bool32 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-64-NEXT: @global_bool64 ={{.*}} global <1 x i8> zeroinitializer, align 1
 
 // CHECK-128:      @global_i8 ={{.*}} global <16 x i8> zeroinitializer, align 8
 // CHECK-128-NEXT: @global_i16 ={{.*}} global <8 x i16> zeroinitializer, align 8
@@ -1106,8 +1133,6 @@ void f() {
 // CHECK-128-NEXT: @global_bool4 ={{.*}} global <4 x i8> zeroinitializer, align 4
 // CHECK-128-NEXT: @global_bool8 ={{.*}} global <2 x i8> zeroinitializer, align 2
 // CHECK-128-NEXT: @global_bool16 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-128-NEXT: @global_bool32 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-128-NEXT: @global_bool64 ={{.*}} global <1 x i8> zeroinitializer, align 1
 
 // CHECK-256:      @global_i8 ={{.*}} global <32 x i8> zeroinitializer, align 8
 // CHECK-256-NEXT: @global_i16 ={{.*}} global <16 x i16> zeroinitializer, align 8
@@ -1155,7 +1180,6 @@ void f() {
 // CHECK-256-NEXT: @global_bool8 ={{.*}} global <4 x i8> zeroinitializer, align 4
 // CHECK-256-NEXT: @global_bool16 ={{.*}} global <2 x i8> zeroinitializer, align 2
 // CHECK-256-NEXT: @global_bool32 ={{.*}} global <1 x i8> zeroinitializer, align 1
-// CHECK-256-NEXT: @global_bool64 ={{.*}} global <1 x i8> zeroinitializer, align 1
 
 // CHECK-512:      @global_i8 ={{.*}} global <64 x i8> zeroinitializer, align 8
 // CHECK-512-NEXT: @global_i16 ={{.*}} global <32 x i16> zeroinitializer, align 8
@@ -1300,9 +1324,6 @@ void f() {
 // CHECK-64-NEXT: @global_arr_bool2 ={{.*}} global [3 x <4 x i8>] zeroinitializer, align 4
 // CHECK-64-NEXT: @global_arr_bool4 ={{.*}} global [3 x <2 x i8>] zeroinitializer, align 2
 // CHECK-64-NEXT: @global_arr_bool8 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-64-NEXT: @global_arr_bool16 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-64-NEXT: @global_arr_bool32 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-64-NEXT: @global_arr_bool64 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
 
 // CHECK-128:      @global_arr_i8 ={{.*}} global [3 x <16 x i8>] zeroinitializer, align 8
 // CHECK-128-NEXT: @global_arr_i16 ={{.*}} global [3 x <8 x i16>] zeroinitializer, align 8
@@ -1349,8 +1370,6 @@ void f() {
 // CHECK-128-NEXT: @global_arr_bool4 ={{.*}} global [3 x <4 x i8>] zeroinitializer, align 4
 // CHECK-128-NEXT: @global_arr_bool8 ={{.*}} global [3 x <2 x i8>] zeroinitializer, align 2
 // CHECK-128-NEXT: @global_arr_bool16 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-128-NEXT: @global_arr_bool32 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-128-NEXT: @global_arr_bool64 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
 
 // CHECK-256:      @global_arr_i8 ={{.*}} global [3 x <32 x i8>] zeroinitializer, align 8
 // CHECK-256-NEXT: @global_arr_i16 ={{.*}} global [3 x <16 x i16>] zeroinitializer, align 8
@@ -1398,7 +1417,6 @@ void f() {
 // CHECK-256-NEXT: @global_arr_bool8 ={{.*}} global [3 x <4 x i8>] zeroinitializer, align 4
 // CHECK-256-NEXT: @global_arr_bool16 ={{.*}} global [3 x <2 x i8>] zeroinitializer, align 2
 // CHECK-256-NEXT: @global_arr_bool32 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
-// CHECK-256-NEXT: @global_arr_bool64 ={{.*}} global [3 x <1 x i8>] zeroinitializer, align 1
 
 // CHECK-512:      @global_arr_i8 ={{.*}} global [3 x <64 x i8>] zeroinitializer, align 8
 // CHECK-512-NEXT: @global_arr_i16 ={{.*}} global [3 x <32 x i16>] zeroinitializer, align 8
@@ -1543,9 +1561,6 @@ void f() {
 // CHECK-64-NEXT: %local_bool2 = alloca <4 x i8>, align 4
 // CHECK-64-NEXT: %local_bool4 = alloca <2 x i8>, align 2
 // CHECK-64-NEXT: %local_bool8 = alloca <1 x i8>, align 1
-// CHECK-64-NEXT: %local_bool16 = alloca <1 x i8>, align 1
-// CHECK-64-NEXT: %local_bool32 = alloca <1 x i8>, align 1
-// CHECK-64-NEXT: %local_bool64 = alloca <1 x i8>, align 1
 
 // CHECK-128:      %local_i8 = alloca <16 x i8>, align 8
 // CHECK-128-NEXT: %local_i16 = alloca <8 x i16>, align 8
@@ -1592,8 +1607,6 @@ void f() {
 // CHECK-128-NEXT: %local_bool4 = alloca <4 x i8>, align 4
 // CHECK-128-NEXT: %local_bool8 = alloca <2 x i8>, align 2
 // CHECK-128-NEXT: %local_bool16 = alloca <1 x i8>, align 1
-// CHECK-128-NEXT: %local_bool32 = alloca <1 x i8>, align 1
-// CHECK-128-NEXT: %local_bool64 = alloca <1 x i8>, align 1
 
 // CHECK-256:      %local_i8 = alloca <32 x i8>, align 8
 // CHECK-256-NEXT: %local_i16 = alloca <16 x i16>, align 8
@@ -1641,7 +1654,6 @@ void f() {
 // CHECK-256-NEXT: %local_bool8 = alloca <4 x i8>, align 4
 // CHECK-256-NEXT: %local_bool16 = alloca <2 x i8>, align 2
 // CHECK-256-NEXT: %local_bool32 = alloca <1 x i8>, align 1
-// CHECK-256-NEXT: %local_bool64 = alloca <1 x i8>, align 1
 
 // CHECK-512:      %local_i8 = alloca <64 x i8>, align 8
 // CHECK-512-NEXT: %local_i16 = alloca <32 x i16>, align 8
@@ -1799,9 +1811,6 @@ void f() {
 // CHECK-64-NEXT: %local_arr_bool2 = alloca [3 x <4 x i8>], align 4
 // CHECK-64-NEXT: %local_arr_bool4 = alloca [3 x <2 x i8>], align 2
 // CHECK-64-NEXT: %local_arr_bool8 = alloca [3 x <1 x i8>], align 1
-// CHECK-64-NEXT: %local_arr_bool16 = alloca [3 x <1 x i8>], align 1
-// CHECK-64-NEXT: %local_arr_bool32 = alloca [3 x <1 x i8>], align 1
-// CHECK-64-NEXT: %local_arr_bool64 = alloca [3 x <1 x i8>], align 1
 
 // CHECK-128:      %local_arr_i8 = alloca [3 x <16 x i8>], align 8
 // CHECK-128-NEXT: %local_arr_i16 = alloca [3 x <8 x i16>], align 8
@@ -1861,8 +1870,6 @@ void f() {
 // CHECK-128-NEXT: %local_arr_bool4 = alloca [3 x <4 x i8>], align 4
 // CHECK-128-NEXT: %local_arr_bool8 = alloca [3 x <2 x i8>], align 2
 // CHECK-128-NEXT: %local_arr_bool16 = alloca [3 x <1 x i8>], align 1
-// CHECK-128-NEXT: %local_arr_bool32 = alloca [3 x <1 x i8>], align 1
-// CHECK-128-NEXT: %local_arr_bool64 = alloca [3 x <1 x i8>], align 1
 
 // CHECK-256:      %local_arr_i8 = alloca [3 x <32 x i8>], align 8
 // CHECK-256-NEXT: %local_arr_i16 = alloca [3 x <16 x i16>], align 8
@@ -1923,7 +1930,6 @@ void f() {
 // CHECK-256-NEXT: %local_arr_bool8 = alloca [3 x <4 x i8>], align 4
 // CHECK-256-NEXT: %local_arr_bool16 = alloca [3 x <2 x i8>], align 2
 // CHECK-256-NEXT: %local_arr_bool32 = alloca [3 x <1 x i8>], align 1
-// CHECK-256-NEXT: %local_arr_bool64 = alloca [3 x <1 x i8>], align 1
 
 // CHECK-512:      %local_arr_i8 = alloca [3 x <64 x i8>], align 8
 // CHECK-512-NEXT: %local_arr_i16 = alloca [3 x <32 x i16>], align 8

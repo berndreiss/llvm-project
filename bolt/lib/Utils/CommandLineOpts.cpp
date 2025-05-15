@@ -11,15 +11,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "bolt/Utils/CommandLineOpts.h"
-#include "VCSVersion.inc"
+#include "llvm/Support/VCSRevision.h"
 
 using namespace llvm;
 
 namespace llvm {
 namespace bolt {
 const char *BoltRevision =
-#ifdef BOLT_REVISION
-    BOLT_REVISION;
+#ifdef LLVM_REVISION
+    LLVM_REVISION;
 #else
     "<unknown>";
 #endif
@@ -174,10 +174,6 @@ cl::opt<ProfileFormatKind> ProfileFormat(
 cl::opt<std::string> SaveProfile("w",
                                  cl::desc("save recorded profile to a file"),
                                  cl::cat(BoltOutputCategory));
-
-cl::opt<bool> ShowDensity("show-density",
-                          cl::desc("show profile density details"),
-                          cl::Optional, cl::cat(AggregatorCategory));
 
 cl::opt<bool> SplitEH("split-eh", cl::desc("split C++ exception handling code"),
                       cl::Hidden, cl::cat(BoltOptCategory));

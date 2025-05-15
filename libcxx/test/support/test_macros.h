@@ -184,12 +184,6 @@
 #  define TEST_CONSTEXPR_CXX23
 #endif
 
-#if TEST_STD_VER >= 26
-#  define TEST_CONSTEXPR_CXX26 constexpr
-#else
-#  define TEST_CONSTEXPR_CXX26
-#endif
-
 #define TEST_ALIGNAS_TYPE(...) TEST_ALIGNAS(TEST_ALIGNOF(__VA_ARGS__))
 
 #if !TEST_HAS_FEATURE(cxx_rtti) && !defined(__cpp_rtti) \
@@ -214,18 +208,22 @@
 #define TEST_IS_EXECUTED_IN_A_SLOW_ENVIRONMENT
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_ALIGNED_ALLOCATION
-#  define TEST_HAS_NO_ALIGNED_ALLOCATION
-#elif TEST_STD_VER < 17 && (!defined(__cpp_aligned_new) || __cpp_aligned_new < 201606L)
-#  define TEST_HAS_NO_ALIGNED_ALLOCATION
+#if defined(_LIBCPP_NORETURN)
+#define TEST_NORETURN _LIBCPP_NORETURN
+#else
+#define TEST_NORETURN [[noreturn]]
+#endif
+
+#if defined(_LIBCPP_HAS_NO_ALIGNED_ALLOCATION) || \
+  (!(TEST_STD_VER > 14 || \
+    (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606L)))
+#define TEST_HAS_NO_ALIGNED_ALLOCATION
 #endif
 
 #if TEST_STD_VER > 17
-#  define TEST_CONSTINIT constinit
-#elif __has_cpp_attribute(clang::require_constant_initialization)
-#  define TEST_CONSTINIT [[clang::require_constant_initialization]]
+#define TEST_CONSTINIT constinit
 #else
-#  define TEST_CONSTINIT
+#define TEST_CONSTINIT
 #endif
 
 #if TEST_STD_VER < 11
@@ -262,10 +260,6 @@
 
 #define TEST_IGNORE_NODISCARD (void)
 
-#if !defined(_LIBCPP_VERSION) || _LIBCPP_AVAILABILITY_HAS_FROM_CHARS_FLOATING_POINT
-#  define TEST_HAS_FROM_CHARS_FLOATING_POINT
-#endif
-
 namespace test_macros_detail {
 template <class T, class U>
 struct is_same { enum { value = 0};} ;
@@ -297,27 +291,17 @@ struct is_same<T, T> { enum {value = 1}; };
 // when optimizations are enabled.
 template <class Tp>
 inline Tp const& DoNotOptimize(Tp const& value) {
-  // The `m` constraint is invalid in the AMDGPU backend.
-#  if defined(__AMDGPU__) || defined(__NVPTX__)
-  asm volatile("" : : "r"(value) : "memory");
-#  else
-  asm volatile("" : : "r,m"(value) : "memory");
-#  endif
-  return value;
+    asm volatile("" : : "r,m"(value) : "memory");
+    return value;
 }
 
 template <class Tp>
 inline Tp& DoNotOptimize(Tp& value) {
-  // The `m` and `r` output constraint is invalid in the AMDGPU backend as well
-  // as i8 / i1 arguments, so we just capture the pointer instead.
-#  if defined(__AMDGPU__)
-  Tp* tmp = &value;
-  asm volatile("" : "+v"(tmp) : : "memory");
-#  elif defined(__clang__)
+#if defined(__clang__)
   asm volatile("" : "+r,m"(value) : : "memory");
-#  else
+#else
   asm volatile("" : "+m,r"(value) : : "memory");
-#  endif
+#endif
   return value;
 }
 #else
@@ -391,25 +375,25 @@ inline Tp const& DoNotOptimize(Tp const& value) {
 #endif
 
 // Support for carving out parts of the test suite, like removing wide characters, etc.
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_WIDE_CHARACTERS
-#  define TEST_HAS_NO_WIDE_CHARACTERS
+#if defined(_LIBCPP_HAS_NO_WIDE_CHARACTERS)
+#   define TEST_HAS_NO_WIDE_CHARACTERS
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_UNICODE
-#  define TEST_HAS_NO_UNICODE
+#if defined(_LIBCPP_HAS_NO_UNICODE)
+#   define TEST_HAS_NO_UNICODE
 #elif defined(_MSVC_EXECUTION_CHARACTER_SET) && _MSVC_EXECUTION_CHARACTER_SET != 65001
-#  define TEST_HAS_NO_UNICODE
+#   define TEST_HAS_NO_UNICODE
 #endif
 
-#if defined(_LIBCPP_VERSION) && _LIBCPP_HAS_OPEN_WITH_WCHAR
+#if defined(_LIBCPP_HAS_OPEN_WITH_WCHAR)
 #  define TEST_HAS_OPEN_WITH_WCHAR
 #endif
 
-#if (defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_INT128) || defined(_MSVC_STL_VERSION)
-#  define TEST_HAS_NO_INT128
+#if defined(_LIBCPP_HAS_NO_INT128) || defined(_MSVC_STL_VERSION)
+#   define TEST_HAS_NO_INT128
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_LOCALIZATION
+#if defined(_LIBCPP_HAS_NO_LOCALIZATION)
 #  define TEST_HAS_NO_LOCALIZATION
 #endif
 
@@ -417,19 +401,19 @@ inline Tp const& DoNotOptimize(Tp const& value) {
 #  define TEST_HAS_NO_CHAR8_T
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_THREADS
+#if defined(_LIBCPP_HAS_NO_THREADS)
 #  define TEST_HAS_NO_THREADS
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_FILESYSTEM
+#if defined(_LIBCPP_HAS_NO_FILESYSTEM)
 #  define TEST_HAS_NO_FILESYSTEM
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_C8RTOMB_MBRTOC8
+#if defined(_LIBCPP_HAS_NO_C8RTOMB_MBRTOC8)
 #  define TEST_HAS_NO_C8RTOMB_MBRTOC8
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_RANDOM_DEVICE
+#if defined(_LIBCPP_HAS_NO_RANDOM_DEVICE)
 #  define TEST_HAS_NO_RANDOM_DEVICE
 #endif
 
@@ -437,7 +421,7 @@ inline Tp const& DoNotOptimize(Tp const& value) {
 #  define TEST_HAS_NO_EXPERIMENTAL_TZDB
 #endif
 
-#if defined(_LIBCPP_VERSION) && !_LIBCPP_HAS_TIME_ZONE_DATABASE
+#if defined(_LIBCPP_HAS_NO_TIME_ZONE_DATABASE)
 #  define TEST_HAS_NO_TIME_ZONE_DATABASE
 #endif
 
@@ -499,20 +483,8 @@ inline Tp const& DoNotOptimize(Tp const& value) {
 #endif
 
 // Clang-18 has support for deducing this, but it does not set the FTM.
-#if defined(_LIBCPP_VERSION) && _LIBCPP_HAS_EXPLICIT_THIS_PARAMETER
+#ifdef _LIBCPP_HAS_EXPLICIT_THIS_PARAMETER
 #  define TEST_HAS_EXPLICIT_THIS_PARAMETER
-#endif
-
-// Placement `operator new`/`operator new[]` are not yet constexpr in C++26
-// when using MS ABI, because they are from <vcruntime_new.h>.
-#if defined(__cpp_lib_constexpr_new) && __cpp_lib_constexpr_new >= 202406L
-#  define TEST_CONSTEXPR_OPERATOR_NEW constexpr
-#else
-#  define TEST_CONSTEXPR_OPERATOR_NEW
-#endif
-
-#if defined(_MSC_VER) || __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
-#  define TEST_LONG_DOUBLE_IS_DOUBLE
 #endif
 
 #endif // SUPPORT_TEST_MACROS_HPP

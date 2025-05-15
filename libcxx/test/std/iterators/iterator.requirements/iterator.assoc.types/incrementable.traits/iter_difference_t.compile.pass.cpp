@@ -14,7 +14,6 @@
 #include <iterator>
 
 #include <concepts>
-#include <cstddef>
 #include <vector>
 
 template <class T>

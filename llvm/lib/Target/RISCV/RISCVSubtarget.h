@@ -50,9 +50,6 @@ struct RISCVTuneInfo {
   unsigned MaxPrefetchIterationsAhead;
 
   unsigned MinimumJumpTableEntries;
-
-  // Tail duplication threshold at -O3.
-  unsigned TailDupAggressiveThreshold;
 };
 
 #define GET_RISCVTuneInfoTable_DECL
@@ -228,7 +225,7 @@ public:
   bool hasVInstructionsI64() const { return HasStdExtZve64x; }
   bool hasVInstructionsF16Minimal() const { return HasStdExtZvfhmin; }
   bool hasVInstructionsF16() const { return HasStdExtZvfh; }
-  bool hasVInstructionsBF16Minimal() const { return HasStdExtZvfbfmin; }
+  bool hasVInstructionsBF16() const { return HasStdExtZvfbfmin; }
   bool hasVInstructionsF32() const { return HasStdExtZve32f; }
   bool hasVInstructionsF64() const { return HasStdExtZve64d; }
   // F16 and F64 both require F32.
@@ -236,27 +233,6 @@ public:
   bool hasVInstructionsFullMultiply() const { return HasStdExtV; }
   unsigned getMaxInterleaveFactor() const {
     return hasVInstructions() ? MaxInterleaveFactor : 1;
-  }
-
-  bool hasOptimizedSegmentLoadStore(unsigned NF) const {
-    switch (NF) {
-    case 2:
-      return hasOptimizedNF2SegmentLoadStore();
-    case 3:
-      return hasOptimizedNF3SegmentLoadStore();
-    case 4:
-      return hasOptimizedNF4SegmentLoadStore();
-    case 5:
-      return hasOptimizedNF5SegmentLoadStore();
-    case 6:
-      return hasOptimizedNF6SegmentLoadStore();
-    case 7:
-      return hasOptimizedNF7SegmentLoadStore();
-    case 8:
-      return hasOptimizedNF8SegmentLoadStore();
-    default:
-      llvm_unreachable("Unexpected NF");
-    }
   }
 
   // Returns VLEN divided by DLEN. Where DLEN is the datapath width of the
@@ -324,9 +300,7 @@ public:
 
   unsigned getMinimumJumpTableEntries() const;
 
-  unsigned getTailDupAggressiveThreshold() const {
-    return TuneInfo->TailDupAggressiveThreshold;
-  }
+  bool supportsInitUndef() const override { return hasVInstructions(); }
 };
 } // End llvm namespace
 

@@ -14,6 +14,7 @@ func.func @parallel(%arg0: index, %arg1: index, %arg2: index,
     // CHECK:   omp.yield
     // CHECK: }
   }
+  // CHECK:     omp.terminator
   // CHECK:   }
   // CHECK:   omp.terminator
   // CHECK: }
@@ -40,8 +41,10 @@ func.func @nested_loops(%arg0: index, %arg1: index, %arg2: index,
     }
     // CHECK:     omp.yield
     // CHECK:   }
+    // CHECK:   omp.terminator
     // CHECK: }
   }
+  // CHECK:     omp.terminator
   // CHECK:   }
   // CHECK:   omp.terminator
   // CHECK: }
@@ -62,6 +65,7 @@ func.func @adjacent_loops(%arg0: index, %arg1: index, %arg2: index,
     // CHECK:   omp.yield
     // CHECK: }
   }
+  // CHECK:     omp.terminator
   // CHECK:   }
   // CHECK:   omp.terminator
   // CHECK: }
@@ -77,6 +81,7 @@ func.func @adjacent_loops(%arg0: index, %arg1: index, %arg2: index,
     // CHECK:   omp.yield
     // CHECK: }
   }
+  // CHECK:     omp.terminator
   // CHECK:   }
   // CHECK:   omp.terminator
   // CHECK: }

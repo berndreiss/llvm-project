@@ -11,20 +11,14 @@ void NormalUses() {
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop auto
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: auto clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop seq
@@ -39,20 +33,14 @@ void NormalUses() {
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop independent
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: independent clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 }
 
@@ -64,20 +52,14 @@ void TemplUses() {
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop auto
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: auto clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop seq
@@ -92,20 +74,14 @@ void TemplUses() {
   // CHECK-NEXT: CompoundStmt
 
 #pragma acc loop independent
-  for(int i = 0; i < 5; ++i){}
+  for(;;){}
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: independent clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 
   // Instantiations.
@@ -117,16 +93,10 @@ void TemplUses() {
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: auto clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
@@ -141,16 +111,10 @@ void TemplUses() {
   // CHECK-NEXT: OpenACCLoopConstruct{{.*}}
   // CHECK-NEXT: independent clause
   // CHECK-NEXT: ForStmt
-  // CHECK-NEXT: DeclStmt
-  // CHECK-NEXT: VarDecl{{.*}} i 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 0
   // CHECK-NEXT: <<<NULL>>>
-  // CHECK-NEXT: BinaryOperator{{.*}}'<'
-  // CHECK-NEXT: ImplicitCastExpr
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
-  // CHECK-NEXT: IntegerLiteral{{.*}} 'int' 5
-  // CHECK-NEXT: UnaryOperator{{.*}}++
-  // CHECK-NEXT: DeclRefExpr{{.*}}'i' 'int'
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
+  // CHECK-NEXT: <<<NULL>>>
   // CHECK-NEXT: CompoundStmt
 }
 

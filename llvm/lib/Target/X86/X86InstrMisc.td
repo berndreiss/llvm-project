@@ -1163,12 +1163,14 @@ multiclass Lzcnt<bits<8> o, string m, SDPatternOperator node, X86TypeInfo t,
                  SchedWrite schedrr, SchedWrite schedrm, string suffix = ""> {
   def rr#suffix : ITy<o, MRMSrcReg, t, (outs t.RegClass:$dst),
                       (ins t.RegClass:$src1), m, unaryop_ndd_args,
-                      [(set t.RegClass:$dst, (node t.RegClass:$src1))]>,
+                      [(set t.RegClass:$dst, (node t.RegClass:$src1)),
+                                              (implicit EFLAGS)]>,
                   TB, Sched<[schedrr]>;
   let mayLoad = 1 in
     def rm#suffix : ITy<o, MRMSrcMem, t, (outs t.RegClass:$dst),
                         (ins t.MemOperand:$src1), m, unaryop_ndd_args,
-                        [(set t.RegClass:$dst, (node (t.LoadNode addr:$src1)))]>,
+                        [(set t.RegClass:$dst, (node (t.LoadNode addr:$src1))),
+                                                (implicit EFLAGS)]>,
                     TB, Sched<[schedrm]>;
 }
 

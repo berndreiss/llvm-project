@@ -8,16 +8,15 @@
 
 // This test fails because Clang no longer enables -fdelayed-template-parsing
 // by default on Windows with C++20 (#69431).
-// XFAIL: msvc && (clang-18 || clang-19 || clang-20)
+// XFAIL: msvc && (clang-18 || clang-19)
 
 // <cmath>
 
-#include <cmath>
 #include <array>
-#include <cassert>
+#include <cmath>
 #include <limits>
 #include <type_traits>
-#include <utility>
+#include <cassert>
 
 #include "fp_compare.h"
 #include "test_macros.h"
@@ -709,16 +708,15 @@ void test_isinf()
     static_assert((std::is_same<decltype(std::isinf((float)0)), bool>::value), "");
 
     typedef decltype(std::isinf((double)0)) DoubleRetType;
-#if defined(__GLIBC__) && TEST_STD_VER == 03 && defined(TEST_COMPILER_CLANG)
+#if !defined(__linux__) || defined(__clang__)
+    static_assert((std::is_same<DoubleRetType, bool>::value), "");
+#else
     // GLIBC < 2.23 defines 'isinf(double)' with a return type of 'int' in
     // all C++ dialects. The test should tolerate this when libc++ can't work
-    // around it via `_LIBCPP_PREFERRED_OVERLOAD`, which is only available
-    // in modern versions of Clang, and not elsewhere.
+    // around it.
     // See: https://sourceware.org/bugzilla/show_bug.cgi?id=19439
     static_assert((std::is_same<DoubleRetType, bool>::value
                 || std::is_same<DoubleRetType, int>::value), "");
-#else
-    static_assert((std::is_same<DoubleRetType, bool>::value), "");
 #endif
 
     static_assert((std::is_same<decltype(std::isinf(0)), bool>::value), "");
@@ -796,16 +794,15 @@ void test_isnan()
     static_assert((std::is_same<decltype(std::isnan((float)0)), bool>::value), "");
 
     typedef decltype(std::isnan((double)0)) DoubleRetType;
-#if defined(__GLIBC__) && TEST_STD_VER == 03 && defined(TEST_COMPILER_CLANG)
-    // GLIBC < 2.23 defines 'isnan(double)' with a return type of 'int' in
+#if !defined(__linux__) || defined(__clang__)
+    static_assert((std::is_same<DoubleRetType, bool>::value), "");
+#else
+    // GLIBC < 2.23 defines 'isinf(double)' with a return type of 'int' in
     // all C++ dialects. The test should tolerate this when libc++ can't work
-    // around it via `_LIBCPP_PREFERRED_OVERLOAD`, which is only available
-    // in modern versions of Clang, and not elsewhere.
+    // around it.
     // See: https://sourceware.org/bugzilla/show_bug.cgi?id=19439
     static_assert((std::is_same<DoubleRetType, bool>::value
                 || std::is_same<DoubleRetType, int>::value), "");
-#else
-    static_assert((std::is_same<DoubleRetType, bool>::value), "");
 #endif
 
     static_assert((std::is_same<decltype(std::isnan(0)), bool>::value), "");

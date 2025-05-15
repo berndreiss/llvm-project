@@ -454,16 +454,12 @@ int main(int, char**)
     test_1_2();
     test_1_3<float>();
     test_1_3<double>();
-#ifdef TEST_LONG_DOUBLE_IS_DOUBLE
-    test_1_3<long double>(); // UNIMPLEMENTED when long double is a distinct type
-#endif
+    // test_1_3<long double>();  // UNIMPLEMENTED
     test_1_4();
 
     static_assert(test_1_3<float>());
     static_assert(test_1_3<double>());
-#ifdef TEST_LONG_DOUBLE_IS_DOUBLE
-    static_assert(test_1_3<long double>()); // UNIMPLEMENTED when long double is a distinct type
-#endif
+    // static_assert(test_1_3<long double>());  // UNIMPLEMENTED
     static_assert(test_1_4());
 
     return 0;

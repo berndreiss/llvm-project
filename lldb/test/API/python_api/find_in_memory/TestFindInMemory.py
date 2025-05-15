@@ -55,7 +55,7 @@ class FindInMemoryTestCase(TestBase):
         error = lldb.SBError()
         addr = self.process.FindInMemory(
             SINGLE_INSTANCE_PATTERN_STACK,
-            GetStackRange(self, True),
+            GetStackRange(self),
             1,
             error,
         )
@@ -70,7 +70,7 @@ class FindInMemoryTestCase(TestBase):
         error = lldb.SBError()
         addr = self.process.FindInMemory(
             DOUBLE_INSTANCE_PATTERN_HEAP,
-            GetHeapRanges(self, True)[0],
+            GetHeapRanges(self)[0],
             1,
             error,
         )
@@ -86,7 +86,7 @@ class FindInMemoryTestCase(TestBase):
         error = lldb.SBError()
         addr = self.process.FindInMemory(
             SINGLE_INSTANCE_PATTERN_STACK,
-            GetStackRange(self, True),
+            GetStackRange(self),
             0,
             error,
         )
@@ -118,7 +118,7 @@ class FindInMemoryTestCase(TestBase):
         error = lldb.SBError()
         addr = self.process.FindInMemory(
             "",
-            GetStackRange(self, True),
+            GetStackRange(self),
             1,
             error,
         )
@@ -131,7 +131,7 @@ class FindInMemoryTestCase(TestBase):
         self.assertTrue(self.process, PROCESS_IS_VALID)
         self.assertState(self.process.GetState(), lldb.eStateStopped, PROCESS_STOPPED)
         error = lldb.SBError()
-        range = GetAlignedRange(self, True)
+        range = GetAlignedRange(self)
 
         # First we make sure the pattern is found with alignment 1
         addr = self.process.FindInMemory(

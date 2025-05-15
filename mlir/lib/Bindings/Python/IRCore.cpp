@@ -1534,7 +1534,7 @@ py::object PyOperation::create(const std::string &name,
       PyOperation::createDetached(location->getContext(), operation);
   maybeInsertOperation(created, maybeIp);
 
-  return created.getObject();
+  return created->createOpView();
 }
 
 py::object PyOperation::clone(const py::object &maybeIp) {

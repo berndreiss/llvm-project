@@ -105,8 +105,8 @@ TEST_F(DefineOutlineTest, TriggersOnFunctionDecl) {
       F^oo(const Foo&) = delete;
     };)cpp");
 
-  // Not available within templated classes with unnamed parameters, as it is
-  // hard to spell class name out-of-line in such cases.
+  // Not available within templated classes, as it is hard to spell class name
+  // out-of-line in such cases.
   EXPECT_UNAVAILABLE(R"cpp(
     template <typename> struct Foo { void fo^o(){} };
     )cpp");
@@ -154,6 +154,7 @@ TEST_F(DefineOutlineTest, FailsWithoutSource) {
 }
 
 TEST_F(DefineOutlineTest, ApplyTest) {
+  llvm::StringMap<std::string> EditedFiles;
   ExtraFiles["Test.cpp"] = "";
   FileName = "Test.hpp";
 
@@ -228,18 +229,17 @@ TEST_F(DefineOutlineTest, ApplyTest) {
       // Ctor initializer with attribute.
       {
           R"cpp(
-              template <typename T> class Foo {
-                F^oo(T z) __attribute__((weak)) : bar(2){}
+              class Foo {
+                F^oo(int z) __attribute__((weak)) : bar(2){}
                 int bar;
               };)cpp",
           R"cpp(
-              template <typename T> class Foo {
-                Foo(T z) __attribute__((weak)) ;
+              class Foo {
+                Foo(int z) __attribute__((weak)) ;
                 int bar;
-              };template <typename T>
-Foo<T>::Foo(T z) __attribute__((weak)) : bar(2){}
-)cpp",
-          ""},
+              };)cpp",
+          "Foo::Foo(int z) __attribute__((weak)) : bar(2){}\n",
+      },
       // Virt specifiers.
       {
           R"cpp(
@@ -369,31 +369,7 @@ Foo<T>::Foo(T z) __attribute__((weak)) : bar(2){}
             };)cpp",
           " void A::foo(int) {}\n",
       },
-      // Complex class template
-      {
-          R"cpp(
-            template <typename T, typename ...U> struct O1 {
-              template <class V, int A> struct O2 {
-                enum E { E1, E2 };
-                struct I {
-                  E f^oo(T, U..., V, E) { return E1; }
-                };
-              };
-            };)cpp",
-          R"cpp(
-            template <typename T, typename ...U> struct O1 {
-              template <class V, int A> struct O2 {
-                enum E { E1, E2 };
-                struct I {
-                  E foo(T, U..., V, E) ;
-                };
-              };
-            };template <typename T, typename ...U>
-template <class V, int A>
-typename O1<T, U...>::template O2<V, A>::E O1<T, U...>::template O2<V, A>::I::foo(T, U..., V, E) { return E1; }
-)cpp",
-          ""},
-      // Destructors
+      // Destrctors
       {
           "class A { ~A^(){} };",
           "class A { ~A(); };",
@@ -402,14 +378,9 @@ typename O1<T, U...>::template O2<V, A>::E O1<T, U...>::template O2<V, A>::I::fo
   };
   for (const auto &Case : Cases) {
     SCOPED_TRACE(Case.Test);
-    llvm::StringMap<std::string> EditedFiles;
     EXPECT_EQ(apply(Case.Test, &EditedFiles), Case.ExpectedHeader);
-    if (Case.ExpectedSource.empty()) {
-      EXPECT_TRUE(EditedFiles.empty());
-    } else {
-      EXPECT_THAT(EditedFiles, testing::ElementsAre(FileWithContents(
-                                   testPath("Test.cpp"), Case.ExpectedSource)));
-    }
+    EXPECT_THAT(EditedFiles, testing::ElementsAre(FileWithContents(
+                                 testPath("Test.cpp"), Case.ExpectedSource)));
   }
 }
 

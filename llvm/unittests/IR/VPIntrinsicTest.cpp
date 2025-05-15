@@ -420,7 +420,7 @@ TEST_F(VPIntrinsicTest, VPToNonPredIntrinsicRoundTrip) {
   ASSERT_TRUE(IsFullTrip);
 }
 
-/// Check that VPIntrinsic::getOrInsertDeclarationForParams works.
+/// Check that VPIntrinsic::getDeclarationForParams works.
 TEST_F(VPIntrinsicTest, VPIntrinsicDeclarationForParams) {
   std::unique_ptr<Module> M = createVPDeclarationModule();
   assert(M);
@@ -436,7 +436,7 @@ TEST_F(VPIntrinsicTest, VPIntrinsicDeclarationForParams) {
       Values.push_back(UndefValue::get(ParamTy));
 
     ASSERT_NE(F.getIntrinsicID(), Intrinsic::not_intrinsic);
-    auto *NewDecl = VPIntrinsic::getOrInsertDeclarationForParams(
+    auto *NewDecl = VPIntrinsic::getDeclarationForParams(
         OutM.get(), F.getIntrinsicID(), FuncTy->getReturnType(), Values);
     ASSERT_TRUE(NewDecl);
 
@@ -452,6 +452,22 @@ TEST_F(VPIntrinsicTest, VPIntrinsicDeclarationForParams) {
       ++ItNewParams;
     }
   }
+}
+
+/// Check that the HANDLE_VP_TO_CONSTRAINEDFP maps to an existing intrinsic with
+/// the right amount of constrained-fp metadata args.
+TEST_F(VPIntrinsicTest, HandleToConstrainedFP) {
+#define VP_PROPERTY_CONSTRAINEDFP(HASROUND, HASEXCEPT, CFPID)                  \
+  {                                                                            \
+    SmallVector<Intrinsic::IITDescriptor, 5> T;                                \
+    Intrinsic::getIntrinsicInfoTableEntries(Intrinsic::CFPID, T);              \
+    unsigned NumMetadataArgs = 0;                                              \
+    for (auto TD : T)                                                          \
+      NumMetadataArgs += (TD.Kind == Intrinsic::IITDescriptor::Metadata);      \
+    bool IsCmp = Intrinsic::CFPID == Intrinsic::experimental_constrained_fcmp; \
+    ASSERT_EQ(NumMetadataArgs, (unsigned)(IsCmp + HASROUND + HASEXCEPT));      \
+  }
+#include "llvm/IR/VPIntrinsics.def"
 }
 
 } // end anonymous namespace

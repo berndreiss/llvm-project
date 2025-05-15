@@ -24,6 +24,8 @@ add_mlir_dialect_library(MLIRTensorTransforms
   MLIRAffineUtils
   MLIRArithDialect
   MLIRArithUtils
+  MLIRBufferizationDialect
+  MLIRBufferizationTransforms
   MLIRDialectUtils
   MLIRIR
   MLIRLinalgDialect

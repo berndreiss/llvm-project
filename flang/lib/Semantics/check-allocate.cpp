@@ -270,13 +270,11 @@ static bool IsTypeCompatible(
     const DeclTypeSpec &type1, const DerivedTypeSpec &derivedType2) {
   if (const DerivedTypeSpec * derivedType1{type1.AsDerived()}) {
     if (type1.category() == DeclTypeSpec::Category::TypeDerived) {
-      return evaluate::AreSameDerivedTypeIgnoringTypeParameters(
-          *derivedType1, derivedType2);
+      return &derivedType1->typeSymbol() == &derivedType2.typeSymbol();
     } else if (type1.category() == DeclTypeSpec::Category::ClassDerived) {
       for (const DerivedTypeSpec *parent{&derivedType2}; parent;
            parent = parent->typeSymbol().GetParentTypeSpec()) {
-        if (evaluate::AreSameDerivedTypeIgnoringTypeParameters(
-                *derivedType1, *parent)) {
+        if (&derivedType1->typeSymbol() == &parent->typeSymbol()) {
           return true;
         }
       }
@@ -531,8 +529,10 @@ bool AllocationCheckerHelper::RunChecks(SemanticsContext &context) {
     // Character length distinction is allowed, with a warning
     if (!HaveCompatibleLengths(
             *type_, allocateInfo_.sourceExprType.value())) { // F'2023 C950
-      context.Warn(common::LanguageFeature::AllocateToOtherLength, name_.source,
-          "Character length of allocatable object in ALLOCATE should be the same as the SOURCE or MOLD"_port_en_US);
+      if (context.ShouldWarn(common::LanguageFeature::AllocateToOtherLength)) {
+        context.Say(name_.source,
+            "Character length of allocatable object in ALLOCATE should be the same as the SOURCE or MOLD"_port_en_US);
+      }
       return false;
     }
   }
@@ -600,13 +600,10 @@ bool AllocationCheckerHelper::RunChecks(SemanticsContext &context) {
   const Scope &subpScope{
       GetProgramUnitContaining(context.FindScope(name_.source))};
   if (allocateObject_.typedExpr && allocateObject_.typedExpr->v) {
-    DefinabilityFlags flags{DefinabilityFlag::PointerDefinition,
-        DefinabilityFlag::AcceptAllocatable};
-    if (allocateInfo_.gotSource) {
-      flags.set(DefinabilityFlag::SourcedAllocation);
-    }
-    if (auto whyNot{WhyNotDefinable(
-            name_.source, subpScope, flags, *allocateObject_.typedExpr->v)}) {
+    if (auto whyNot{WhyNotDefinable(name_.source, subpScope,
+            {DefinabilityFlag::PointerDefinition,
+                DefinabilityFlag::AcceptAllocatable},
+            *allocateObject_.typedExpr->v)}) {
       context
           .Say(name_.source,
               "Name in ALLOCATE statement is not definable"_err_en_US)

@@ -22,6 +22,10 @@ using namespace llvm;
 /// DisableFramePointerElim - This returns true if frame pointer elimination
 /// optimization should be disabled for the given machine function.
 bool TargetOptions::DisableFramePointerElim(const MachineFunction &MF) const {
+  // Check to see if the target want to forcibly keep frame pointer.
+  if (MF.getSubtarget().getFrameLowering()->keepFramePointer(MF))
+    return true;
+
   const Function &F = MF.getFunction();
 
   if (!F.hasFnAttribute("frame-pointer"))
@@ -37,6 +41,10 @@ bool TargetOptions::DisableFramePointerElim(const MachineFunction &MF) const {
 }
 
 bool TargetOptions::FramePointerIsReserved(const MachineFunction &MF) const {
+  // Check to see if the target want to forcibly keep frame pointer.
+  if (MF.getSubtarget().getFrameLowering()->keepFramePointer(MF))
+    return true;
+
   const Function &F = MF.getFunction();
 
   if (!F.hasFnAttribute("frame-pointer"))

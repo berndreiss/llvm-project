@@ -93,10 +93,9 @@ LLVM_LIBC_FUNCTION(float, cbrtf, (float x)) {
   uint32_t x_abs = x_bits.uintval() & 0x7fff'ffff;
   uint32_t sign_bit = (x_bits.uintval() >> 31) << DoubleBits::EXP_LEN;
 
-  if (LIBC_UNLIKELY(x == 0.0f || x_abs >= 0x7f80'0000)) {
+  if (LIBC_UNLIKELY(x_abs == 0 || x_abs >= 0x7f80'0000)) {
     // x is 0, Inf, or NaN.
-    // Make sure it works for FTZ/DAZ modes.
-    return x + x;
+    return x;
   }
 
   double xd = static_cast<double>(x);

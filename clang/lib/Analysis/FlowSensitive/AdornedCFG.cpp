@@ -16,7 +16,6 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Analysis/CFG.h"
-#include "clang/Analysis/FlowSensitive/ASTOps.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Support/Error.h"
@@ -97,7 +96,8 @@ static llvm::BitVector findReachableBlocks(const CFG &Cfg) {
 
 static llvm::DenseSet<const CFGBlock *>
 buildContainsExprConsumedInDifferentBlock(
-    const CFG &Cfg, const internal::StmtToBlockMap &StmtToBlock) {
+    const CFG &Cfg,
+    const llvm::DenseMap<const Stmt *, const CFGBlock *> &StmtToBlock) {
   llvm::DenseSet<const CFGBlock *> Result;
 
   auto CheckChildExprs = [&Result, &StmtToBlock](const Stmt *S,
@@ -105,7 +105,7 @@ buildContainsExprConsumedInDifferentBlock(
     for (const Stmt *Child : S->children()) {
       if (!isa_and_nonnull<Expr>(Child))
         continue;
-      const CFGBlock *ChildBlock = StmtToBlock.lookup(*Child);
+      const CFGBlock *ChildBlock = StmtToBlock.lookup(Child);
       if (ChildBlock != Block)
         Result.insert(ChildBlock);
     }
@@ -125,13 +125,6 @@ buildContainsExprConsumedInDifferentBlock(
 
   return Result;
 }
-
-namespace internal {
-
-StmtToBlockMap::StmtToBlockMap(const CFG &Cfg)
-    : StmtToBlock(buildStmtToBasicBlockMap(Cfg)) {}
-
-} // namespace internal
 
 llvm::Expected<AdornedCFG> AdornedCFG::build(const FunctionDecl &Func) {
   if (!Func.doesThisDeclarationHaveABody())
@@ -173,7 +166,8 @@ llvm::Expected<AdornedCFG> AdornedCFG::build(const Decl &D, Stmt &S,
         std::make_error_code(std::errc::invalid_argument),
         "CFG::buildCFG failed");
 
-  internal::StmtToBlockMap StmtToBlock(*Cfg);
+  llvm::DenseMap<const Stmt *, const CFGBlock *> StmtToBlock =
+      buildStmtToBasicBlockMap(*Cfg);
 
   llvm::BitVector BlockReachable = findReachableBlocks(*Cfg);
 

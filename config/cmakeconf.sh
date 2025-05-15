@@ -1,0 +1,6 @@
+#/bin/bash
+rm -r ~/repos/llvm-project/release ~/repos/llvm-project/install
+mkdir ~/repos/llvm-project/release ~/repos/llvm-project/install
+cd ~/repos/llvm-project/release
+#cmake -G Ninja -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_INSTALL_PREFIX=../install -DLLVM_TARGETS_TO_BUILD='X86' -DLLVM_ENABLE_PROJECTS="lldb;clang;clang-tools-extra" -DLLVM_USE_LINKER=gold -DLLVM_USE_SPLIT_DWARF=ON -DBUILD_SHARED_LIBS=ON ../llvm
+cmake -G Ninja -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_INSTALL_PREFIX=../install -DLLVM_TARGETS_TO_BUILD='X86' -DLLVM_ENABLE_PROJECTS="lldb;clang" -DLLVM_USE_LINKER=gold -DLLVM_USE_SPLIT_DWARF=ON -DBUILD_SHARED_LIBS=ON ../llvm

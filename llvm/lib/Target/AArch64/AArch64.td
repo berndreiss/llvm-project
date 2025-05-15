@@ -63,8 +63,7 @@ def SVE2p1Unsupported : AArch64Unsupported;
 
 def SVE2Unsupported : AArch64Unsupported {
   let F = !listconcat([HasSVE2, HasSVE2orSME, HasSVE2orSME2, HasSSVE_FP8FMA, HasSMEF8F16,
-                       HasSMEF8F32, HasSVE2AES, HasSVE2SHA3, HasSVE2SM4, HasSVE2BitPerm,
-                       HasSVEB16B16],
+                       HasSMEF8F32, HasSVE2AES, HasSVE2SHA3, HasSVE2SM4, HasSVE2BitPerm],
                        SVE2p1Unsupported.F);
 }
 
@@ -73,18 +72,12 @@ def SVEUnsupported : AArch64Unsupported {
                       SVE2Unsupported.F);
 }
 
-let F = [HasSME2p2, HasSVE2p2orSME2p2, HasNonStreamingSVEorSME2p2,
-         HasNonStreamingSVE2p2orSME2p2] in
-def SME2p2Unsupported : AArch64Unsupported;
-
-def SME2p1Unsupported : AArch64Unsupported {
-  let F = !listconcat([HasSME2p1, HasSVE2p1_or_HasSME2p1, HasSVE2p1orSSVE_AES],
-                      SME2p2Unsupported.F);
-}
+let F = [HasSME2p1, HasSVE2p1_or_HasSME2p1] in
+def SME2p1Unsupported : AArch64Unsupported;
 
 def SME2Unsupported : AArch64Unsupported {
   let F = !listconcat([HasSME2, HasSVE2orSME2, HasSVE2p1_or_HasSME2, HasSSVE_FP8FMA,
-                      HasSMEF8F16, HasSMEF8F32, HasSMEF16F16orSMEF8F16, HasSMEB16B16],
+                      HasSMEF8F16, HasSMEF8F32, HasSMEF16F16orSMEF8F16],
                       SME2p1Unsupported.F);
 }
 
@@ -119,7 +112,6 @@ include "AArch64SchedAmpere1.td"
 include "AArch64SchedAmpere1B.td"
 include "AArch64SchedNeoverseN1.td"
 include "AArch64SchedNeoverseN2.td"
-include "AArch64SchedNeoverseN3.td"
 include "AArch64SchedNeoverseV1.td"
 include "AArch64SchedNeoverseV2.td"
 include "AArch64SchedOryon.td"

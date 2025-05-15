@@ -74,9 +74,6 @@ void warningLessThanZero() {
   if (pthread_yield() < 0) {}
   // CHECK-MESSAGES: :[[@LINE-1]]:23: warning:
   // CHECK-FIXES: pthread_yield() > 0
-  if (0 > pthread_yield() ) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:9: warning:
-  // CHECK-FIXES: 0 < pthread_yield()
 
 }
 
@@ -93,8 +90,7 @@ void warningAlwaysTrue() {
   // CHECK-MESSAGES: :[[@LINE-1]]:31: warning:
   if (pthread_yield() >= 0) {}
   // CHECK-MESSAGES: :[[@LINE-1]]:23: warning:
-  if (0 <= pthread_yield()) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:9: warning:
+
 }
 
 void warningEqualsNegative() {
@@ -124,14 +120,7 @@ void warningEqualsNegative() {
   // CHECK-MESSAGES: :[[@LINE-1]]:46: warning:
   if (pthread_create(NULL, NULL, NULL, NULL) < -1) {}
   // CHECK-MESSAGES: :[[@LINE-1]]:46: warning:
-  if (-1 == pthread_create(NULL, NULL, NULL, NULL)) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:10: warning:
-  if (-1 != pthread_create(NULL, NULL, NULL, NULL)) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:10: warning:
-  if (-1 >= pthread_create(NULL, NULL, NULL, NULL)) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:10: warning:
-  if (-1 > pthread_create(NULL, NULL, NULL, NULL)) {}
-  // CHECK-MESSAGES: :[[@LINE-1]]:10: warning:
+
 }
 
 void WarningWithMacro() {
@@ -173,16 +162,6 @@ void noWarning() {
   if (posix_openpt(0) < -1) {}
   if (posix_fadvise(0, 0, 0, 0) <= 0) {}
   if (posix_fadvise(0, 0, 0, 0) == 1) {}
-  if (0 > posix_openpt(0)) {}
-  if (0 >= posix_openpt(0)) {}
-  if (-1 == posix_openpt(0)) {}
-  if (-1 != posix_openpt(0)) {}
-  if (-1 >= posix_openpt(0)) {}
-  if (-1 > posix_openpt(0)) {}
-  if (posix_fadvise(0, 0, 0, 0) <= 0) {}
-  if (posix_fadvise(0, 0, 0, 0) == 1) {}
-  if (0 >= posix_fadvise(0, 0, 0, 0)) {}
-  if (1 == posix_fadvise(0, 0, 0, 0)) {}
 }
 
 namespace i {

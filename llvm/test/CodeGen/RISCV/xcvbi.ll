@@ -76,7 +76,6 @@ define i32 @select_beqimm_1(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB2_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_beqimm_1:
@@ -107,7 +106,6 @@ define i32 @select_beqimm_2(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB3_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_beqimm_2:
@@ -138,7 +136,6 @@ define i32 @select_beqimm_3(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB4_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_beqimm_3:
@@ -170,7 +167,6 @@ define i32 @select_no_beqimm_1(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB5_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_no_beqimm_1:
@@ -203,7 +199,6 @@ define i32 @select_no_beqimm_2(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB6_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_no_beqimm_2:
@@ -235,7 +230,6 @@ define i32 @select_bneimm_1(i32 %a, i32 %x, i32 %y) {
 ; CHECK_NOPT-NEXT:  .LBB7_2: # %entry
 ; CHECK_NOPT-NEXT:    lw a0, 12(sp) # 4-byte Folded Reload
 ; CHECK_NOPT-NEXT:    addi sp, sp, 16
-; CHECK_NOPT-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK_NOPT-NEXT:    ret
 ;
 ; CHECK_OPT-LABEL: select_bneimm_1:

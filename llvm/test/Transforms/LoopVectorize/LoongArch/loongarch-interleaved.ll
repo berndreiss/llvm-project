@@ -3,7 +3,7 @@
 ; RUN:   -S < %s 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: foo
-; CHECK: %{{.*}} = add {{.*}}, 8
+; CHECK: %{{.*}} = add {{.*}}, 2
 
 ; Function Attrs: nofree norecurse nosync nounwind writeonly
 define dso_local void @foo(i32 signext %n, ptr nocapture %A) local_unnamed_addr #0 {

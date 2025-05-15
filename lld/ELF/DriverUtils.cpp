@@ -62,14 +62,14 @@ static void handleColorDiagnostics(opt::InputArgList &args) {
   else if (s == "never")
     lld::errs().enable_colors(false);
   else if (s != "auto")
-    ErrAlways(ctx) << "unknown option: --color-diagnostics=" << s;
+    error("unknown option: --color-diagnostics=" + s);
 }
 
 static cl::TokenizerCallback getQuotingStyle(opt::InputArgList &args) {
   if (auto *arg = args.getLastArg(OPT_rsp_quoting)) {
     StringRef s = arg->getValue();
     if (s != "windows" && s != "posix")
-      ErrAlways(ctx) << "invalid response file quoting: " << s;
+      error("invalid response file quoting: " + s);
     if (s == "windows")
       return cl::TokenizeWindowsCommandLine;
     return cl::TokenizeGNUCommandLine;
@@ -122,23 +122,22 @@ opt::InputArgList ELFOptTable::parse(ArrayRef<const char *> argv) {
 
   handleColorDiagnostics(args);
   if (missingCount)
-    ErrAlways(ctx) << Twine(args.getArgString(missingIndex))
-                   << ": missing argument";
+    error(Twine(args.getArgString(missingIndex)) + ": missing argument");
 
   for (opt::Arg *arg : args.filtered(OPT_UNKNOWN)) {
     std::string nearest;
     if (findNearest(arg->getAsString(args), nearest) > 1)
-      ErrAlways(ctx) << "unknown argument '" << arg->getAsString(args) << "'";
+      error("unknown argument '" + arg->getAsString(args) + "'");
     else
-      ErrAlways(ctx) << "unknown argument '" << arg->getAsString(args)
-                     << "', did you mean '" << nearest << "'";
+      error("unknown argument '" + arg->getAsString(args) +
+            "', did you mean '" + nearest + "'");
   }
   return args;
 }
 
-void elf::printHelp(Ctx &ctx) {
+void elf::printHelp() {
   ELFOptTable().printHelp(
-      lld::outs(), (ctx.arg.progName + " [options] file...").str().c_str(),
+      lld::outs(), (config->progName + " [options] file...").str().c_str(),
       "lld", false /*ShowHidden*/, true /*ShowAllAliases*/);
   lld::outs() << "\n";
 
@@ -146,7 +145,7 @@ void elf::printHelp(Ctx &ctx) {
   // targets:.* elf/ in a message for the --help option. If it doesn't match,
   // the scripts assume that the linker doesn't support very basic features
   // such as shared libraries. Therefore, we need to print out at least "elf".
-  lld::outs() << ctx.arg.progName << ": supported targets: elf\n";
+  lld::outs() << config->progName << ": supported targets: elf\n";
 }
 
 static std::string rewritePath(StringRef s) {
@@ -211,11 +210,11 @@ std::string elf::createResponseFile(const opt::InputArgList &args) {
 
 // Find a file by concatenating given paths. If a resulting path
 // starts with "=", the character is replaced with a --sysroot value.
-static std::optional<std::string> findFile(Ctx &ctx, StringRef path1,
+static std::optional<std::string> findFile(StringRef path1,
                                            const Twine &path2) {
   SmallString<128> s;
   if (path1.starts_with("="))
-    path::append(s, ctx.arg.sysroot, path1.substr(1), path2);
+    path::append(s, config->sysroot, path1.substr(1), path2);
   else
     path::append(s, path1, path2);
 
@@ -224,41 +223,39 @@ static std::optional<std::string> findFile(Ctx &ctx, StringRef path1,
   return std::nullopt;
 }
 
-std::optional<std::string> elf::findFromSearchPaths(Ctx &ctx, StringRef path) {
-  for (StringRef dir : ctx.arg.searchPaths)
-    if (std::optional<std::string> s = findFile(ctx, dir, path))
+std::optional<std::string> elf::findFromSearchPaths(StringRef path) {
+  for (StringRef dir : config->searchPaths)
+    if (std::optional<std::string> s = findFile(dir, path))
       return s;
   return std::nullopt;
 }
 
 // This is for -l<basename>. We'll look for lib<basename>.so or lib<basename>.a from
 // search paths.
-std::optional<std::string> elf::searchLibraryBaseName(Ctx &ctx,
-                                                      StringRef name) {
-  for (StringRef dir : ctx.arg.searchPaths) {
-    if (!ctx.arg.isStatic)
-      if (std::optional<std::string> s =
-              findFile(ctx, dir, "lib" + name + ".so"))
+std::optional<std::string> elf::searchLibraryBaseName(StringRef name) {
+  for (StringRef dir : config->searchPaths) {
+    if (!config->isStatic)
+      if (std::optional<std::string> s = findFile(dir, "lib" + name + ".so"))
         return s;
-    if (std::optional<std::string> s = findFile(ctx, dir, "lib" + name + ".a"))
+    if (std::optional<std::string> s = findFile(dir, "lib" + name + ".a"))
       return s;
   }
   return std::nullopt;
 }
 
 // This is for -l<namespec>.
-std::optional<std::string> elf::searchLibrary(Ctx &ctx, StringRef name) {
+std::optional<std::string> elf::searchLibrary(StringRef name) {
   llvm::TimeTraceScope timeScope("Locate library", name);
   if (name.starts_with(":"))
-    return findFromSearchPaths(ctx, name.substr(1));
-  return searchLibraryBaseName(ctx, name);
+    return findFromSearchPaths(name.substr(1));
+  return searchLibraryBaseName(name);
 }
 
 // If a linker/version script doesn't exist in the current directory, we also
 // look for the script in the '-L' search paths. This matches the behaviour of
 // '-T', --version-script=, and linker script INPUT() command in ld.bfd.
-std::optional<std::string> elf::searchScript(Ctx &ctx, StringRef name) {
+std::optional<std::string> elf::searchScript(StringRef name) {
   if (fs::exists(name))
     return name.str();
-  return findFromSearchPaths(ctx, name);
+  return findFromSearchPaths(name);
 }

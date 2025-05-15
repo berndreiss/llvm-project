@@ -101,20 +101,17 @@ namespace llvm {
 /// format.
 class MIRPrinter {
   raw_ostream &OS;
-  const MachineModuleInfo &MMI;
   DenseMap<const uint32_t *, unsigned> RegisterMaskIds;
   /// Maps from stack object indices to operand indices which will be used when
   /// printing frame index machine operands.
   DenseMap<int, FrameIndexOperand> StackObjectOperandMapping;
 
 public:
-  MIRPrinter(raw_ostream &OS, const MachineModuleInfo &MMI)
-      : OS(OS), MMI(MMI) {}
+  MIRPrinter(raw_ostream &OS) : OS(OS) {}
 
   void print(const MachineFunction &MF);
 
-  void convert(yaml::MachineFunction &YamlMF, const MachineFunction &MF,
-               const MachineRegisterInfo &RegInfo,
+  void convert(yaml::MachineFunction &MF, const MachineRegisterInfo &RegInfo,
                const TargetRegisterInfo *TRI);
   void convert(ModuleSlotTracker &MST, yaml::MachineFrameInfo &YamlMFI,
                const MachineFrameInfo &MFI);
@@ -208,7 +205,6 @@ void MIRPrinter::print(const MachineFunction &MF) {
   YamlMF.HasEHCatchret = MF.hasEHCatchret();
   YamlMF.HasEHScopes = MF.hasEHScopes();
   YamlMF.HasEHFunclets = MF.hasEHFunclets();
-  YamlMF.HasFakeUses = MF.hasFakeUses();
   YamlMF.IsOutlined = MF.isOutlined();
   YamlMF.UseDebugInstrRef = MF.useDebugInstrRef();
 
@@ -225,15 +221,8 @@ void MIRPrinter::print(const MachineFunction &MF) {
   YamlMF.TracksDebugUserValues = MF.getProperties().hasProperty(
       MachineFunctionProperties::Property::TracksDebugUserValues);
 
-  YamlMF.NoPHIs = MF.getProperties().hasProperty(
-      MachineFunctionProperties::Property::NoPHIs);
-  YamlMF.IsSSA = MF.getProperties().hasProperty(
-      MachineFunctionProperties::Property::IsSSA);
-  YamlMF.NoVRegs = MF.getProperties().hasProperty(
-      MachineFunctionProperties::Property::NoVRegs);
-
-  convert(YamlMF, MF, MF.getRegInfo(), MF.getSubtarget().getRegisterInfo());
-  MachineModuleSlotTracker MST(MMI, &MF);
+  convert(YamlMF, MF.getRegInfo(), MF.getSubtarget().getRegisterInfo());
+  MachineModuleSlotTracker MST(&MF);
   MST.incorporateFunction(MF.getFunction());
   convert(MST, YamlMF.FrameInfo, MF.getFrameInfo());
   convertStackObjects(YamlMF, MF, MST);
@@ -265,6 +254,7 @@ void MIRPrinter::print(const MachineFunction &MF) {
         .print(MBB);
     IsNewlineNeeded = true;
   }
+  StrOS.flush();
   // Convert machine metadata collected during the print of the machine
   // function.
   convertMachineMetadataNodes(YamlMF, MF, MST);
@@ -317,21 +307,10 @@ printStackObjectDbgInfo(const MachineFunction::VariableDbgInfo &DebugVar,
   }
 }
 
-static void printRegFlags(Register Reg,
-                          std::vector<yaml::FlowStringValue> &RegisterFlags,
-                          const MachineFunction &MF,
-                          const TargetRegisterInfo *TRI) {
-  auto FlagValues = TRI->getVRegFlagsOfReg(Reg, MF);
-  for (auto &Flag : FlagValues) {
-    RegisterFlags.push_back(yaml::FlowStringValue(Flag.str()));
-  }
-}
-
-void MIRPrinter::convert(yaml::MachineFunction &YamlMF,
-                         const MachineFunction &MF,
+void MIRPrinter::convert(yaml::MachineFunction &MF,
                          const MachineRegisterInfo &RegInfo,
                          const TargetRegisterInfo *TRI) {
-  YamlMF.TracksRegLiveness = RegInfo.tracksLiveness();
+  MF.TracksRegLiveness = RegInfo.tracksLiveness();
 
   // Print the virtual register definitions.
   for (unsigned I = 0, E = RegInfo.getNumVirtRegs(); I < E; ++I) {
@@ -344,17 +323,16 @@ void MIRPrinter::convert(yaml::MachineFunction &YamlMF,
     Register PreferredReg = RegInfo.getSimpleHint(Reg);
     if (PreferredReg)
       printRegMIR(PreferredReg, VReg.PreferredRegister, TRI);
-    printRegFlags(Reg, VReg.RegisterFlags, MF, TRI);
-    YamlMF.VirtualRegisters.push_back(VReg);
+    MF.VirtualRegisters.push_back(VReg);
   }
 
   // Print the live ins.
-  for (std::pair<MCRegister, Register> LI : RegInfo.liveins()) {
+  for (std::pair<unsigned, unsigned> LI : RegInfo.liveins()) {
     yaml::MachineFunctionLiveIn LiveIn;
     printRegMIR(LI.first, LiveIn.Register, TRI);
     if (LI.second)
       printRegMIR(LI.second, LiveIn.VirtualRegister, TRI);
-    YamlMF.LiveIns.push_back(LiveIn);
+    MF.LiveIns.push_back(LiveIn);
   }
 
   // Prints the callee saved registers.
@@ -366,7 +344,7 @@ void MIRPrinter::convert(yaml::MachineFunction &YamlMF,
       printRegMIR(*I, Reg, TRI);
       CalleeSavedRegisters.push_back(Reg);
     }
-    YamlMF.CalleeSavedRegisters = CalleeSavedRegisters;
+    MF.CalleeSavedRegisters = CalleeSavedRegisters;
   }
 }
 
@@ -837,8 +815,6 @@ void MIPrinter::print(const MachineInstr &MI) {
     OS << "disjoint ";
   if (MI.getFlag(MachineInstr::NoUSWrap))
     OS << "nusw ";
-  if (MI.getFlag(MachineInstr::SameSign))
-    OS << "samesign ";
 
   OS << TII->getName(MI.getOpcode());
   if (I < E)
@@ -1029,13 +1005,12 @@ void llvm::printMIR(raw_ostream &OS, const Module &M) {
   Out << const_cast<Module &>(M);
 }
 
-void llvm::printMIR(raw_ostream &OS, const MachineModuleInfo &MMI,
-                    const MachineFunction &MF) {
+void llvm::printMIR(raw_ostream &OS, const MachineFunction &MF) {
   // RemoveDIs: as there's no textual form for DbgRecords yet, print debug-info
   // in dbg.value format.
   ScopedDbgInfoFormatSetter FormatSetter(
       const_cast<Function &>(MF.getFunction()), WriteNewDbgInfoFormat);
 
-  MIRPrinter Printer(OS, MMI);
+  MIRPrinter Printer(OS);
   Printer.print(MF);
 }

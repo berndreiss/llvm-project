@@ -3,7 +3,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   )
 
-add_clang_library(clangTidyCppCoreGuidelinesModule STATIC
+add_clang_library(clangTidyCppCoreGuidelinesModule
   AvoidCapturingLambdaCoroutinesCheck.cpp
   AvoidConstOrRefDataMembersCheck.cpp
   AvoidDoWhileCheck.cpp

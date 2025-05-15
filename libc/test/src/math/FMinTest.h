@@ -9,7 +9,6 @@
 #ifndef LLVM_LIBC_TEST_SRC_MATH_FMINTEST_H
 #define LLVM_LIBC_TEST_SRC_MATH_FMINTEST_H
 
-#include "src/__support/FPUtil/FPBits.h"
 #include "test/UnitTest/FEnvSafeTest.h"
 #include "test/UnitTest/FPMatcher.h"
 #include "test/UnitTest/Test.h"
@@ -66,9 +65,9 @@ public:
     for (StorageType i = 0, v = 0, w = STORAGE_MAX; i <= COUNT;
          ++i, v += STEP, w -= STEP) {
       T x = FPBits(v).get_val(), y = FPBits(w).get_val();
-      if (FPBits(v).is_nan() || FPBits(v).is_inf())
+      if (isnan(x) || isinf(x))
         continue;
-      if (FPBits(w).is_nan() || FPBits(w).is_inf())
+      if (isnan(y) || isinf(y))
         continue;
       if ((x == 0) && (y == 0))
         continue;

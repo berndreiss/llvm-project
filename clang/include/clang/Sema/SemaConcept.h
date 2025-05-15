@@ -30,11 +30,10 @@ enum { ConstraintAlignment = 8 };
 
 struct alignas(ConstraintAlignment) AtomicConstraint {
   const Expr *ConstraintExpr;
-  NamedDecl *ConstraintDecl;
   std::optional<ArrayRef<TemplateArgumentLoc>> ParameterMapping;
 
-  AtomicConstraint(const Expr *ConstraintExpr, NamedDecl *ConstraintDecl)
-      : ConstraintExpr(ConstraintExpr), ConstraintDecl(ConstraintDecl) {};
+  AtomicConstraint(Sema &S, const Expr *ConstraintExpr) :
+      ConstraintExpr(ConstraintExpr) { };
 
   bool hasMatchingParameterMapping(ASTContext &C,
                                    const AtomicConstraint &Other) const {

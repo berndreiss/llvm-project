@@ -356,7 +356,7 @@ static void expandIToFP(Instruction *IToFP) {
   Entry->getTerminator()->eraseFromParent();
 
   Function *CTLZ =
-      Intrinsic::getOrInsertDeclaration(F->getParent(), Intrinsic::ctlz, IntTy);
+      Intrinsic::getDeclaration(F->getParent(), Intrinsic::ctlz, IntTy);
   ConstantInt *True = Builder.getTrue();
 
   // entry:

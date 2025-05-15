@@ -8,9 +8,15 @@
 #include <riscv_vector.h>
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_f32mf2x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv4i8_6t.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv1f32.i64(<vscale x 1 x float> [[TMP0]], <vscale x 1 x float> [[TMP1]], <vscale x 1 x float> [[TMP2]], <vscale x 1 x float> [[TMP3]], <vscale x 1 x float> [[TMP4]], <vscale x 1 x float> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_f32mf2x6(float *base, vfloat32mf2x6_t v_tuple, size_t vl) {
@@ -18,9 +24,15 @@ void test_vsseg6e32_v_f32mf2x6(float *base, vfloat32mf2x6_t v_tuple, size_t vl) 
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_f32m1x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv8i8_6t.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv2f32.i64(<vscale x 2 x float> [[TMP0]], <vscale x 2 x float> [[TMP1]], <vscale x 2 x float> [[TMP2]], <vscale x 2 x float> [[TMP3]], <vscale x 2 x float> [[TMP4]], <vscale x 2 x float> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_f32m1x6(float *base, vfloat32m1x6_t v_tuple, size_t vl) {
@@ -28,9 +40,15 @@ void test_vsseg6e32_v_f32m1x6(float *base, vfloat32m1x6_t v_tuple, size_t vl) {
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_i32mf2x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv4i8_6t.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv1i32.i64(<vscale x 1 x i32> [[TMP0]], <vscale x 1 x i32> [[TMP1]], <vscale x 1 x i32> [[TMP2]], <vscale x 1 x i32> [[TMP3]], <vscale x 1 x i32> [[TMP4]], <vscale x 1 x i32> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_i32mf2x6(int32_t *base, vint32mf2x6_t v_tuple, size_t vl) {
@@ -38,9 +56,15 @@ void test_vsseg6e32_v_i32mf2x6(int32_t *base, vint32mf2x6_t v_tuple, size_t vl) 
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_i32m1x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv8i8_6t.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv2i32.i64(<vscale x 2 x i32> [[TMP0]], <vscale x 2 x i32> [[TMP1]], <vscale x 2 x i32> [[TMP2]], <vscale x 2 x i32> [[TMP3]], <vscale x 2 x i32> [[TMP4]], <vscale x 2 x i32> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_i32m1x6(int32_t *base, vint32m1x6_t v_tuple, size_t vl) {
@@ -48,9 +72,15 @@ void test_vsseg6e32_v_i32m1x6(int32_t *base, vint32m1x6_t v_tuple, size_t vl) {
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_u32mf2x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv4i8_6t.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv1i32.i64(<vscale x 1 x i32> [[TMP0]], <vscale x 1 x i32> [[TMP1]], <vscale x 1 x i32> [[TMP2]], <vscale x 1 x i32> [[TMP3]], <vscale x 1 x i32> [[TMP4]], <vscale x 1 x i32> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_u32mf2x6(uint32_t *base, vuint32mf2x6_t v_tuple, size_t vl) {
@@ -58,9 +88,15 @@ void test_vsseg6e32_v_u32mf2x6(uint32_t *base, vuint32mf2x6_t v_tuple, size_t vl
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_u32m1x6
-// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (ptr noundef [[BASE:%.*]], { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.triscv.vector.tuple_nxv8i8_6t.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.nxv2i32.i64(<vscale x 2 x i32> [[TMP0]], <vscale x 2 x i32> [[TMP1]], <vscale x 2 x i32> [[TMP2]], <vscale x 2 x i32> [[TMP3]], <vscale x 2 x i32> [[TMP4]], <vscale x 2 x i32> [[TMP5]], ptr [[BASE]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_u32m1x6(uint32_t *base, vuint32m1x6_t v_tuple, size_t vl) {
@@ -68,9 +104,15 @@ void test_vsseg6e32_v_u32m1x6(uint32_t *base, vuint32m1x6_t v_tuple, size_t vl) 
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_f32mf2x6_m
-// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv4i8_6t.nxv1i1.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float>, <vscale x 1 x float> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv1f32.i64(<vscale x 1 x float> [[TMP0]], <vscale x 1 x float> [[TMP1]], <vscale x 1 x float> [[TMP2]], <vscale x 1 x float> [[TMP3]], <vscale x 1 x float> [[TMP4]], <vscale x 1 x float> [[TMP5]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_f32mf2x6_m(vbool64_t mask, float *base, vfloat32mf2x6_t v_tuple, size_t vl) {
@@ -78,9 +120,15 @@ void test_vsseg6e32_v_f32mf2x6_m(vbool64_t mask, float *base, vfloat32mf2x6_t v_
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_f32m1x6_m
-// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv8i8_6t.nxv2i1.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float>, <vscale x 2 x float> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv2f32.i64(<vscale x 2 x float> [[TMP0]], <vscale x 2 x float> [[TMP1]], <vscale x 2 x float> [[TMP2]], <vscale x 2 x float> [[TMP3]], <vscale x 2 x float> [[TMP4]], <vscale x 2 x float> [[TMP5]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_f32m1x6_m(vbool32_t mask, float *base, vfloat32m1x6_t v_tuple, size_t vl) {
@@ -88,9 +136,15 @@ void test_vsseg6e32_v_f32m1x6_m(vbool32_t mask, float *base, vfloat32m1x6_t v_tu
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_i32mf2x6_m
-// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv4i8_6t.nxv1i1.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv1i32.i64(<vscale x 1 x i32> [[TMP0]], <vscale x 1 x i32> [[TMP1]], <vscale x 1 x i32> [[TMP2]], <vscale x 1 x i32> [[TMP3]], <vscale x 1 x i32> [[TMP4]], <vscale x 1 x i32> [[TMP5]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_i32mf2x6_m(vbool64_t mask, int32_t *base, vint32mf2x6_t v_tuple, size_t vl) {
@@ -98,9 +152,15 @@ void test_vsseg6e32_v_i32mf2x6_m(vbool64_t mask, int32_t *base, vint32mf2x6_t v_
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_i32m1x6_m
-// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv8i8_6t.nxv2i1.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv2i32.i64(<vscale x 2 x i32> [[TMP0]], <vscale x 2 x i32> [[TMP1]], <vscale x 2 x i32> [[TMP2]], <vscale x 2 x i32> [[TMP3]], <vscale x 2 x i32> [[TMP4]], <vscale x 2 x i32> [[TMP5]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_i32m1x6_m(vbool32_t mask, int32_t *base, vint32m1x6_t v_tuple, size_t vl) {
@@ -108,9 +168,15 @@ void test_vsseg6e32_v_i32m1x6_m(vbool32_t mask, int32_t *base, vint32m1x6_t v_tu
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_u32mf2x6_m
-// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 1 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv4i8_6t.nxv1i1.i64(target("riscv.vector.tuple", <vscale x 4 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32>, <vscale x 1 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv1i32.i64(<vscale x 1 x i32> [[TMP0]], <vscale x 1 x i32> [[TMP1]], <vscale x 1 x i32> [[TMP2]], <vscale x 1 x i32> [[TMP3]], <vscale x 1 x i32> [[TMP4]], <vscale x 1 x i32> [[TMP5]], ptr [[BASE]], <vscale x 1 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_u32mf2x6_m(vbool64_t mask, uint32_t *base, vuint32mf2x6_t v_tuple, size_t vl) {
@@ -118,9 +184,15 @@ void test_vsseg6e32_v_u32mf2x6_m(vbool64_t mask, uint32_t *base, vuint32mf2x6_t 
 }
 
 // CHECK-RV64-LABEL: define dso_local void @test_vsseg6e32_v_u32m1x6_m
-// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 2 x i1> [[MASK:%.*]], ptr noundef [[BASE:%.*]], { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.triscv.vector.tuple_nxv8i8_6t.nxv2i1.i64(target("riscv.vector.tuple", <vscale x 8 x i8>, 6) [[V_TUPLE]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]], i64 5)
+// CHECK-RV64-NEXT:    [[TMP0:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 0
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 1
+// CHECK-RV64-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 2
+// CHECK-RV64-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 3
+// CHECK-RV64-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 4
+// CHECK-RV64-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32>, <vscale x 2 x i32> } [[V_TUPLE]], 5
+// CHECK-RV64-NEXT:    call void @llvm.riscv.vsseg6.mask.nxv2i32.i64(<vscale x 2 x i32> [[TMP0]], <vscale x 2 x i32> [[TMP1]], <vscale x 2 x i32> [[TMP2]], <vscale x 2 x i32> [[TMP3]], <vscale x 2 x i32> [[TMP4]], <vscale x 2 x i32> [[TMP5]], ptr [[BASE]], <vscale x 2 x i1> [[MASK]], i64 [[VL]])
 // CHECK-RV64-NEXT:    ret void
 //
 void test_vsseg6e32_v_u32m1x6_m(vbool32_t mask, uint32_t *base, vuint32m1x6_t v_tuple, size_t vl) {

@@ -20,7 +20,7 @@ class SPIRVTypeConverter;
 
 /// Appends to a pattern list additional patterns for translating Math ops
 /// to SPIR-V ops.
-void populateMathToSPIRVPatterns(const SPIRVTypeConverter &typeConverter,
+void populateMathToSPIRVPatterns(SPIRVTypeConverter &typeConverter,
                                  RewritePatternSet &patterns);
 
 } // namespace mlir

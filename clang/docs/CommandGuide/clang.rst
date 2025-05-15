@@ -703,10 +703,6 @@ Preprocessor Options
 
   Do not search clang's builtin directory for include files.
 
-.. option:: -nostdinc++
-
-  Do not search the system C++ standard library directory for include files.
-
 .. option:: -fkeep-system-includes
 
   Usable only with :option:`-E`. Do not copy the preprocessed content of

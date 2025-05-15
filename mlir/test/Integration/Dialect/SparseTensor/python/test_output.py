@@ -129,10 +129,6 @@ def main():
         prop = st.LevelProperty
         levels = [
             [builder(fmt.compressed, [prop.non_unique]), builder(fmt.singleton)],
-            [
-                builder(fmt.compressed, [prop.non_unique]),
-                builder(fmt.singleton, [prop.soa]),
-            ],
             [builder(fmt.dense), builder(fmt.compressed)],
             [builder(fmt.dense), builder(fmt.loose_compressed)],
             [builder(fmt.compressed), builder(fmt.compressed)],
@@ -143,7 +139,7 @@ def main():
         ]
         bitwidths = [8, 64]
         compiler = sparsifier.Sparsifier(
-            extras="", options="", opt_level=2, shared_libs=[support_lib]
+            options="", opt_level=2, shared_libs=[support_lib]
         )
         for level in levels:
             for ordering, id_map in orderings:
@@ -183,7 +179,7 @@ def main():
         build_compile_and_run_output(attr, compiler, expected(2))
         count = count + 1
 
-    # CHECK: Passed 21 tests
+    # CHECK: Passed 17 tests
     print("Passed", count, "tests")
 
 

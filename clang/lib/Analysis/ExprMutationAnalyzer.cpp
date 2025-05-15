@@ -231,11 +231,12 @@ ExprMutationAnalyzer::Analyzer::findPointeeMutation(const Decl *Dec) {
 const Stmt *ExprMutationAnalyzer::Analyzer::findMutationMemoized(
     const Expr *Exp, llvm::ArrayRef<MutationFinder> Finders,
     Memoized::ResultMap &MemoizedResults) {
-  auto [Memoized, Inserted] = MemoizedResults.try_emplace(Exp);
-  if (!Inserted)
+  const auto Memoized = MemoizedResults.find(Exp);
+  if (Memoized != MemoizedResults.end())
     return Memoized->second;
 
   // Assume Exp is not mutated before analyzing Exp.
+  MemoizedResults[Exp] = nullptr;
   if (isUnevaluated(Exp))
     return nullptr;
 

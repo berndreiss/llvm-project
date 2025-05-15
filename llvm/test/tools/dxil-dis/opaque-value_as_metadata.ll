@@ -6,11 +6,9 @@ target triple = "dxil-unknown-shadermodel6.7-library"
 
 @CBV = external constant %"$Globals"
 
-define void @main() #0 {
+define void @main() {
   ret void
 }
-
-attributes #0 = { "hlsl.export" }
 
 !llvm.ident = !{!0}
 !dx.version = !{!1}

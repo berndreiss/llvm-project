@@ -19,7 +19,6 @@
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ProfileData/MemProf.h"
 #include "llvm/ProfileData/ProfileCommon.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compression.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/EndianStream.h"
@@ -29,7 +28,6 @@
 #include "llvm/Support/OnDiskHashTable.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdint>
-#include <ctime>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -186,25 +184,13 @@ public:
 InstrProfWriter::InstrProfWriter(
     bool Sparse, uint64_t TemporalProfTraceReservoirSize,
     uint64_t MaxTemporalProfTraceLength, bool WritePrevVersion,
-    memprof::IndexedVersion MemProfVersionRequested, bool MemProfFullSchema,
-    bool MemprofGenerateRandomHotness,
-    unsigned MemprofGenerateRandomHotnessSeed)
+    memprof::IndexedVersion MemProfVersionRequested, bool MemProfFullSchema)
     : Sparse(Sparse), MaxTemporalProfTraceLength(MaxTemporalProfTraceLength),
       TemporalProfTraceReservoirSize(TemporalProfTraceReservoirSize),
       InfoObj(new InstrProfRecordWriterTrait()),
       WritePrevVersion(WritePrevVersion),
       MemProfVersionRequested(MemProfVersionRequested),
-      MemProfFullSchema(MemProfFullSchema),
-      MemprofGenerateRandomHotness(MemprofGenerateRandomHotness) {
-  // Set up the random number seed if requested.
-  if (MemprofGenerateRandomHotness) {
-    unsigned seed = MemprofGenerateRandomHotnessSeed
-                        ? MemprofGenerateRandomHotnessSeed
-                        : std::time(nullptr);
-    errs() << "random hotness seed = " << seed << "\n";
-    std::srand(seed);
-  }
-}
+      MemProfFullSchema(MemProfFullSchema) {}
 
 InstrProfWriter::~InstrProfWriter() { delete InfoObj; }
 
@@ -287,34 +273,13 @@ void InstrProfWriter::addRecord(StringRef Name, uint64_t Hash,
 
 void InstrProfWriter::addMemProfRecord(
     const Function::GUID Id, const memprof::IndexedMemProfRecord &Record) {
-  auto NewRecord = Record;
-  // Provoke random hotness values if requested. We specify the lifetime access
-  // density and lifetime length that will result in a cold or not cold hotness.
-  // See the logic in getAllocType() in Analysis/MemoryProfileInfo.cpp.
-  if (MemprofGenerateRandomHotness) {
-    for (auto &Alloc : NewRecord.AllocSites) {
-      // To get a not cold context, set the lifetime access density to the
-      // maximum value and the lifetime to 0.
-      uint64_t NewTLAD = std::numeric_limits<uint64_t>::max();
-      uint64_t NewTL = 0;
-      bool IsCold = std::rand() % 2;
-      if (IsCold) {
-        // To get a cold context, set the lifetime access density to 0 and the
-        // lifetime to the maximum value.
-        NewTLAD = 0;
-        NewTL = std::numeric_limits<uint64_t>::max();
-      }
-      Alloc.Info.setTotalLifetimeAccessDensity(NewTLAD);
-      Alloc.Info.setTotalLifetime(NewTL);
-    }
-  }
-  auto [Iter, Inserted] = MemProfData.Records.insert({Id, NewRecord});
+  auto [Iter, Inserted] = MemProfData.Records.insert({Id, Record});
   // If we inserted a new record then we are done.
   if (Inserted) {
     return;
   }
   memprof::IndexedMemProfRecord &Existing = Iter->second;
-  Existing.merge(NewRecord);
+  Existing.merge(Record);
 }
 
 bool InstrProfWriter::addMemProfFrame(const memprof::FrameId Id,

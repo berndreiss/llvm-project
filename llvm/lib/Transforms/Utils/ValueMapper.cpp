@@ -391,8 +391,9 @@ Value *Mapper::mapValue(const Value *V) {
       // ensures metadata operands only reference defined SSA values.
       return (Flags & RF_IgnoreMissingLocals)
                  ? nullptr
-                 : MetadataAsValue::get(V->getContext(),
-                                        MDTuple::get(V->getContext(), {}));
+                 : MetadataAsValue::get(
+                       V->getContext(),
+                       MDTuple::get(V->getContext(), std::nullopt));
     }
     if (auto *AL = dyn_cast<DIArgList>(MD)) {
       SmallVector<ValueAsMetadata *, 4> MappedArgs;
@@ -564,8 +565,9 @@ void Mapper::remapDbgRecord(DbgRecord &DR) {
   }
 
   // Find Value operands and remap those.
-  SmallVector<Value *, 4> Vals(V.location_ops());
-  SmallVector<Value *, 4> NewVals;
+  SmallVector<Value *, 4> Vals, NewVals;
+  for (Value *Val : V.location_ops())
+    Vals.push_back(Val);
   for (Value *Val : Vals)
     NewVals.push_back(mapValue(Val));
 
@@ -574,7 +576,8 @@ void Mapper::remapDbgRecord(DbgRecord &DR) {
     return;
 
   // Otherwise, do some replacement.
-  if (!IgnoreMissingLocals && llvm::is_contained(NewVals, nullptr)) {
+  if (!IgnoreMissingLocals &&
+      llvm::any_of(NewVals, [&](Value *V) { return V == nullptr; })) {
     V.setKillLocation();
   } else {
     // Either we have all non-empty NewVals, or we're permitted to ignore

@@ -5,6 +5,10 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+//
+// UNSUPPORTED: no-threads
+// UNSUPPORTED: c++03
+// ALLOW_RETRIES: 2
 
 // <mutex>
 
@@ -17,45 +21,53 @@
 #include <system_error>
 
 #include "test_macros.h"
-#include "checking_mutex.h"
 
-int main(int, char**) {
-  checking_mutex mux;
+bool try_lock_called = false;
 
-  std::unique_lock<checking_mutex> lock(mux, std::defer_lock_t());
-  assert(lock.try_lock());
-  assert(mux.current_state == checking_mutex::locked_via_try_lock);
-  assert(lock.owns_lock());
+struct mutex
+{
+    bool try_lock()
+    {
+        try_lock_called = !try_lock_called;
+        return try_lock_called;
+    }
+    void unlock() {}
+};
 
+mutex m;
+
+int main(int, char**)
+{
+    std::unique_lock<mutex> lk(m, std::defer_lock);
+    assert(lk.try_lock() == true);
+    assert(try_lock_called == true);
+    assert(lk.owns_lock() == true);
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  try {
-    mux.last_try = checking_mutex::none;
-    TEST_IGNORE_NODISCARD lock.try_lock();
-    assert(false);
-  } catch (std::system_error& e) {
-    assert(mux.last_try == checking_mutex::none);
-    assert(e.code() == std::errc::resource_deadlock_would_occur);
-  }
+    try
+    {
+        TEST_IGNORE_NODISCARD lk.try_lock();
+        assert(false);
+    }
+    catch (std::system_error& e)
+    {
+        assert(e.code().value() == EDEADLK);
+    }
 #endif
-
-  lock.unlock();
-  mux.reject = true;
-
-  assert(!lock.try_lock());
-  assert(mux.last_try == checking_mutex::locked_via_try_lock);
-
-  assert(!lock.owns_lock());
-  lock.release();
-
+    lk.unlock();
+    assert(lk.try_lock() == false);
+    assert(try_lock_called == false);
+    assert(lk.owns_lock() == false);
+    lk.release();
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  try {
-    mux.last_try = checking_mutex::none;
-    (void)lock.try_lock();
-    assert(false);
-  } catch (std::system_error& e) {
-    assert(mux.last_try == checking_mutex::none);
-    assert(e.code() == std::errc::operation_not_permitted);
-  }
+    try
+    {
+        TEST_IGNORE_NODISCARD lk.try_lock();
+        assert(false);
+    }
+    catch (std::system_error& e)
+    {
+        assert(e.code().value() == EPERM);
+    }
 #endif
 
   return 0;

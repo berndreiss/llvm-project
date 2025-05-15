@@ -15,7 +15,6 @@ if (MLIR_ENABLE_ROCM_CONVERSIONS)
 endif()
 
 add_mlir_conversion_library(MLIRGPUToGPURuntimeTransforms
-  AttrToSPIRVConverter.cpp
   GPUToLLVMConversion.cpp
   GPUOpsLowering.cpp
 

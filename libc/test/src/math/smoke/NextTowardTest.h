@@ -18,8 +18,6 @@
 
 #include "hdr/fenv_macros.h"
 
-using LIBC_NAMESPACE::Sign;
-
 // TODO: Strengthen errno,exception checks and remove these assert macros
 // after new matchers/test fixtures are added
 #define ASSERT_FP_EQ_WITH_EXCEPTION(result, expected, expected_exception)      \
@@ -45,8 +43,6 @@ class NextTowardTestTemplate : public LIBC_NAMESPACE::testing::FEnvSafeTest {
   const T neg_zero = FPBits::zero(Sign::NEG).get_val();
   const T nan = FPBits::quiet_nan().get_val();
 
-  const long double to_inf = ToFPBits::inf(Sign::POS).get_val();
-  const long double to_neg_inf = ToFPBits::inf(Sign::NEG).get_val();
   const long double to_zero = ToFPBits::zero().get_val();
   const long double to_neg_zero = ToFPBits::zero(Sign::NEG).get_val();
   const long double to_nan = ToFPBits::quiet_nan().get_val();
@@ -138,7 +134,7 @@ public:
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ_WITH_UNDERFLOW(result, expected);
 
-    result = func(x, to_inf);
+    result = func(x, inf);
     expected_bits = min_normal + 1;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
@@ -149,7 +145,7 @@ public:
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ_WITH_UNDERFLOW(result, expected);
 
-    result = func(x, to_neg_inf);
+    result = func(x, -inf);
     expected_bits = FPBits::SIGN_MASK + min_normal + 1;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
@@ -160,14 +156,14 @@ public:
     expected_bits = max_normal - 1;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
-    ASSERT_FP_EQ_WITH_OVERFLOW(func(x, to_inf), inf);
+    ASSERT_FP_EQ_WITH_OVERFLOW(func(x, inf), inf);
 
     x = -x;
     result = func(x, 0);
     expected_bits = FPBits::SIGN_MASK + max_normal - 1;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
-    ASSERT_FP_EQ_WITH_OVERFLOW(func(x, to_neg_inf), neg_inf);
+    ASSERT_FP_EQ_WITH_OVERFLOW(func(x, -inf), -inf);
 
     // 'from' is infinity.
     x = inf;
@@ -175,14 +171,14 @@ public:
     expected_bits = max_normal;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
-    ASSERT_FP_EQ(func(x, to_inf), inf);
+    ASSERT_FP_EQ(func(x, inf), inf);
 
     x = neg_inf;
     result = func(x, 0);
     expected_bits = FPBits::SIGN_MASK + max_normal;
     expected = LIBC_NAMESPACE::cpp::bit_cast<T>(expected_bits);
     ASSERT_FP_EQ(result, expected);
-    ASSERT_FP_EQ(func(x, to_neg_inf), neg_inf);
+    ASSERT_FP_EQ(func(x, neg_inf), neg_inf);
 
     // 'from' is a power of 2.
     x = T(32.0);

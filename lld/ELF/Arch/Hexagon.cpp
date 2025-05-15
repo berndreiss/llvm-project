@@ -24,7 +24,7 @@ using namespace lld::elf;
 namespace {
 class Hexagon final : public TargetInfo {
 public:
-  Hexagon(Ctx &);
+  Hexagon();
   uint32_t calcEFlags() const override;
   RelExpr getRelExpr(RelType type, const Symbol &s,
                      const uint8_t *loc) const override;
@@ -38,7 +38,7 @@ public:
 };
 } // namespace
 
-Hexagon::Hexagon(Ctx &ctx) : TargetInfo(ctx) {
+Hexagon::Hexagon() {
   pltRel = R_HEX_JMP_SLOT;
   relativeRel = R_HEX_RELATIVE;
   gotRel = R_HEX_GLOB_DAT;
@@ -153,8 +153,8 @@ RelExpr Hexagon::getRelExpr(RelType type, const Symbol &s,
   case R_HEX_TPREL_LO16:
     return R_TPREL;
   default:
-    Err(ctx) << getErrorLoc(ctx, loc) << "unknown relocation (" << Twine(type)
-             << ") against symbol " << &s;
+    error(getErrorLocation(loc) + "unknown relocation (" + Twine(type) +
+          ") against symbol " + toString(s));
     return R_NONE;
   }
 }
@@ -198,8 +198,8 @@ static uint32_t findMaskR6(uint32_t insn) {
     if ((0xff000000 & insn) == i.cmpMask)
       return i.relocMask;
 
-  ErrAlways(ctx) << "unrecognized instruction for 6_X relocation: 0x"
-                 << utohexstr(insn);
+  error("unrecognized instruction for 6_X relocation: 0x" +
+        utohexstr(insn));
   return 0;
 }
 
@@ -246,8 +246,8 @@ static uint32_t findMaskR16(uint32_t insn) {
     if ((0xff000000 & insn) == i.cmpMask)
       return i.relocMask;
 
-  ErrAlways(ctx) << "unrecognized instruction for 16_X type: 0x"
-                 << utohexstr(insn);
+  error("unrecognized instruction for 16_X type: 0x" +
+        utohexstr(insn));
   return 0;
 }
 
@@ -309,18 +309,18 @@ void Hexagon::relocate(uint8_t *loc, const Relocation &rel,
     or32le(loc, applyMask(0x0fff3fff, val >> 6));
     break;
   case R_HEX_B9_PCREL:
-    checkInt(ctx, loc, val, 11, rel);
+    checkInt(loc, val, 11, rel);
     or32le(loc, applyMask(0x003000fe, val >> 2));
     break;
   case R_HEX_B9_PCREL_X:
     or32le(loc, applyMask(0x003000fe, val & 0x3f));
     break;
   case R_HEX_B13_PCREL:
-    checkInt(ctx, loc, val, 15, rel);
+    checkInt(loc, val, 15, rel);
     or32le(loc, applyMask(0x00202ffe, val >> 2));
     break;
   case R_HEX_B15_PCREL:
-    checkInt(ctx, loc, val, 17, rel);
+    checkInt(loc, val, 17, rel);
     or32le(loc, applyMask(0x00df20fe, val >> 2));
     break;
   case R_HEX_B15_PCREL_X:
@@ -329,7 +329,7 @@ void Hexagon::relocate(uint8_t *loc, const Relocation &rel,
   case R_HEX_B22_PCREL:
   case R_HEX_GD_PLT_B22_PCREL:
   case R_HEX_PLT_B22_PCREL:
-    checkInt(ctx, loc, val, 22, rel);
+    checkInt(loc, val, 24, rel);
     or32le(loc, applyMask(0x1ff3ffe, val >> 2));
     break;
   case R_HEX_B22_PCREL_X:
@@ -373,7 +373,7 @@ void Hexagon::writePltHeader(uint8_t *buf) const {
   memcpy(buf, pltData, sizeof(pltData));
 
   // Offset from PLT0 to the GOT.
-  uint64_t off = ctx.in.gotPlt->getVA() - ctx.in.plt->getVA();
+  uint64_t off = in.gotPlt->getVA() - in.plt->getVA();
   relocateNoSym(buf, R_HEX_B32_PCREL_X, off);
   relocateNoSym(buf + 4, R_HEX_6_PCREL_X, off);
 }
@@ -388,7 +388,7 @@ void Hexagon::writePlt(uint8_t *buf, const Symbol &sym,
   };
   memcpy(buf, inst, sizeof(inst));
 
-  uint64_t gotPltEntryAddr = sym.getGotPltVA(ctx);
+  uint64_t gotPltEntryAddr = sym.getGotPltVA();
   relocateNoSym(buf, R_HEX_B32_PCREL_X, gotPltEntryAddr - pltEntryAddr);
   relocateNoSym(buf + 4, R_HEX_6_PCREL_X, gotPltEntryAddr - pltEntryAddr);
 }
@@ -410,12 +410,15 @@ int64_t Hexagon::getImplicitAddend(const uint8_t *buf, RelType type) const {
   case R_HEX_DTPMOD_32:
   case R_HEX_DTPREL_32:
   case R_HEX_TPREL_32:
-    return SignExtend64<32>(read32(ctx, buf));
+    return SignExtend64<32>(read32(buf));
   default:
-    internalLinkerError(getErrorLoc(ctx, buf),
+    internalLinkerError(getErrorLocation(buf),
                         "cannot read addend for relocation " + toString(type));
     return 0;
   }
 }
 
-void elf::setHexagonTargetInfo(Ctx &ctx) { ctx.target.reset(new Hexagon(ctx)); }
+TargetInfo *elf::getHexagonTargetInfo() {
+  static Hexagon target;
+  return &target;
+}

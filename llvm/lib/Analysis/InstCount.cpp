@@ -12,6 +12,7 @@
 
 #include "llvm/Analysis/InstCount.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/Passes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Support/Debug.h"

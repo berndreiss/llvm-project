@@ -256,7 +256,6 @@ public:
 
 /// Represents a C++ struct/union/class.
 class CXXRecordDecl : public RecordDecl {
-  friend class ASTDeclMerger;
   friend class ASTDeclReader;
   friend class ASTDeclWriter;
   friend class ASTNodeImporter;
@@ -1189,6 +1188,10 @@ public:
   ///
   /// \note This does NOT include a check for union-ness.
   bool isEmpty() const { return data().Empty; }
+  /// Marks this record as empty. This is used by DWARFASTParserClang
+  /// when parsing records with empty fields having [[no_unique_address]]
+  /// attribute
+  void markEmpty() { data().Empty = true; }
 
   void setInitMethod(bool Val) { data().HasInitMethod = Val; }
   bool hasInitMethod() const { return data().HasInitMethod; }
@@ -1546,10 +1549,6 @@ public:
   /// Returns true if the class destructor, or any implicitly invoked
   /// destructors are marked noreturn.
   bool isAnyDestructorNoReturn() const { return data().IsAnyDestructorNoReturn; }
-
-  /// Returns true if the class contains HLSL intangible type, either as
-  /// a field or in base class.
-  bool isHLSLIntangible() const { return data().IsHLSLIntangible; }
 
   /// If the class is a local class [class.local], returns
   /// the enclosing function declaration.
@@ -1965,11 +1964,9 @@ private:
                         ExplicitSpecifier ES,
                         const DeclarationNameInfo &NameInfo, QualType T,
                         TypeSourceInfo *TInfo, SourceLocation EndLocation,
-                        CXXConstructorDecl *Ctor, DeductionCandidate Kind,
-                        Expr *TrailingRequiresClause)
+                        CXXConstructorDecl *Ctor, DeductionCandidate Kind)
       : FunctionDecl(CXXDeductionGuide, C, DC, StartLoc, NameInfo, T, TInfo,
-                     SC_None, false, false, ConstexprSpecKind::Unspecified,
-                     TrailingRequiresClause),
+                     SC_None, false, false, ConstexprSpecKind::Unspecified),
         Ctor(Ctor), ExplicitSpec(ES) {
     if (EndLocation.isValid())
       setRangeEnd(EndLocation);
@@ -1989,8 +1986,7 @@ public:
          ExplicitSpecifier ES, const DeclarationNameInfo &NameInfo, QualType T,
          TypeSourceInfo *TInfo, SourceLocation EndLocation,
          CXXConstructorDecl *Ctor = nullptr,
-         DeductionCandidate Kind = DeductionCandidate::Normal,
-         Expr *TrailingRequiresClause = nullptr);
+         DeductionCandidate Kind = DeductionCandidate::Normal);
 
   static CXXDeductionGuideDecl *CreateDeserialized(ASTContext &C,
                                                    GlobalDeclID ID);

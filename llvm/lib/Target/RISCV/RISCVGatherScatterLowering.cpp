@@ -127,7 +127,7 @@ static std::pair<Value *, Value *> matchStridedStart(Value *Start,
     return matchStridedConstant(StartC);
 
   // Base case, start is a stepvector
-  if (match(Start, m_Intrinsic<Intrinsic::stepvector>())) {
+  if (match(Start, m_Intrinsic<Intrinsic::experimental_stepvector>())) {
     auto *Ty = Start->getType()->getScalarType();
     return std::make_pair(ConstantInt::get(Ty, 0), ConstantInt::get(Ty, 1));
   }
@@ -504,7 +504,7 @@ bool RISCVGatherScatterLowering::tryCreateStridedLoadStore(IntrinsicInst *II,
     return false;
 
   LLVMContext &Ctx = PtrI->getContext();
-  IRBuilder Builder(Ctx, InstSimplifyFolder(*DL));
+  IRBuilder<InstSimplifyFolder> Builder(Ctx, *DL);
   Builder.SetInsertPoint(PtrI);
 
   Value *BasePtr, *Stride;
@@ -515,23 +515,17 @@ bool RISCVGatherScatterLowering::tryCreateStridedLoadStore(IntrinsicInst *II,
 
   Builder.SetInsertPoint(II);
 
-  Value *EVL = Builder.CreateElementCount(
-      IntegerType::get(Ctx, 32), cast<VectorType>(DataType)->getElementCount());
-
   CallInst *Call;
-  if (II->getIntrinsicID() == Intrinsic::masked_gather) {
+  if (II->getIntrinsicID() == Intrinsic::masked_gather)
     Call = Builder.CreateIntrinsic(
-        Intrinsic::experimental_vp_strided_load,
+        Intrinsic::riscv_masked_strided_load,
         {DataType, BasePtr->getType(), Stride->getType()},
-        {BasePtr, Stride, II->getArgOperand(2), EVL});
+        {II->getArgOperand(3), BasePtr, Stride, II->getArgOperand(2)});
+  else
     Call = Builder.CreateIntrinsic(
-        Intrinsic::vp_select, {DataType},
-        {II->getOperand(2), Call, II->getArgOperand(3), EVL});
-  } else
-    Call = Builder.CreateIntrinsic(
-        Intrinsic::experimental_vp_strided_store,
+        Intrinsic::riscv_masked_strided_store,
         {DataType, BasePtr->getType(), Stride->getType()},
-        {II->getArgOperand(0), BasePtr, Stride, II->getArgOperand(3), EVL});
+        {II->getArgOperand(0), BasePtr, Stride, II->getArgOperand(3)});
 
   Call->takeName(II);
   II->replaceAllUsesWith(Call);

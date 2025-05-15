@@ -50,8 +50,12 @@ void ThreadContext::OnStarted(void *arg) {
 
 void ThreadStart(u32 tid, tid_t os_id, ThreadType thread_type) {
   OnStartedArgs args;
-  GetThreadStackAndTls(tid == kMainTid, &args.stack_begin, &args.stack_end,
-                       &args.tls_begin, &args.tls_end);
+  uptr stack_size = 0;
+  uptr tls_size = 0;
+  GetThreadStackAndTls(tid == kMainTid, &args.stack_begin, &stack_size,
+                       &args.tls_begin, &tls_size);
+  args.stack_end = args.stack_begin + stack_size;
+  args.tls_end = args.tls_begin + tls_size;
   GetAllocatorCacheRange(&args.cache_begin, &args.cache_end);
   args.dtls = DTLS_Get();
   ThreadContextLsanBase::ThreadStart(tid, os_id, thread_type, &args);
@@ -97,7 +101,6 @@ void InstallAtExitCheckLeaks() {
 }
 
 static void BeforeFork() {
-  VReport(2, "BeforeFork tid: %llu\n", GetTid());
   LockGlobal();
   LockThreads();
   LockAllocator();
@@ -109,7 +112,6 @@ static void AfterFork(bool fork_child) {
   UnlockAllocator();
   UnlockThreads();
   UnlockGlobal();
-  VReport(2, "AfterFork tid: %llu\n", GetTid());
 }
 
 void InstallAtForkHandler() {

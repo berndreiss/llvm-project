@@ -14,6 +14,7 @@
 #define LLVM_ANALYSIS_CAPTURETRACKING_H
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/STLFunctionalExtras.h"
 
 namespace llvm {
 
@@ -24,7 +25,6 @@ namespace llvm {
   class DominatorTree;
   class LoopInfo;
   class Function;
-  template <typename Fn> class function_ref;
 
   /// getDefaultMaxUsesToExploreForCaptureTracking - Return default value of
   /// the maximal number of uses to explore before giving up. It is used by

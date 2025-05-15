@@ -7,15 +7,15 @@
 //===----------------------------------------------------------------------===//
 // A header file for containing functionallity that is used across Flang tools,
 // such as helper functions which apply or generate information needed accross
-// tools like bbc and flang.
+// tools like bbc and flang-new.
 //===----------------------------------------------------------------------===//
 
 #ifndef FORTRAN_TOOLS_CROSS_TOOL_HELPERS_H
 #define FORTRAN_TOOLS_CROSS_TOOL_HELPERS_H
 
-#include "flang/Common/LangOptions.h"
 #include "flang/Common/MathOptionsBase.h"
 #include "flang/Frontend/CodeGenOptions.h"
+#include "flang/Frontend/LangOptions.h"
 #include <cstdint>
 
 #include "mlir/Dialect/OpenMP/OpenMPDialect.h"
@@ -131,9 +131,7 @@ struct OffloadModuleOpts {
       bool OpenMPThreadSubscription, bool OpenMPNoThreadState,
       bool OpenMPNoNestedParallelism, bool OpenMPIsTargetDevice,
       bool OpenMPIsGPU, bool OpenMPForceUSM, uint32_t OpenMPVersion,
-      std::string OMPHostIRFile = {},
-      const std::vector<llvm::Triple> &OMPTargetTriples = {},
-      bool NoGPULib = false)
+      std::string OMPHostIRFile = {}, bool NoGPULib = false)
       : OpenMPTargetDebug(OpenMPTargetDebug),
         OpenMPTeamSubscription(OpenMPTeamSubscription),
         OpenMPThreadSubscription(OpenMPThreadSubscription),
@@ -141,11 +139,9 @@ struct OffloadModuleOpts {
         OpenMPNoNestedParallelism(OpenMPNoNestedParallelism),
         OpenMPIsTargetDevice(OpenMPIsTargetDevice), OpenMPIsGPU(OpenMPIsGPU),
         OpenMPForceUSM(OpenMPForceUSM), OpenMPVersion(OpenMPVersion),
-        OMPHostIRFile(OMPHostIRFile),
-        OMPTargetTriples(OMPTargetTriples.begin(), OMPTargetTriples.end()),
-        NoGPULib(NoGPULib) {}
+        OMPHostIRFile(OMPHostIRFile), NoGPULib(NoGPULib) {}
 
-  OffloadModuleOpts(Fortran::common::LangOptions &Opts)
+  OffloadModuleOpts(Fortran::frontend::LangOptions &Opts)
       : OpenMPTargetDebug(Opts.OpenMPTargetDebug),
         OpenMPTeamSubscription(Opts.OpenMPTeamSubscription),
         OpenMPThreadSubscription(Opts.OpenMPThreadSubscription),
@@ -154,7 +150,7 @@ struct OffloadModuleOpts {
         OpenMPIsTargetDevice(Opts.OpenMPIsTargetDevice),
         OpenMPIsGPU(Opts.OpenMPIsGPU), OpenMPForceUSM(Opts.OpenMPForceUSM),
         OpenMPVersion(Opts.OpenMPVersion), OMPHostIRFile(Opts.OMPHostIRFile),
-        OMPTargetTriples(Opts.OMPTargetTriples), NoGPULib(Opts.NoGPULib) {}
+        NoGPULib(Opts.NoGPULib) {}
 
   uint32_t OpenMPTargetDebug = 0;
   bool OpenMPTeamSubscription = false;
@@ -166,7 +162,6 @@ struct OffloadModuleOpts {
   bool OpenMPForceUSM = false;
   uint32_t OpenMPVersion = 11;
   std::string OMPHostIRFile = {};
-  std::vector<llvm::Triple> OMPTargetTriples = {};
   bool NoGPULib = false;
 };
 
@@ -190,9 +185,6 @@ struct OffloadModuleOpts {
       if (!Opts.OMPHostIRFile.empty())
         offloadMod.setHostIRFilePath(Opts.OMPHostIRFile);
     }
-    auto strTriples = llvm::to_vector(llvm::map_range(Opts.OMPTargetTriples,
-        [](llvm::Triple triple) { return triple.normalize(); }));
-    offloadMod.setTargetTriples(strTriples);
   }
 }
 

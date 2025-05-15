@@ -7,8 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SystemZMCTargetDesc.h"
-#include "SystemZGNUInstPrinter.h"
-#include "SystemZHLASMInstPrinter.h"
+#include "SystemZInstPrinter.h"
 #include "SystemZMCAsmInfo.h"
 #include "SystemZTargetStreamer.h"
 #include "TargetInfo/SystemZTargetInfo.h"
@@ -187,10 +186,7 @@ static MCInstPrinter *createSystemZMCInstPrinter(const Triple &T,
                                                  const MCAsmInfo &MAI,
                                                  const MCInstrInfo &MII,
                                                  const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == AD_HLASM)
-    return new SystemZHLASMInstPrinter(MAI, MII, MRI);
-
-  return new SystemZGNUInstPrinter(MAI, MII, MRI);
+  return new SystemZInstPrinter(MAI, MII, MRI);
 }
 
 void SystemZTargetStreamer::emitConstantPools() {

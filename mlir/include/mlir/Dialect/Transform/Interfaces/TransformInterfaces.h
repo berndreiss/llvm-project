@@ -131,13 +131,11 @@ private:
 /// will be executed following the internal logic of the operation. It must
 /// have the `PossibleTopLevelTransformOp` trait and not have any operands.
 /// This function internally keeps track of the transformation state.
-LogicalResult applyTransforms(
-    Operation *payloadRoot, TransformOpInterface transform,
-    const RaggedArray<MappedValue> &extraMapping = {},
-    const TransformOptions &options = TransformOptions(),
-    bool enforceToplevelTransformOp = true,
-    function_ref<void(TransformState &)> stateInitializer = nullptr,
-    function_ref<LogicalResult(TransformState &)> stateExporter = nullptr);
+LogicalResult
+applyTransforms(Operation *payloadRoot, TransformOpInterface transform,
+                const RaggedArray<MappedValue> &extraMapping = {},
+                const TransformOptions &options = TransformOptions(),
+                bool enforceToplevelTransformOp = true);
 
 /// The state maintained across applications of various ops implementing the
 /// TransformOpInterface. The operations implementing this interface and the
@@ -196,7 +194,7 @@ private:
   /// should be emitted when the value is used.
   using InvalidatedHandleMap = DenseMap<Value, std::function<void(Location)>>;
 
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
   /// Debug only: A timestamp is associated with each transform IR value, so
   /// that invalid iterator usage can be detected more reliably.
   using TransformIRTimestampMapping = DenseMap<Value, int64_t>;
@@ -211,17 +209,15 @@ private:
     ValueMapping values;
     ValueMapping reverseValues;
 
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
     TransformIRTimestampMapping timestamps;
     void incrementTimestamp(Value value) { ++timestamps[value]; }
 #endif // LLVM_ENABLE_ABI_BREAKING_CHECKS
   };
 
-  friend LogicalResult
-  applyTransforms(Operation *, TransformOpInterface,
-                  const RaggedArray<MappedValue> &, const TransformOptions &,
-                  bool, function_ref<void(TransformState &)>,
-                  function_ref<LogicalResult(TransformState &)>);
+  friend LogicalResult applyTransforms(Operation *, TransformOpInterface,
+                                       const RaggedArray<MappedValue> &,
+                                       const TransformOptions &, bool);
 
   friend TransformState
   detail::makeTransformStateForTesting(Region *region, Operation *payloadRoot);
@@ -248,7 +244,7 @@ public:
   auto getPayloadOps(Value value) const {
     ArrayRef<Operation *> view = getPayloadOpsView(value);
 
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
     // Memorize the current timestamp and make sure that it has not changed
     // when incrementing or dereferencing the iterator returned by this
     // function. The timestamp is incremented when the "direct" mapping is
@@ -259,7 +255,7 @@ public:
     // When ops are replaced/erased, they are replaced with nullptr (until
     // the data structure is compacted). Do not enumerate these ops.
     return llvm::make_filter_range(view, [=](Operation *op) {
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
       [[maybe_unused]] bool sameTimestamp =
           currentTimestamp == this->getMapping(value).timestamps.lookup(value);
       assert(sameTimestamp && "iterator was invalidated during iteration");
@@ -277,7 +273,7 @@ public:
   auto getPayloadValues(Value handleValue) const {
     ArrayRef<Value> view = getPayloadValuesView(handleValue);
 
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+#ifdef LLVM_ENABLE_ABI_BREAKING_CHECKS
     // Memorize the current timestamp and make sure that it has not changed
     // when incrementing or dereferencing the iterator returned by this
     // function. The timestamp is incremented when the "values" mapping is

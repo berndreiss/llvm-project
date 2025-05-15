@@ -208,8 +208,8 @@ int ListApplications(std::string &plist, bool opt_runningApps,
   GetProcesses(plistMutableArray.get(), all_users);
 #endif
 
-  CFReleaser<CFDataRef> plistData(::CFPropertyListCreateData(
-      alloc, plistMutableArray.get(), kCFPropertyListXMLFormat_v1_0, 0, NULL));
+  CFReleaser<CFDataRef> plistData(
+      ::CFPropertyListCreateXMLData(alloc, plistMutableArray.get()));
 
   // write plist to service port
   if (plistData.get() != NULL) {

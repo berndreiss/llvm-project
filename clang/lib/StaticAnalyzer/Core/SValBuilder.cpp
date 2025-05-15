@@ -174,7 +174,7 @@ DefinedOrUnknownSVal SValBuilder::conjureSymbolVal(const void *SymbolTag,
 }
 
 DefinedOrUnknownSVal SValBuilder::conjureSymbolVal(const void *symbolTag,
-                                                   const Stmt *St,
+                                                   const Expr *expr,
                                                    const LocationContext *LCtx,
                                                    QualType type,
                                                    unsigned count) {
@@ -184,7 +184,7 @@ DefinedOrUnknownSVal SValBuilder::conjureSymbolVal(const void *symbolTag,
   if (!SymbolManager::canSymbolicate(type))
     return UnknownVal();
 
-  SymbolRef sym = SymMgr.conjureSymbol(St, LCtx, type, count, symbolTag);
+  SymbolRef sym = SymMgr.conjureSymbol(expr, LCtx, type, count, symbolTag);
 
   if (Loc::isLocType(type))
     return loc::MemRegionVal(MemMgr.getSymbolicRegion(sym));
@@ -210,24 +210,22 @@ DefinedOrUnknownSVal SValBuilder::conjureSymbolVal(const Stmt *stmt,
   return nonloc::SymbolVal(sym);
 }
 
-DefinedSVal SValBuilder::getConjuredHeapSymbolVal(const Expr *E,
-                                                  const LocationContext *LCtx,
-                                                  unsigned VisitCount) {
+DefinedOrUnknownSVal
+SValBuilder::getConjuredHeapSymbolVal(const Expr *E,
+                                      const LocationContext *LCtx,
+                                      unsigned VisitCount) {
   QualType T = E->getType();
   return getConjuredHeapSymbolVal(E, LCtx, T, VisitCount);
 }
 
-DefinedSVal SValBuilder::getConjuredHeapSymbolVal(const Expr *E,
-                                                  const LocationContext *LCtx,
-                                                  QualType type,
-                                                  unsigned VisitCount) {
+DefinedOrUnknownSVal
+SValBuilder::getConjuredHeapSymbolVal(const Expr *E,
+                                      const LocationContext *LCtx,
+                                      QualType type, unsigned VisitCount) {
   assert(Loc::isLocType(type));
   assert(SymbolManager::canSymbolicate(type));
-  if (type->isNullPtrType()) {
-    // makeZeroVal() returns UnknownVal only in case of FP number, which
-    // is not the case.
-    return makeZeroVal(type).castAs<DefinedSVal>();
-  }
+  if (type->isNullPtrType())
+    return makeZeroVal(type);
 
   SymbolRef sym = SymMgr.conjureSymbol(E, LCtx, type, VisitCount);
   return loc::MemRegionVal(MemMgr.getSymbolicHeapRegion(sym));
@@ -600,9 +598,8 @@ SVal SValBuilder::evalIntegralCast(ProgramStateRef state, SVal val,
   if (getContext().getTypeSize(castTy) >= getContext().getTypeSize(originalTy))
     return evalCast(val, castTy, originalTy);
 
-  auto AsNonLoc = val.getAs<NonLoc>();
-  SymbolRef AsSymbol = val.getAsSymbol();
-  if (!AsSymbol || !AsNonLoc) // Let evalCast handle non symbolic expressions.
+  SymbolRef se = val.getAsSymbol();
+  if (!se) // Let evalCast handle non symbolic expressions.
     return evalCast(val, castTy, originalTy);
 
   // Find the maximum value of the target type.
@@ -614,14 +611,15 @@ SVal SValBuilder::evalIntegralCast(ProgramStateRef state, SVal val,
 
   // Check the range of the symbol being casted against the maximum value of the
   // target type.
+  NonLoc FromVal = val.castAs<NonLoc>();
   QualType CmpTy = getConditionType();
-  NonLoc CompVal = evalBinOpNN(state, BO_LE, *AsNonLoc, ToTypeMaxVal, CmpTy)
-                       .castAs<NonLoc>();
+  NonLoc CompVal =
+      evalBinOpNN(state, BO_LE, FromVal, ToTypeMaxVal, CmpTy).castAs<NonLoc>();
   ProgramStateRef IsNotTruncated, IsTruncated;
   std::tie(IsNotTruncated, IsTruncated) = state->assume(CompVal);
   if (!IsNotTruncated && IsTruncated) {
     // Symbol is truncated so we evaluate it as a cast.
-    return makeNonLoc(AsSymbol, originalTy, castTy);
+    return makeNonLoc(se, originalTy, castTy);
   }
   return evalCast(val, castTy, originalTy);
 }

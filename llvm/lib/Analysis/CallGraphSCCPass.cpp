@@ -453,6 +453,7 @@ bool CGPassManager::RunAllPassesOnSCC(CallGraphSCC &CurSCC, CallGraph &CG,
         OS << LS;
         CGN->print(OS);
       }
+      OS.flush();
   #endif
       dumpPassInfo(P, EXECUTION_MSG, ON_CG_MSG, Functions);
     }

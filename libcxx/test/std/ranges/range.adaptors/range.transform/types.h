@@ -131,11 +131,6 @@ struct PlusOne {
   constexpr int operator()(int x) const { return x + 1; }
 };
 
-struct PlusOneMutableOverload {
-  constexpr int operator()(int x) const { return x + 1; }
-  constexpr int& operator()(int& x) { return ++x; }
-};
-
 struct Increment {
   constexpr int& operator()(int& x) { return ++x; }
 };

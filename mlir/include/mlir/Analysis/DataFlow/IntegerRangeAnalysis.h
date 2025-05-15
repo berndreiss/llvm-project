@@ -50,15 +50,14 @@ public:
   /// At an entry point, we cannot reason about interger value ranges.
   void setToEntryState(IntegerValueRangeLattice *lattice) override {
     propagateIfChanged(lattice, lattice->join(IntegerValueRange::getMaxRange(
-                                    lattice->getAnchor())));
+                                    lattice->getPoint())));
   }
 
   /// Visit an operation. Invoke the transfer function on each operation that
   /// implements `InferIntRangeInterface`.
-  LogicalResult
-  visitOperation(Operation *op,
-                 ArrayRef<const IntegerValueRangeLattice *> operands,
-                 ArrayRef<IntegerValueRangeLattice *> results) override;
+  void visitOperation(Operation *op,
+                      ArrayRef<const IntegerValueRangeLattice *> operands,
+                      ArrayRef<IntegerValueRangeLattice *> results) override;
 
   /// Visit block arguments or operation results of an operation with region
   /// control-flow for which values are not defined by region control-flow. This

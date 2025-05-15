@@ -6,16 +6,4 @@ namespace PR5840 {
   struct Base {};
   int Base = 10;
   struct Derived : Base {};
-} // namespace PR5840
-
-namespace issue_16855 {
-  struct x {};
-  namespace
-  {
-      namespace x
-      {
-          struct y : x
-          {};
-      } // namespace x
-  }
-} // namespace issue_16855
+}

@@ -297,11 +297,10 @@ OMPParallelDirective *OMPParallelDirective::CreateEmpty(const ASTContext &C,
                                                     /*NumChildren=*/1);
 }
 
-OMPSimdDirective *
-OMPSimdDirective::Create(const ASTContext &C, SourceLocation StartLoc,
-                         SourceLocation EndLoc, unsigned CollapsedNum,
-                         ArrayRef<OMPClause *> Clauses, Stmt *AssociatedStmt,
-                         const HelperExprs &Exprs) {
+OMPSimdDirective *OMPSimdDirective::Create(
+    const ASTContext &C, SourceLocation StartLoc, SourceLocation EndLoc,
+    unsigned CollapsedNum, ArrayRef<OMPClause *> Clauses, Stmt *AssociatedStmt,
+    const HelperExprs &Exprs, OpenMPDirectiveKind ParamPrevMappedDirective) {
   auto *Dir = createDirective<OMPSimdDirective>(
       C, Clauses, AssociatedStmt, numLoopChildren(CollapsedNum, OMPD_simd),
       StartLoc, EndLoc, CollapsedNum);
@@ -321,6 +320,7 @@ OMPSimdDirective::Create(const ASTContext &C, SourceLocation StartLoc,
   Dir->setDependentInits(Exprs.DependentInits);
   Dir->setFinalsConditions(Exprs.FinalsConditions);
   Dir->setPreInits(Exprs.PreInits);
+  Dir->setMappedDirective(ParamPrevMappedDirective);
   return Dir;
 }
 
@@ -336,7 +336,8 @@ OMPSimdDirective *OMPSimdDirective::CreateEmpty(const ASTContext &C,
 OMPForDirective *OMPForDirective::Create(
     const ASTContext &C, SourceLocation StartLoc, SourceLocation EndLoc,
     unsigned CollapsedNum, ArrayRef<OMPClause *> Clauses, Stmt *AssociatedStmt,
-    const HelperExprs &Exprs, Expr *TaskRedRef, bool HasCancel) {
+    const HelperExprs &Exprs, Expr *TaskRedRef, bool HasCancel,
+    OpenMPDirectiveKind ParamPrevMappedDirective) {
   auto *Dir = createDirective<OMPForDirective>(
       C, Clauses, AssociatedStmt, numLoopChildren(CollapsedNum, OMPD_for) + 1,
       StartLoc, EndLoc, CollapsedNum);
@@ -366,6 +367,7 @@ OMPForDirective *OMPForDirective::Create(
   Dir->setPreInits(Exprs.PreInits);
   Dir->setTaskReductionRefExpr(TaskRedRef);
   Dir->setHasCancel(HasCancel);
+  Dir->setMappedDirective(ParamPrevMappedDirective);
   return Dir;
 }
 
@@ -452,7 +454,8 @@ OMPReverseDirective::Create(const ASTContext &C, SourceLocation StartLoc,
                             SourceLocation EndLoc, Stmt *AssociatedStmt,
                             Stmt *TransformedStmt, Stmt *PreInits) {
   OMPReverseDirective *Dir = createDirective<OMPReverseDirective>(
-      C, {}, AssociatedStmt, TransformedStmtOffset + 1, StartLoc, EndLoc);
+      C, std::nullopt, AssociatedStmt, TransformedStmtOffset + 1, StartLoc,
+      EndLoc);
   Dir->setTransformedStmt(TransformedStmt);
   Dir->setPreInits(PreInits);
   return Dir;
@@ -554,7 +557,7 @@ OMPSectionDirective *OMPSectionDirective::Create(const ASTContext &C,
                                                  Stmt *AssociatedStmt,
                                                  bool HasCancel) {
   auto *Dir =
-      createDirective<OMPSectionDirective>(C, {}, AssociatedStmt,
+      createDirective<OMPSectionDirective>(C, std::nullopt, AssociatedStmt,
                                            /*NumChildren=*/0, StartLoc, EndLoc);
   Dir->setHasCancel(HasCancel);
   return Dir;
@@ -604,7 +607,7 @@ OMPMasterDirective *OMPMasterDirective::Create(const ASTContext &C,
                                                SourceLocation StartLoc,
                                                SourceLocation EndLoc,
                                                Stmt *AssociatedStmt) {
-  return createDirective<OMPMasterDirective>(C, {}, AssociatedStmt,
+  return createDirective<OMPMasterDirective>(C, std::nullopt, AssociatedStmt,
                                              /*NumChildren=*/0, StartLoc,
                                              EndLoc);
 }
@@ -796,23 +799,6 @@ OMPTaskyieldDirective *OMPTaskyieldDirective::Create(const ASTContext &C,
 OMPTaskyieldDirective *OMPTaskyieldDirective::CreateEmpty(const ASTContext &C,
                                                           EmptyShell) {
   return new (C) OMPTaskyieldDirective();
-}
-
-OMPAssumeDirective *OMPAssumeDirective::Create(const ASTContext &C,
-                                               SourceLocation StartLoc,
-                                               SourceLocation EndLoc,
-                                               ArrayRef<OMPClause *> Clauses,
-                                               Stmt *AStmt) {
-  return createDirective<OMPAssumeDirective>(C, Clauses, AStmt,
-                                             /*NumChildren=*/0, StartLoc,
-                                             EndLoc);
-}
-
-OMPAssumeDirective *OMPAssumeDirective::CreateEmpty(const ASTContext &C,
-                                                    unsigned NumClauses,
-                                                    EmptyShell) {
-  return createEmptyDirective<OMPAssumeDirective>(C, NumClauses,
-                                                  /*HasAssociatedStmt=*/true);
 }
 
 OMPErrorDirective *OMPErrorDirective::Create(const ASTContext &C,
@@ -1583,11 +1569,10 @@ OMPParallelMaskedTaskLoopSimdDirective::CreateEmpty(const ASTContext &C,
       CollapsedNum);
 }
 
-OMPDistributeDirective *
-OMPDistributeDirective::Create(const ASTContext &C, SourceLocation StartLoc,
-                               SourceLocation EndLoc, unsigned CollapsedNum,
-                               ArrayRef<OMPClause *> Clauses,
-                               Stmt *AssociatedStmt, const HelperExprs &Exprs) {
+OMPDistributeDirective *OMPDistributeDirective::Create(
+    const ASTContext &C, SourceLocation StartLoc, SourceLocation EndLoc,
+    unsigned CollapsedNum, ArrayRef<OMPClause *> Clauses, Stmt *AssociatedStmt,
+    const HelperExprs &Exprs, OpenMPDirectiveKind ParamPrevMappedDirective) {
   auto *Dir = createDirective<OMPDistributeDirective>(
       C, Clauses, AssociatedStmt,
       numLoopChildren(CollapsedNum, OMPD_distribute), StartLoc, EndLoc,
@@ -1616,6 +1601,7 @@ OMPDistributeDirective::Create(const ASTContext &C, SourceLocation StartLoc,
   Dir->setDependentInits(Exprs.DependentInits);
   Dir->setFinalsConditions(Exprs.FinalsConditions);
   Dir->setPreInits(Exprs.PreInits);
+  Dir->setMappedDirective(ParamPrevMappedDirective);
   return Dir;
 }
 

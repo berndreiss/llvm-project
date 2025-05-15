@@ -17,11 +17,12 @@
 #include "GCNSubtarget.h"
 #include "SIMachineFunctionInfo.h"
 #include "SIModeRegisterDefaults.h"
-#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
 #include "llvm/Target/TargetMachine.h"
 
-namespace llvm {
+using namespace llvm;
+
+namespace {
 
 static inline bool getConstantValue(SDValue N, uint32_t &Out) {
   // This is only used for packed vectors, where using 0 for undef should
@@ -59,6 +60,8 @@ static inline SDNode *packConstantV2I16(const SDNode *N, SelectionDAG &DAG) {
   return nullptr;
 }
 
+} // namespace
+
 /// AMDGPU specific code to select AMDGPU machine instructions for
 /// SelectionDAG operations.
 class AMDGPUDAGToDAGISel : public SelectionDAGISel {
@@ -68,6 +71,8 @@ class AMDGPUDAGToDAGISel : public SelectionDAGISel {
 
   // Default FP mode for the current function.
   SIModeRegisterDefaults Mode;
+
+  bool EnableLateStructurizeCFG;
 
   // Instructions that will be lowered with a final instruction that zeros the
   // high result bits.
@@ -295,7 +300,5 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   StringRef getPassName() const override;
 };
-
-} // namespace llvm
 
 #endif // LLVM_LIB_TARGET_AMDGPU_AMDGPUISELDAGTODAG_H

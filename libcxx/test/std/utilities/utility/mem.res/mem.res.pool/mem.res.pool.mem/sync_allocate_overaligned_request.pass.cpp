@@ -14,10 +14,9 @@
 
 // class synchronized_pool_resource
 
-#include <cassert>
-#include <cstddef>
-#include <memory> // std::align
 #include <memory_resource>
+#include <cassert>
+#include <memory> // std::align
 
 #include "count_new.h"
 #include "test_macros.h"

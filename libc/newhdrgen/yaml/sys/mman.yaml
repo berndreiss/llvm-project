@@ -8,44 +8,15 @@ enums: []
 objects: []
 functions:
   - name: madvise
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
       - type: void *
       - type: size_t
-      - type: int
-  - name: mincore
-    standards:
-      - Linux
-    return_type: int
-    arguments:
-      - type: void *
-      - type: size_t
-      - type: unsigned char *
-  - name: mlock
-    standards:
-      - POSIX
-    return_type: int
-    arguments:
-      - type: void *
-      - type: size_t
-  - name: mlock2
-    standards:
-      - Linux
-    return_type: int
-    arguments:
-      - type: void *
-      - type: size_t
-      - type: unsigned int
-  - name: mlockall
-    standards:
-      - POSIX
-    return_type: int
-    arguments:
       - type: int
   - name: mmap
-    standards:
+    standards: 
       - POSIX
     return_type: void *
     arguments:
@@ -55,71 +26,80 @@ functions:
       - type: int
       - type: int
       - type: off_t
-  - name: mremap
-    standards:
-      - POSIX
-    return_type: void *
-    arguments:
-      - type: void *
-      - type: size_t
-      - type: size_t
-      - type: int
-      - type: '...'
   - name: mprotect
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
       - type: void *
       - type: size_t
       - type: int
-  - name: msync
-    standards:
-      - POSIX
-    return_type: int
-    arguments:
-      - type: void *
-      - type: size_t
-      - type: int
-  - name: munlock
-    standards: POSIX
-    return_type: int
-    arguments:
-      - type: void *
-      - type: size_t
-  - name: munlockall
-    standards:
-      - POSIX
-    return_type: int
-    arguments:
-      - type: void
   - name: munmap
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
       - type: void *
       - type: size_t
   - name: posix_madvise
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
       - type: void *
       - type: size_t
       - type: int
-  - name: remap_file_pages
-    standards:
+  - name: mincore
+    standards: 
       - Linux
     return_type: int
     arguments:
       - type: void *
       - type: size_t
+      - type: unsigned char *
+  - name: mlock
+    standards: 
+      - POSIX
+    return_type: int
+    arguments:
+      - type: void *
+      - type: size_t
+  - name: mlock2
+    standards: 
+      - Linux
+    return_type: int
+    arguments:
+      - type: void *
+      - type: size_t
+      - type: unsigned int
+  - name: munlock
+    standards: POSIX
+    return_type: int
+    arguments:
+      - type: void *
+      - type: size_t
+  - name: mlockall
+    standards: 
+      -POSIX
+    return_type: int
+    arguments:
       - type: int
+  - name: munlockall
+    standards: 
+      - POSIX
+    return_type: int
+    arguments:
+      - type: void
+  - name: msync
+    standards: 
+      - POSIX
+    return_type: int
+    arguments:
+      - type: void *
       - type: size_t
       - type: int
   - name: shm_open
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
@@ -127,8 +107,9 @@ functions:
       - type: int
       - type: mode_t
   - name: shm_unlink
-    standards:
+    standards: 
       - POSIX
     return_type: int
     arguments:
       - type: const char *
+      

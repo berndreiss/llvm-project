@@ -35,7 +35,6 @@ source_set("tweaks") {
     "RemoveUsingNamespace.cpp",
     "ScopifyEnum.cpp",
     "SpecialMembers.cpp",
-    "SwapBinaryOperands.cpp",
     "SwapIfBranches.cpp",
   ]
 }

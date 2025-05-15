@@ -11,8 +11,6 @@
 
 #include "src/__support/macros/attributes.h" // LIBC_INLINE, LIBC_INLINE_VAR
 
-namespace LIBC_NAMESPACE_DECL {
-
 // A type to interact with signed arithmetic types.
 struct Sign {
   LIBC_INLINE constexpr bool is_pos() const { return !is_negative; }
@@ -39,5 +37,4 @@ private:
 LIBC_INLINE_VAR constexpr Sign Sign::NEG = Sign(true);
 LIBC_INLINE_VAR constexpr Sign Sign::POS = Sign(false);
 
-} // namespace LIBC_NAMESPACE_DECL
 #endif // LLVM_LIBC_SRC___SUPPORT_SIGN_H

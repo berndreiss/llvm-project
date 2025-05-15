@@ -19,7 +19,7 @@ class Pass;
 #include "mlir/Conversion/Passes.h.inc"
 
 /// Populate the given list with patterns that convert from Math to ROCDL calls.
-void populateMathToROCDLConversionPatterns(const LLVMTypeConverter &converter,
+void populateMathToROCDLConversionPatterns(LLVMTypeConverter &converter,
                                            RewritePatternSet &patterns);
 } // namespace mlir
 

@@ -28,7 +28,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/TableGen/Record.h"
-#include "llvm/TableGen/TGTimer.h"
 #include "llvm/TableGen/TableGenBackend.h"
 #include <cassert>
 #include <cstdint>
@@ -49,12 +48,12 @@ static cl::opt<bool> ExpandMIOperandInfo(
 namespace {
 
 class InstrInfoEmitter {
-  const RecordKeeper &Records;
-  const CodeGenDAGPatterns CDP;
+  RecordKeeper &Records;
+  CodeGenDAGPatterns CDP;
   const CodeGenSchedModels &SchedModels;
 
 public:
-  InstrInfoEmitter(const RecordKeeper &R)
+  InstrInfoEmitter(RecordKeeper &R)
       : Records(R), CDP(R), SchedModels(CDP.getTargetInfo().getSchedModels()) {}
 
   // run - Output the instruction set description.
@@ -89,8 +88,8 @@ private:
   /// Write verifyInstructionPredicates methods.
   void emitFeatureVerifier(raw_ostream &OS, const CodeGenTarget &Target);
   void emitRecord(const CodeGenInstruction &Inst, unsigned Num,
-                  const Record *InstrInfo,
-                  std::map<std::vector<const Record *>, unsigned> &EL,
+                  Record *InstrInfo,
+                  std::map<std::vector<Record *>, unsigned> &EL,
                   const OperandInfoMapTy &OperandInfo, raw_ostream &OS);
   void emitOperandTypeMappings(
       raw_ostream &OS, const CodeGenTarget &Target,
@@ -137,7 +136,7 @@ InstrInfoEmitter::GetOperandInfo(const CodeGenInstruction &Inst) {
     // registers in their multi-operand operands.  It may also be an anonymous
     // operand, which has a single operand, but no declared class for the
     // operand.
-    const DagInit *MIOI = Op.MIOperandInfo;
+    DagInit *MIOI = Op.MIOperandInfo;
 
     if (!MIOI || MIOI->getNumArgs() == 0) {
       // Single, anonymous, operand.
@@ -152,7 +151,7 @@ InstrInfoEmitter::GetOperandInfo(const CodeGenInstruction &Inst) {
     }
 
     for (unsigned j = 0, e = OperandList.size(); j != e; ++j) {
-      const Record *OpR = OperandList[j].Rec;
+      Record *OpR = OperandList[j].Rec;
       std::string Res;
 
       if (OpR->isSubClassOf("RegisterOperand"))
@@ -357,11 +356,10 @@ void InstrInfoEmitter::emitOperandTypeMappings(
     ArrayRef<const CodeGenInstruction *> NumberedInstructions) {
 
   StringRef Namespace = Target.getInstNamespace();
-  ArrayRef<const Record *> Operands =
-      Records.getAllDerivedDefinitions("Operand");
-  ArrayRef<const Record *> RegisterOperands =
+  std::vector<Record *> Operands = Records.getAllDerivedDefinitions("Operand");
+  std::vector<Record *> RegisterOperands =
       Records.getAllDerivedDefinitions("RegisterOperand");
-  ArrayRef<const Record *> RegisterClasses =
+  std::vector<Record *> RegisterClasses =
       Records.getAllDerivedDefinitions("RegisterClass");
 
   OS << "#ifdef GET_INSTRINFO_OPERAND_TYPES_ENUM\n";
@@ -372,9 +370,9 @@ void InstrInfoEmitter::emitOperandTypeMappings(
   OS << "enum OperandType {\n";
 
   unsigned EnumVal = 0;
-  for (ArrayRef<const Record *> RecordsToAdd :
-       {Operands, RegisterOperands, RegisterClasses}) {
-    for (const Record *Op : RecordsToAdd) {
+  for (const std::vector<Record *> *RecordsToAdd :
+       {&Operands, &RegisterOperands, &RegisterClasses}) {
+    for (const Record *Op : *RecordsToAdd) {
       if (!Op->isAnonymous())
         OS << "  " << Op->getName() << " = " << EnumVal << ",\n";
       ++EnumVal;
@@ -400,7 +398,7 @@ void InstrInfoEmitter::emitOperandTypeMappings(
   // TODO: Factor out duplicate operand lists to compress the tables.
   if (!NumberedInstructions.empty()) {
     std::vector<int> OperandOffsets;
-    std::vector<const Record *> OperandRecords;
+    std::vector<Record *> OperandRecords;
     int CurrentOffset = 0;
     for (const CodeGenInstruction *Inst : NumberedInstructions) {
       OperandOffsets.push_back(CurrentOffset);
@@ -411,7 +409,7 @@ void InstrInfoEmitter::emitOperandTypeMappings(
           OperandRecords.push_back(Op.Rec);
           ++CurrentOffset;
         } else {
-          for (const Init *Arg : MIOI->getArgs()) {
+          for (Init *Arg : MIOI->getArgs()) {
             OperandRecords.push_back(cast<DefInit>(Arg)->getDef());
             ++CurrentOffset;
           }
@@ -449,7 +447,7 @@ void InstrInfoEmitter::emitOperandTypeMappings(
         while (OperandOffsets[++CurOffset] == I)
           OS << "/* " << getInstrName(CurOffset) << " */\n    ";
       }
-      const Record *OpR = OperandRecords[I];
+      Record *OpR = OperandRecords[I];
       if ((OpR->isSubClassOf("Operand") ||
            OpR->isSubClassOf("RegisterOperand") ||
            OpR->isSubClassOf("RegisterClass")) &&
@@ -674,8 +672,7 @@ void InstrInfoEmitter::emitLogicalOperandTypeMappings(
 
 void InstrInfoEmitter::emitMCIIHelperMethods(raw_ostream &OS,
                                              StringRef TargetName) {
-  ArrayRef<const Record *> TIIPredicates =
-      Records.getAllDerivedDefinitions("TIIPredicate");
+  RecVec TIIPredicates = Records.getAllDerivedDefinitions("TIIPredicate");
 
   OS << "#ifdef GET_INSTRINFO_MC_HELPER_DECLS\n";
   OS << "#undef GET_INSTRINFO_MC_HELPER_DECLS\n\n";
@@ -712,7 +709,7 @@ void InstrInfoEmitter::emitMCIIHelperMethods(raw_ostream &OS,
     OS << "bool " << Rec->getValueAsString("FunctionName");
     OS << "(const MCInst &MI) {\n";
 
-    OS << PE.getIndent();
+    OS.indent(PE.getIndentLevel() * 2);
     PE.expandStatement(OS, Rec->getValueAsDef("Body"));
     OS << "\n}\n\n";
   }
@@ -724,9 +721,9 @@ void InstrInfoEmitter::emitMCIIHelperMethods(raw_ostream &OS,
 }
 
 static std::string
-getNameForFeatureBitset(ArrayRef<const Record *> FeatureBitset) {
+getNameForFeatureBitset(const std::vector<Record *> &FeatureBitset) {
   std::string Name = "CEFBS";
-  for (const Record *Feature : FeatureBitset)
+  for (const auto &Feature : FeatureBitset)
     Name += ("_" + Feature->getName()).str();
   return Name;
 }
@@ -734,7 +731,7 @@ getNameForFeatureBitset(ArrayRef<const Record *> FeatureBitset) {
 void InstrInfoEmitter::emitFeatureVerifier(raw_ostream &OS,
                                            const CodeGenTarget &Target) {
   const auto &All = SubtargetFeatureInfo::getAll(Records);
-  SubtargetFeatureInfoMap SubtargetFeatures;
+  std::map<Record *, SubtargetFeatureInfo, LessRecordByID> SubtargetFeatures;
   SubtargetFeatures.insert(All.begin(), All.end());
 
   OS << "#if (defined(ENABLE_INSTR_PREDICATE_VERIFIER) && !defined(NDEBUG)) "
@@ -755,19 +752,18 @@ void InstrInfoEmitter::emitFeatureVerifier(raw_ostream &OS,
   SubtargetFeatureInfo::emitComputeAssemblerAvailableFeatures(
       Target.getName(), "", "computeAvailableFeatures", SubtargetFeatures, OS);
 
-  std::vector<std::vector<const Record *>> FeatureBitsets;
+  std::vector<std::vector<Record *>> FeatureBitsets;
   for (const CodeGenInstruction *Inst : Target.getInstructionsByEnumValue()) {
     FeatureBitsets.emplace_back();
-    for (const Record *Predicate :
-         Inst->TheDef->getValueAsListOfDefs("Predicates")) {
+    for (Record *Predicate : Inst->TheDef->getValueAsListOfDefs("Predicates")) {
       const auto &I = SubtargetFeatures.find(Predicate);
       if (I != SubtargetFeatures.end())
         FeatureBitsets.back().push_back(I->second.TheDef);
     }
   }
 
-  llvm::sort(FeatureBitsets, [&](ArrayRef<const Record *> A,
-                                 ArrayRef<const Record *> B) {
+  llvm::sort(FeatureBitsets, [&](const std::vector<Record *> &A,
+                                 const std::vector<Record *> &B) {
     if (A.size() < B.size())
       return true;
     if (A.size() > B.size())
@@ -810,8 +806,7 @@ void InstrInfoEmitter::emitFeatureVerifier(raw_ostream &OS,
   for (const CodeGenInstruction *Inst : Target.getInstructionsByEnumValue()) {
     OS << "    CEFBS";
     unsigned NumPredicates = 0;
-    for (const Record *Predicate :
-         Inst->TheDef->getValueAsListOfDefs("Predicates")) {
+    for (Record *Predicate : Inst->TheDef->getValueAsListOfDefs("Predicates")) {
       const auto &I = SubtargetFeatures.find(Predicate);
       if (I != SubtargetFeatures.end()) {
         OS << '_' << I->second.TheDef->getName();
@@ -895,8 +890,7 @@ void InstrInfoEmitter::emitFeatureVerifier(raw_ostream &OS,
 void InstrInfoEmitter::emitTIIHelperMethods(raw_ostream &OS,
                                             StringRef TargetName,
                                             bool ExpandDefinition) {
-  ArrayRef<const Record *> TIIPredicates =
-      Records.getAllDerivedDefinitions("TIIPredicate");
+  RecVec TIIPredicates = Records.getAllDerivedDefinitions("TIIPredicate");
   if (TIIPredicates.empty())
     return;
 
@@ -915,7 +909,7 @@ void InstrInfoEmitter::emitTIIHelperMethods(raw_ostream &OS,
     }
 
     OS << " {\n";
-    OS << PE.getIndent();
+    OS.indent(PE.getIndentLevel() * 2);
     PE.expandStatement(OS, Rec->getValueAsDef("Body"));
     OS << "\n}\n\n";
   }
@@ -930,25 +924,24 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
   emitSourceFileHeader("Target Instruction Enum Values and Descriptors", OS);
   emitEnums(OS);
 
-  const CodeGenTarget &Target = CDP.getTargetInfo();
+  CodeGenTarget &Target = CDP.getTargetInfo();
   const std::string &TargetName = std::string(Target.getName());
-  const Record *InstrInfo = Target.getInstructionSet();
+  Record *InstrInfo = Target.getInstructionSet();
 
   // Collect all of the operand info records.
-  TGTimer &Timer = Records.getTimer();
-  Timer.startTimer("Collect operand info");
+  Records.startTimer("Collect operand info");
   OperandInfoListTy OperandInfoList;
   OperandInfoMapTy OperandInfoMap;
   unsigned OperandInfoSize =
       CollectOperandInfo(OperandInfoList, OperandInfoMap);
 
   // Collect all of the instruction's implicit uses and defs.
-  Timer.startTimer("Collect uses/defs");
-  std::map<std::vector<const Record *>, unsigned> EmittedLists;
-  std::vector<std::vector<const Record *>> ImplicitLists;
+  Records.startTimer("Collect uses/defs");
+  std::map<std::vector<Record *>, unsigned> EmittedLists;
+  std::vector<std::vector<Record *>> ImplicitLists;
   unsigned ImplicitListSize = 0;
   for (const CodeGenInstruction *II : Target.getInstructionsByEnumValue()) {
-    std::vector<const Record *> ImplicitOps = II->ImplicitUses;
+    std::vector<Record *> ImplicitOps = II->ImplicitUses;
     llvm::append_range(ImplicitOps, II->ImplicitDefs);
     if (EmittedLists.insert({ImplicitOps, ImplicitListSize}).second) {
       ImplicitLists.push_back(ImplicitOps);
@@ -981,7 +974,7 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
   OS << "namespace llvm {\n\n";
 
   // Emit all of the MCInstrDesc records in reverse ENUM ordering.
-  Timer.startTimer("Emit InstrDesc records");
+  Records.startTimer("Emit InstrDesc records");
   OS << "static_assert(sizeof(MCOperandInfo) % sizeof(MCPhysReg) == 0);\n";
   OS << "static constexpr unsigned " << TargetName << "ImpOpBase = sizeof "
      << TargetName << "InstrTable::OperandInfo / (sizeof(MCPhysReg));\n\n";
@@ -1000,13 +993,13 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
   OS << "  }, {\n";
 
   // Emit all of the operand info records.
-  Timer.startTimer("Emit operand info");
+  Records.startTimer("Emit operand info");
   EmitOperandInfo(OS, OperandInfoList);
 
   OS << "  }, {\n";
 
   // Emit all of the instruction's implicit uses and defs.
-  Timer.startTimer("Emit uses/defs");
+  Records.startTimer("Emit uses/defs");
   for (auto &List : ImplicitLists) {
     OS << "    /* " << EmittedLists[List] << " */";
     for (auto &Reg : List)
@@ -1017,7 +1010,7 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
   OS << "  }\n};\n\n";
 
   // Emit the array of instruction names.
-  Timer.startTimer("Emit instruction names");
+  Records.startTimer("Emit instruction names");
   InstrNames.layout();
   InstrNames.emitStringLiteralDef(OS, Twine("extern const char ") + TargetName +
                                           "InstrNameData[]");
@@ -1078,7 +1071,7 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
   }
 
   // MCInstrInfo initialization routine.
-  Timer.startTimer("Emit initialization routine");
+  Records.startTimer("Emit initialization routine");
   OS << "static inline void Init" << TargetName
      << "MCInstrInfo(MCInstrInfo *II) {\n";
   OS << "  II->InitMCInstrInfo(" << TargetName << "Descs.Insts, " << TargetName
@@ -1158,28 +1151,28 @@ void InstrInfoEmitter::run(raw_ostream &OS) {
 
   OS << "#endif // GET_INSTRINFO_CTOR_DTOR\n\n";
 
-  Timer.startTimer("Emit operand name mappings");
+  Records.startTimer("Emit operand name mappings");
   emitOperandNameMappings(OS, Target, NumberedInstructions);
 
-  Timer.startTimer("Emit operand type mappings");
+  Records.startTimer("Emit operand type mappings");
   emitOperandTypeMappings(OS, Target, NumberedInstructions);
 
-  Timer.startTimer("Emit logical operand size mappings");
+  Records.startTimer("Emit logical operand size mappings");
   emitLogicalOperandSizeMappings(OS, TargetName, NumberedInstructions);
 
-  Timer.startTimer("Emit logical operand type mappings");
+  Records.startTimer("Emit logical operand type mappings");
   emitLogicalOperandTypeMappings(OS, TargetName, NumberedInstructions);
 
-  Timer.startTimer("Emit helper methods");
+  Records.startTimer("Emit helper methods");
   emitMCIIHelperMethods(OS, TargetName);
 
-  Timer.startTimer("Emit verifier methods");
+  Records.startTimer("Emit verifier methods");
   emitFeatureVerifier(OS, Target);
 }
 
 void InstrInfoEmitter::emitRecord(
-    const CodeGenInstruction &Inst, unsigned Num, const Record *InstrInfo,
-    std::map<std::vector<const Record *>, unsigned> &EmittedLists,
+    const CodeGenInstruction &Inst, unsigned Num, Record *InstrInfo,
+    std::map<std::vector<Record *>, unsigned> &EmittedLists,
     const OperandInfoMapTy &OperandInfoMap, raw_ostream &OS) {
   int MinOperands = 0;
   if (!Inst.Operands.empty())
@@ -1198,11 +1191,11 @@ void InstrInfoEmitter::emitRecord(
      << Inst.TheDef->getValueAsInt("Size") << ",\t"
      << SchedModels.getSchedClassIdx(Inst) << ",\t";
 
-  const CodeGenTarget &Target = CDP.getTargetInfo();
+  CodeGenTarget &Target = CDP.getTargetInfo();
 
   // Emit the implicit use/def list...
   OS << Inst.ImplicitUses.size() << ",\t" << Inst.ImplicitDefs.size() << ",\t";
-  std::vector<const Record *> ImplicitOps = Inst.ImplicitUses;
+  std::vector<Record *> ImplicitOps = Inst.ImplicitUses;
   llvm::append_range(ImplicitOps, Inst.ImplicitDefs);
   OS << Target.getName() << "ImpOpBase + " << EmittedLists[ImplicitOps]
      << ",\t";
@@ -1296,7 +1289,7 @@ void InstrInfoEmitter::emitRecord(
     OS << "|(1ULL<<MCID::Authenticated)";
 
   // Emit all of the target-specific flags...
-  const BitsInit *TSF = Inst.TheDef->getValueAsBitsInit("TSFlags");
+  BitsInit *TSF = Inst.TheDef->getValueAsBitsInit("TSFlags");
   if (!TSF)
     PrintFatalError(Inst.TheDef->getLoc(), "no TSFlags?");
   uint64_t Value = 0;
@@ -1359,12 +1352,11 @@ void InstrInfoEmitter::emitEnums(raw_ostream &OS) {
   OS << "#endif // GET_INSTRINFO_SCHED_ENUM\n\n";
 }
 
-static void EmitInstrInfo(const RecordKeeper &Records, raw_ostream &OS) {
-  TGTimer &Timer = Records.getTimer();
-  Timer.startTimer("Analyze DAG patterns");
-  InstrInfoEmitter(Records).run(OS);
-  Timer.startTimer("Emit map table");
-  EmitMapTable(Records, OS);
+static void EmitInstrInfo(RecordKeeper &RK, raw_ostream &OS) {
+  RK.startTimer("Analyze DAG patterns");
+  InstrInfoEmitter(RK).run(OS);
+  RK.startTimer("Emit map table");
+  EmitMapTable(RK, OS);
 }
 
 static TableGen::Emitter::Opt X("gen-instr-info", EmitInstrInfo,

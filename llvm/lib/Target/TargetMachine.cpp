@@ -262,6 +262,11 @@ TLSModel::Model TargetMachine::getTLSModel(const GlobalValue *GV) const {
   return Model;
 }
 
+/// Returns the optimization level: None, Less, Default, or Aggressive.
+CodeGenOptLevel TargetMachine::getOptLevel() const { return OptLevel; }
+
+void TargetMachine::setOptLevel(CodeGenOptLevel Level) { OptLevel = Level; }
+
 TargetTransformInfo
 TargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(F.getDataLayout());

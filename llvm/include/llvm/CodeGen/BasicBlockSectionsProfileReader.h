@@ -29,6 +29,8 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Target/TargetMachine.h"
 
+using namespace llvm;
+
 namespace llvm {
 
 // This struct represents the cluster information for a machine basic block,

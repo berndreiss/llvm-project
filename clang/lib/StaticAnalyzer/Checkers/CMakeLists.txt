@@ -63,6 +63,7 @@ add_clang_library(clangStaticAnalyzerCheckers
   MacOSKeychainAPIChecker.cpp
   MacOSXAPIChecker.cpp
   MallocChecker.cpp
+  MallocOverflowSecurityChecker.cpp
   MallocSizeofChecker.cpp
   MismatchedIteratorChecker.cpp
   MmapWriteExecChecker.cpp
@@ -91,7 +92,10 @@ add_clang_library(clangStaticAnalyzerCheckers
   OSObjectCStyleCast.cpp
   PaddingChecker.cpp
   PointerArithChecker.cpp
+  PointerIterationChecker.cpp
+  PointerSortingChecker.cpp
   PointerSubChecker.cpp
+  PostgresChecker.cpp
   PthreadLockChecker.cpp
   PutenvStackArrayChecker.cpp
   RetainCountChecker/RetainCountChecker.cpp
@@ -116,7 +120,6 @@ add_clang_library(clangStaticAnalyzerCheckers
   TraversalChecker.cpp
   TrustNonnullChecker.cpp
   TrustReturnsNonnullChecker.cpp
-  UnassignedReturnValueChecker.cpp
   UndefBranchChecker.cpp
   UndefCapturedBlockVarChecker.cpp
   UndefResultChecker.cpp
@@ -131,13 +134,13 @@ add_clang_library(clangStaticAnalyzerCheckers
   VLASizeChecker.cpp
   ValistChecker.cpp
   VirtualCallChecker.cpp
-  WebKit/RawPtrRefMemberChecker.cpp
+  WebKit/NoUncountedMembersChecker.cpp
   WebKit/ASTUtils.cpp
   WebKit/PtrTypesSemantics.cpp
   WebKit/RefCntblBaseVirtualDtorChecker.cpp
-  WebKit/RawPtrRefCallArgsChecker.cpp
+  WebKit/UncountedCallArgsChecker.cpp
   WebKit/UncountedLambdaCapturesChecker.cpp
-  WebKit/RawPtrRefLocalVarsChecker.cpp
+  WebKit/UncountedLocalVarsChecker.cpp
 
   LINK_LIBS
   clangAST

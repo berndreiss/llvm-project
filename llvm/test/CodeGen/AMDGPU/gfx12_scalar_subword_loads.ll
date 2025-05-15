@@ -9,6 +9,8 @@ define amdgpu_ps void @test_s_load_i8(ptr addrspace(4) inreg %in, ptr addrspace(
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %ld = load i8, ptr addrspace(4) %in
   %sext = sext i8 %ld to i32
@@ -27,6 +29,8 @@ define amdgpu_ps void @test_s_load_i8_imm(ptr addrspace(4) inreg %in, ptr addrsp
 ; DAG-NEXT:    s_wait_kmcnt 0x0
 ; DAG-NEXT:    v_mov_b32_e32 v2, s0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_i8_imm:
@@ -37,6 +41,8 @@ define amdgpu_ps void @test_s_load_i8_imm(ptr addrspace(4) inreg %in, ptr addrsp
 ; GISEL-NEXT:    s_wait_kmcnt 0x0
 ; GISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 -100
   %ld = load i8, ptr addrspace(4) %gep
@@ -52,6 +58,8 @@ define amdgpu_ps void @test_s_load_i8_sgpr(ptr addrspace(4) inreg %in, i32 inreg
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %zext = zext i32 %offset to i64
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 %zext
@@ -68,6 +76,8 @@ define amdgpu_ps void @test_s_load_i8_sgpr_imm(ptr addrspace(4) inreg %in, i32 i
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep1 = getelementptr i8, ptr addrspace(4) %in, i64 16
   %zext = zext i32 %offset to i64
@@ -84,6 +94,8 @@ define amdgpu_ps void @test_s_load_i8_divergent(ptr addrspace(4) inreg %in, i32 
 ; GCN-NEXT:    global_load_i8 v0, v0, s[0:1] offset:16
 ; GCN-NEXT:    s_wait_loadcnt 0x0
 ; GCN-NEXT:    global_store_b32 v[1:2], v0, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep1 = getelementptr i8, ptr addrspace(4) %in, i64 16
   %zext = zext i32 %offset to i64
@@ -101,6 +113,8 @@ define amdgpu_ps void @test_s_load_u8(ptr addrspace(4) inreg %in, ptr addrspace(
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %ld = load i8, ptr addrspace(4) %in
   %zext = zext i8 %ld to i32
@@ -115,6 +129,8 @@ define amdgpu_ps void @test_s_load_u8_imm(ptr addrspace(4) inreg %in, ptr addrsp
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 255
   %ld = load i8, ptr addrspace(4) %gep
@@ -130,6 +146,8 @@ define amdgpu_ps void @test_s_load_u8_sgpr(ptr addrspace(4) inreg %in, i32 inreg
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %zext1 = zext i32 %offset to i64
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 %zext1
@@ -146,6 +164,8 @@ define amdgpu_ps void @test_s_load_u8_sgpr_imm(ptr addrspace(4) inreg %in, i32 i
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep1 = getelementptr i8, ptr addrspace(4) %in, i64 16
   %zext1= zext i32 %offset to i64
@@ -162,6 +182,8 @@ define amdgpu_ps void @test_s_load_u8_divergent(ptr addrspace(4) inreg %in, i32 
 ; GCN-NEXT:    global_load_u8 v0, v0, s[0:1] offset:16
 ; GCN-NEXT:    s_wait_loadcnt 0x0
 ; GCN-NEXT:    global_store_b32 v[1:2], v0, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep1 = getelementptr i8, ptr addrspace(4) %in, i64 16
   %zext1= zext i32 %offset to i64
@@ -179,6 +201,8 @@ define amdgpu_ps void @test_s_load_i16(ptr addrspace(4) inreg %in, ptr addrspace
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %ld = load i16, ptr addrspace(4) %in
   %sext = sext i16 %ld to i32
@@ -197,6 +221,8 @@ define amdgpu_ps void @test_s_load_i16_imm(ptr addrspace(4) inreg %in, ptr addrs
 ; DAG-NEXT:    s_wait_kmcnt 0x0
 ; DAG-NEXT:    v_mov_b32_e32 v2, s0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_i16_imm:
@@ -207,6 +233,8 @@ define amdgpu_ps void @test_s_load_i16_imm(ptr addrspace(4) inreg %in, ptr addrs
 ; GISEL-NEXT:    s_wait_kmcnt 0x0
 ; GISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep = getelementptr i16, ptr addrspace(4) %in, i64 -100
   %ld = load i16, ptr addrspace(4) %gep
@@ -222,6 +250,8 @@ define amdgpu_ps void @test_s_load_i16_sgpr(ptr addrspace(4) inreg %in, i32 inre
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %zext = zext i32 %offset to i64
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 %zext
@@ -242,6 +272,8 @@ define amdgpu_ps void @test_s_load_i16_sgpr_imm(ptr addrspace(4) inreg %in, i32 
 ; DAG-NEXT:    s_wait_kmcnt 0x0
 ; DAG-NEXT:    v_mov_b32_e32 v2, s0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_i16_sgpr_imm:
@@ -255,6 +287,8 @@ define amdgpu_ps void @test_s_load_i16_sgpr_imm(ptr addrspace(4) inreg %in, i32 
 ; GISEL-NEXT:    s_wait_kmcnt 0x0
 ; GISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep1 = getelementptr i16, ptr addrspace(4) %in, i64 16
   %zext = zext i32 %offset to i64
@@ -277,6 +311,8 @@ define amdgpu_ps void @test_s_load_i16_divergent(ptr addrspace(4) inreg %in, i32
 ; DAG-NEXT:    global_load_i16 v0, v[3:4], off offset:32
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[1:2], v0, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_i16_divergent:
@@ -292,6 +328,8 @@ define amdgpu_ps void @test_s_load_i16_divergent(ptr addrspace(4) inreg %in, i32
 ; GISEL-NEXT:    global_load_i16 v0, v[0:1], off offset:32
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    global_store_b32 v[3:4], v0, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep1 = getelementptr i16, ptr addrspace(4) %in, i64 16
   %zext = zext i32 %offset to i64
@@ -309,6 +347,8 @@ define amdgpu_ps void @test_s_load_u16(ptr addrspace(4) inreg %in, ptr addrspace
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %ld = load i16, ptr addrspace(4) %in
   %zext = zext i16 %ld to i32
@@ -323,6 +363,8 @@ define amdgpu_ps void @test_s_load_u16_imm(ptr addrspace(4) inreg %in, ptr addrs
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %gep = getelementptr i16, ptr addrspace(4) %in, i64 255
   %ld = load i16, ptr addrspace(4) %gep
@@ -338,6 +380,8 @@ define amdgpu_ps void @test_s_load_u16_sgpr(ptr addrspace(4) inreg %in, i32 inre
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
   %zext1 = zext i32 %offset to i64
   %gep = getelementptr i8, ptr addrspace(4) %in, i64 %zext1
@@ -358,6 +402,8 @@ define amdgpu_ps void @test_s_load_u16_sgpr_imm(ptr addrspace(4) inreg %in, i32 
 ; DAG-NEXT:    s_wait_kmcnt 0x0
 ; DAG-NEXT:    v_mov_b32_e32 v2, s0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_u16_sgpr_imm:
@@ -371,6 +417,8 @@ define amdgpu_ps void @test_s_load_u16_sgpr_imm(ptr addrspace(4) inreg %in, i32 
 ; GISEL-NEXT:    s_wait_kmcnt 0x0
 ; GISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep1 = getelementptr i16, ptr addrspace(4) %in, i64 16
   %zext1= zext i32 %offset to i64
@@ -393,6 +441,8 @@ define amdgpu_ps void @test_s_load_u16_divergent(ptr addrspace(4) inreg %in, i32
 ; DAG-NEXT:    global_load_u16 v0, v[3:4], off offset:32
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[1:2], v0, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: test_s_load_u16_divergent:
@@ -408,6 +458,8 @@ define amdgpu_ps void @test_s_load_u16_divergent(ptr addrspace(4) inreg %in, i32
 ; GISEL-NEXT:    global_load_u16 v0, v[0:1], off offset:32
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    global_store_b32 v[3:4], v0, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
   %gep1 = getelementptr i16, ptr addrspace(4) %in, i64 16
   %zext1= zext i32 %offset to i64
@@ -425,6 +477,8 @@ define amdgpu_ps void @s_buffer_load_byte_imm_offset(<4 x i32> inreg %src, ptr a
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.i8(<4 x i32> %src, i32 4, i32 0)
@@ -440,6 +494,8 @@ define amdgpu_ps void @s_buffer_load_byte_sgpr(<4 x i32> inreg %src, ptr addrspa
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.i8(<4 x i32> %src, i32 %offset, i32 0)
@@ -455,6 +511,8 @@ define amdgpu_ps void @s_buffer_load_byte_sgpr_or_imm_offset(<4 x i32> inreg %sr
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %off = add nuw nsw i32 %in, 100
@@ -470,6 +528,8 @@ define amdgpu_ps void @s_buffer_load_byte_sgpr_or_imm_offset_divergent(<4 x i32>
 ; DAG-NEXT:    buffer_load_i8 v2, v2, s[0:3], null offen
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: s_buffer_load_byte_sgpr_or_imm_offset_divergent:
@@ -477,6 +537,8 @@ define amdgpu_ps void @s_buffer_load_byte_sgpr_or_imm_offset_divergent(<4 x i32>
 ; GISEL-NEXT:    buffer_load_b32 v2, v2, s[0:3], null offen
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.i8(<4 x i32> %src, i32 %offset, i32 0)
@@ -494,6 +556,8 @@ define amdgpu_ps void @s_buffer_load_ubyte_imm_offset(<4 x i32> inreg %src, ptr 
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.u8(<4 x i32> %src, i32 4, i32 0)
@@ -511,6 +575,8 @@ define amdgpu_ps void @s_buffer_load_ubyte_sgpr(<4 x i32> inreg %src, ptr addrsp
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.u8(<4 x i32> %src, i32 %offset, i32 0)
@@ -528,6 +594,8 @@ define amdgpu_ps void @s_buffer_load_ubyte_sgpr_or_imm_offset(<4 x i32> inreg %s
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %off = add nuw nsw i32 %in, 100
@@ -543,6 +611,8 @@ define amdgpu_ps void @s_buffer_load_ubyte_sgpr_or_imm_offset_divergent(<4 x i32
 ; DAG-NEXT:    buffer_load_u8 v2, v2, s[0:3], null offen
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: s_buffer_load_ubyte_sgpr_or_imm_offset_divergent:
@@ -551,6 +621,8 @@ define amdgpu_ps void @s_buffer_load_ubyte_sgpr_or_imm_offset_divergent(<4 x i32
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 main_body:
   %ld = call i8 @llvm.amdgcn.s.buffer.load.u8(<4 x i32> %src, i32 %offset, i32 0)
@@ -566,6 +638,8 @@ define amdgpu_ps void @s_buffer_load_short_imm_offset(<4 x i32> inreg %src, ptr 
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.i16(<4 x i32> %src, i32 4, i32 0)
@@ -581,6 +655,8 @@ define amdgpu_ps void @s_buffer_load_short_sgpr(<4 x i32> inreg %src, ptr addrsp
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.i16(<4 x i32> %src, i32 %offset, i32 0)
@@ -596,6 +672,8 @@ define amdgpu_ps void @s_buffer_load_short_sgpr_or_imm_offset(<4 x i32> inreg %s
 ; GCN-NEXT:    s_wait_kmcnt 0x0
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %off = add nuw nsw i32 %in, 100
@@ -611,6 +689,8 @@ define amdgpu_ps void @s_buffer_load_short_sgpr_or_imm_offset_divergent(<4 x i32
 ; DAG-NEXT:    buffer_load_i16 v2, v2, s[0:3], null offen
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: s_buffer_load_short_sgpr_or_imm_offset_divergent:
@@ -618,6 +698,8 @@ define amdgpu_ps void @s_buffer_load_short_sgpr_or_imm_offset_divergent(<4 x i32
 ; GISEL-NEXT:    buffer_load_b32 v2, v2, s[0:3], null offen
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.i16(<4 x i32> %src, i32 %offset, i32 0)
@@ -635,6 +717,8 @@ define amdgpu_ps void @s_buffer_load_ushort_imm_offset(<4 x i32> inreg %src, ptr
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.u16(<4 x i32> %src, i32 4, i32 0)
@@ -652,6 +736,8 @@ define amdgpu_ps void @s_buffer_load_ushort_sgpr(<4 x i32> inreg %src, ptr addrs
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.u16(<4 x i32> %src, i32 %offset, i32 0)
@@ -669,6 +755,8 @@ define amdgpu_ps void @s_buffer_load_ushort_sgpr_or_imm_offset(<4 x i32> inreg %
 ; GCN-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GCN-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN-NEXT:    global_store_b32 v[0:1], v2, off
+; GCN-NEXT:    s_nop 0
+; GCN-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GCN-NEXT:    s_endpgm
 main_body:
   %off = add nuw nsw i32 %in, 100
@@ -684,6 +772,8 @@ define amdgpu_ps void @s_buffer_load_ushort_sgpr_or_imm_offset_divergent(<4 x i3
 ; DAG-NEXT:    buffer_load_u16 v2, v2, s[0:3], null offen
 ; DAG-NEXT:    s_wait_loadcnt 0x0
 ; DAG-NEXT:    global_store_b32 v[0:1], v2, off
+; DAG-NEXT:    s_nop 0
+; DAG-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; DAG-NEXT:    s_endpgm
 ;
 ; GISEL-LABEL: s_buffer_load_ushort_sgpr_or_imm_offset_divergent:
@@ -692,6 +782,8 @@ define amdgpu_ps void @s_buffer_load_ushort_sgpr_or_imm_offset_divergent(<4 x i3
 ; GISEL-NEXT:    s_wait_loadcnt 0x0
 ; GISEL-NEXT:    v_and_b32_e32 v2, 0xffff, v2
 ; GISEL-NEXT:    global_store_b32 v[0:1], v2, off
+; GISEL-NEXT:    s_nop 0
+; GISEL-NEXT:    s_sendmsg sendmsg(MSG_DEALLOC_VGPRS)
 ; GISEL-NEXT:    s_endpgm
 main_body:
   %ld = call i16 @llvm.amdgcn.s.buffer.load.u16(<4 x i32> %src, i32 %offset, i32 0)

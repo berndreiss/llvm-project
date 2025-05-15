@@ -16,7 +16,6 @@
 #include "Common/DAGISelMatcher.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/TableGen/Record.h"
-#include "llvm/TableGen/TGTimer.h"
 #include "llvm/TableGen/TableGenBackend.h"
 using namespace llvm;
 
@@ -26,11 +25,11 @@ namespace {
 /// DAGISelEmitter - The top-level class which coordinates construction
 /// and emission of the instruction selector.
 class DAGISelEmitter {
-  const RecordKeeper &Records; // Just so we can get at the timing functions.
-  const CodeGenDAGPatterns CGP;
+  RecordKeeper &Records; // Just so we can get at the timing functions.
+  CodeGenDAGPatterns CGP;
 
 public:
-  explicit DAGISelEmitter(const RecordKeeper &R) : Records(R), CGP(R) {}
+  explicit DAGISelEmitter(RecordKeeper &R) : Records(R), CGP(R) {}
   void run(raw_ostream &OS);
 };
 } // End anonymous namespace
@@ -48,15 +47,15 @@ static unsigned getResultPatternCost(TreePatternNode &P,
     return 0;
 
   unsigned Cost = 0;
-  const Record *Op = P.getOperator();
+  Record *Op = P.getOperator();
   if (Op->isSubClassOf("Instruction")) {
     Cost++;
     CodeGenInstruction &II = CGP.getTargetInfo().getInstruction(Op);
     if (II.usesCustomInserter)
       Cost += 10;
   }
-  for (unsigned I = 0, E = P.getNumChildren(); I != E; ++I)
-    Cost += getResultPatternCost(P.getChild(I), CGP);
+  for (unsigned i = 0, e = P.getNumChildren(); i != e; ++i)
+    Cost += getResultPatternCost(P.getChild(i), CGP);
   return Cost;
 }
 
@@ -68,12 +67,12 @@ static unsigned getResultPatternSize(TreePatternNode &P,
     return 0;
 
   unsigned Cost = 0;
-  const Record *Op = P.getOperator();
+  Record *Op = P.getOperator();
   if (Op->isSubClassOf("Instruction")) {
     Cost += Op->getValueAsInt("CodeSize");
   }
-  for (unsigned I = 0, E = P.getNumChildren(); I != E; ++I)
-    Cost += getResultPatternSize(P.getChild(I), CGP);
+  for (unsigned i = 0, e = P.getNumChildren(); i != e; ++i)
+    Cost += getResultPatternSize(P.getChild(i), CGP);
   return Cost;
 }
 
@@ -82,8 +81,8 @@ namespace {
 // In particular, we want to match maximal patterns first and lowest cost within
 // a particular complexity first.
 struct PatternSortingPredicate {
-  PatternSortingPredicate(const CodeGenDAGPatterns &cgp) : CGP(cgp) {}
-  const CodeGenDAGPatterns &CGP;
+  PatternSortingPredicate(CodeGenDAGPatterns &cgp) : CGP(cgp) {}
+  CodeGenDAGPatterns &CGP;
 
   bool operator()(const PatternToMatch *LHS, const PatternToMatch *RHS) {
     const TreePatternNode &LT = LHS->getSrcPattern();
@@ -133,8 +132,7 @@ struct PatternSortingPredicate {
 } // End anonymous namespace
 
 void DAGISelEmitter::run(raw_ostream &OS) {
-  TGTimer &Timer = Records.getTimer();
-  Timer.startTimer("Parse patterns");
+  Records.startTimer("Parse patterns");
   emitSourceFileHeader("DAG Instruction Selector for the " +
                            CGP.getTargetInfo().getName().str() + " target",
                        OS);
@@ -165,7 +163,7 @@ void DAGISelEmitter::run(raw_ostream &OS) {
              });
 
   // Add all the patterns to a temporary list so we can sort them.
-  Timer.startTimer("Sort patterns");
+  Records.startTimer("Sort patterns");
   std::vector<const PatternToMatch *> Patterns;
   for (const PatternToMatch &PTM : CGP.ptms())
     Patterns.push_back(&PTM);
@@ -175,7 +173,7 @@ void DAGISelEmitter::run(raw_ostream &OS) {
   llvm::stable_sort(Patterns, PatternSortingPredicate(CGP));
 
   // Convert each variant of each pattern into a Matcher.
-  Timer.startTimer("Convert to matchers");
+  Records.startTimer("Convert to matchers");
   SmallVector<Matcher *, 0> PatternMatchers;
   for (const PatternToMatch *PTM : Patterns) {
     for (unsigned Variant = 0;; ++Variant) {
@@ -189,12 +187,12 @@ void DAGISelEmitter::run(raw_ostream &OS) {
   std::unique_ptr<Matcher> TheMatcher =
       std::make_unique<ScopeMatcher>(std::move(PatternMatchers));
 
-  Timer.startTimer("Optimize matchers");
+  Records.startTimer("Optimize matchers");
   OptimizeMatcher(TheMatcher, CGP);
 
   // Matcher->dump();
 
-  Timer.startTimer("Emit matcher table");
+  Records.startTimer("Emit matcher table");
   EmitMatcherTable(TheMatcher.get(), CGP, OS);
 }
 

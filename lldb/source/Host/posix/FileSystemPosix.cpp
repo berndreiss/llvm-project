@@ -36,7 +36,7 @@ const char *FileSystem::DEV_NULL = "/dev/null";
 Status FileSystem::Symlink(const FileSpec &src, const FileSpec &dst) {
   Status error;
   if (::symlink(dst.GetPath().c_str(), src.GetPath().c_str()) == -1)
-    return Status::FromErrno();
+    error.SetErrorToErrno();
   return error;
 }
 
@@ -45,24 +45,26 @@ Status FileSystem::Readlink(const FileSpec &src, FileSpec &dst) {
   char buf[PATH_MAX];
   ssize_t count = ::readlink(src.GetPath().c_str(), buf, sizeof(buf) - 1);
   if (count < 0)
-    return Status::FromErrno();
-
-  buf[count] = '\0'; // Success
-  dst.SetFile(buf, FileSpec::Style::native);
-
+    error.SetErrorToErrno();
+  else {
+    buf[count] = '\0'; // Success
+    dst.SetFile(buf, FileSpec::Style::native);
+  }
   return error;
 }
 
 Status FileSystem::ResolveSymbolicLink(const FileSpec &src, FileSpec &dst) {
   char resolved_path[PATH_MAX];
   if (!src.GetPath(resolved_path, sizeof(resolved_path))) {
-    return Status::FromErrorStringWithFormat(
-        "Couldn't get the canonical path for %s", src.GetPath().c_str());
+    return Status("Couldn't get the canonical path for %s",
+                  src.GetPath().c_str());
   }
 
   char real_path[PATH_MAX + 1];
   if (realpath(resolved_path, real_path) == nullptr) {
-    return Status::FromErrno();
+    Status err;
+    err.SetErrorToErrno();
+    return err;
   }
 
   dst = FileSpec(real_path);

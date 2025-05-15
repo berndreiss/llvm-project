@@ -309,10 +309,7 @@ enum BuiltinTemplateKind : int {
   BTK__make_integer_seq,
 
   /// This names the __type_pack_element BuiltinTemplateDecl.
-  BTK__type_pack_element,
-
-  /// This names the __builtin_common_type BuiltinTemplateDecl.
-  BTK__builtin_common_type,
+  BTK__type_pack_element
 };
 
 } // end namespace clang

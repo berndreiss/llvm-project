@@ -18,7 +18,6 @@ Basic Commands
    llc
    lli
    llvm-as
-   llvm-cgdata
    llvm-config
    llvm-cov
    llvm-cxxmap

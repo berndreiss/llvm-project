@@ -13,8 +13,6 @@
 #include <__exception/exception_ptr.h>
 #include <__memory/addressof.h>
 #include <__type_traits/decay.h>
-#include <__type_traits/enable_if.h>
-#include <__type_traits/integral_constant.h>
 #include <__type_traits/is_base_of.h>
 #include <__type_traits/is_class.h>
 #include <__type_traits/is_constructible.h>
@@ -22,6 +20,7 @@
 #include <__type_traits/is_final.h>
 #include <__type_traits/is_polymorphic.h>
 #include <__utility/forward.h>
+#include <cstddef>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -39,7 +38,7 @@ public:
   virtual ~nested_exception() _NOEXCEPT;
 
   // access functions
-  [[__noreturn__]] void rethrow_nested() const;
+  _LIBCPP_NORETURN void rethrow_nested() const;
   _LIBCPP_HIDE_FROM_ABI exception_ptr nested_ptr() const _NOEXCEPT { return __ptr_; }
 };
 
@@ -48,26 +47,26 @@ struct __nested : public _Tp, public nested_exception {
   _LIBCPP_HIDE_FROM_ABI explicit __nested(const _Tp& __t) : _Tp(__t) {}
 };
 
-#if _LIBCPP_HAS_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
 template <class _Tp, class _Up, bool>
 struct __throw_with_nested;
 
 template <class _Tp, class _Up>
 struct __throw_with_nested<_Tp, _Up, true> {
-  [[__noreturn__]] static inline _LIBCPP_HIDE_FROM_ABI void __do_throw(_Tp&& __t) {
+  _LIBCPP_NORETURN static inline _LIBCPP_HIDE_FROM_ABI void __do_throw(_Tp&& __t) {
     throw __nested<_Up>(std::forward<_Tp>(__t));
   }
 };
 
 template <class _Tp, class _Up>
 struct __throw_with_nested<_Tp, _Up, false> {
-  [[__noreturn__]] static inline _LIBCPP_HIDE_FROM_ABI void __do_throw(_Tp&& __t) { throw std::forward<_Tp>(__t); }
+  _LIBCPP_NORETURN static inline _LIBCPP_HIDE_FROM_ABI void __do_throw(_Tp&& __t) { throw std::forward<_Tp>(__t); }
 };
 #endif
 
 template <class _Tp>
-[[__noreturn__]] _LIBCPP_HIDE_FROM_ABI void throw_with_nested(_Tp&& __t) {
-#if _LIBCPP_HAS_EXCEPTIONS
+_LIBCPP_NORETURN _LIBCPP_HIDE_FROM_ABI void throw_with_nested(_Tp&& __t) {
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
   using _Up = __decay_t<_Tp>;
   static_assert(is_copy_constructible<_Up>::value, "type thrown must be CopyConstructible");
   __throw_with_nested<_Tp,

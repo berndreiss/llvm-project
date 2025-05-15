@@ -22,9 +22,11 @@ namespace llvm {
   class AssumptionCache;
   class BasicBlock;
   class Constant;
+  class ConstantRange;
   class DataLayout;
   class DominatorTree;
   class Instruction;
+  class TargetLibraryInfo;
   class Value;
   class Use;
   class LazyValueInfoImpl;

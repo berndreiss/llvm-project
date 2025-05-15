@@ -11,6 +11,7 @@
 #include "test/UnitTest/ErrnoSetterMatcher.h"
 #include "test/UnitTest/Test.h"
 
+#include <errno.h>
 #include <signal.h>
 
 // This tests invalid inputs and ensures errno is properly set.

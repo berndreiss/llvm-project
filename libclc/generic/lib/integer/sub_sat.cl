@@ -1,5 +1,5 @@
 #include <clc/clc.h>
-#include <clc/clcmacro.h>
+#include "../clcmacro.h"
 
 _CLC_OVERLOAD _CLC_DEF char sub_sat(char x, char y) {
   short r = x - y;

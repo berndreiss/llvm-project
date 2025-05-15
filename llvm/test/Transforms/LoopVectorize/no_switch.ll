@@ -2,16 +2,18 @@
 ; RUN: opt < %s -passes=loop-vectorize,transform-warning -force-vector-width=1 -S 2>&1 | FileCheck %s -check-prefix=NOANALYSIS
 ; RUN: opt < %s -passes=loop-vectorize,transform-warning -force-vector-width=4 -pass-remarks-missed='loop-vectorize' -S 2>&1 | FileCheck %s -check-prefix=MOREINFO
 
-; CHECK-NOT: loop not vectorized: loop contains a switch statement
-; CHECK-NOT: loop not vectorized: the optimizer was unable to perform the requested transformation; the transformation might be disabled or specified as part of an unsupported transformation ordering
+; CHECK: remark: source.cpp:4:5: loop not vectorized: loop contains a switch statement
+; CHECK: warning: source.cpp:4:5: loop not vectorized: the optimizer was unable to perform the requested transformation; the transformation might be disabled or specified as part of an unsupported transformation ordering
 
 ; NOANALYSIS-NOT: remark: {{.*}}
-; NOANALYSIS: loop not vectorized: the optimizer was unable to perform the requested transformation; the transformation might be disabled or specified as part of an unsupported transformation ordering
+; NOANALYSIS: warning: source.cpp:4:5: loop not vectorized: the optimizer was unable to perform the requested transformation; the transformation might be disabled or specified as part of an unsupported transformation ordering
 
-; MOREINFO-NOT: remark
+; MOREINFO: remark: source.cpp:4:5: loop not vectorized: loop contains a switch statement
+; MOREINFO: remark: source.cpp:4:5: loop not vectorized (Force=true, Vector Width=4)
+; MOREINFO: warning: source.cpp:4:5: loop not vectorized: the optimizer was unable to perform the requested transformation; the transformation might be disabled or specified as part of an unsupported transformation ordering
 
 ; CHECK: _Z11test_switchPii
-; CHECK: vector.body:
+; CHECK-NOT: x i32>
 ; CHECK: ret
 
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"

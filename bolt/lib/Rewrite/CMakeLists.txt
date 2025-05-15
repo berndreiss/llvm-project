@@ -1,6 +1,7 @@
 set(LLVM_LINK_COMPONENTS
   Core
   DebugInfoDWARF
+  DWP
   JITLink
   MC
   Object

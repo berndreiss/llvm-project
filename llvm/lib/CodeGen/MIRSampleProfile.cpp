@@ -126,10 +126,8 @@ template <> struct IRTraits<MachineBasicBlock> {
   using PostDominatorTreeT = MachinePostDominatorTree;
   using OptRemarkEmitterT = MachineOptimizationRemarkEmitter;
   using OptRemarkAnalysisT = MachineOptimizationRemarkAnalysis;
-  using PredRangeT =
-      iterator_range<SmallVectorImpl<MachineBasicBlock *>::iterator>;
-  using SuccRangeT =
-      iterator_range<SmallVectorImpl<MachineBasicBlock *>::iterator>;
+  using PredRangeT = iterator_range<std::vector<MachineBasicBlock *>::iterator>;
+  using SuccRangeT = iterator_range<std::vector<MachineBasicBlock *>::iterator>;
   static Function &getFunction(MachineFunction &F) { return F.getFunction(); }
   static const MachineBasicBlock *getEntryBB(const MachineFunction *F) {
     return GraphTraits<const MachineFunction *>::getEntryNode(F);
@@ -366,18 +364,13 @@ bool MIRProfileLoaderPass::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "MIRProfileLoader pass working on Func: "
                     << MF.getFunction().getName() << "\n");
   MBFI = &getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI();
-  auto *MDT = &getAnalysis<MachineDominatorTreeWrapperPass>().getDomTree();
-  auto *MPDT =
-      &getAnalysis<MachinePostDominatorTreeWrapperPass>().getPostDomTree();
-
-  MF.RenumberBlocks();
-  MDT->updateBlockNumbers();
-  MPDT->updateBlockNumbers();
-
   MIRSampleLoader->setInitVals(
-      MDT, MPDT, &getAnalysis<MachineLoopInfoWrapperPass>().getLI(), MBFI,
+      &getAnalysis<MachineDominatorTreeWrapperPass>().getDomTree(),
+      &getAnalysis<MachinePostDominatorTreeWrapperPass>().getPostDomTree(),
+      &getAnalysis<MachineLoopInfoWrapperPass>().getLI(), MBFI,
       &getAnalysis<MachineOptimizationRemarkEmitterPass>().getORE());
 
+  MF.RenumberBlocks();
   if (ViewBFIBefore && ViewBlockLayoutWithBFI != GVDT_None &&
       (ViewBlockFreqFuncName.empty() ||
        MF.getFunction().getName() == ViewBlockFreqFuncName)) {

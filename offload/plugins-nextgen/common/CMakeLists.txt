@@ -7,7 +7,7 @@ add_library(PluginCommon OBJECT
   src/RPC.cpp
   src/Utils/ELF.cpp
 )
-add_dependencies(PluginCommon intrinsics_gen LLVMProfileData)
+add_dependencies(PluginCommon intrinsics_gen)
 
 # Only enable JIT for those targets that LLVM can support.
 set(supported_jit_targets AMDGPU NVPTX)
@@ -38,6 +38,12 @@ elseif(${LIBOMPTARGET_GPU_LIBC_SUPPORT})
   endif()
 endif()
 
+# If we have OMPT enabled include it in the list of sources.
+if (OMPT_TARGET_DEFAULT AND LIBOMPTARGET_OMPT_SUPPORT)
+  target_sources(PluginCommon PRIVATE OMPT/OmptCallback.cpp)
+  target_include_directories(PluginCommon PRIVATE OMPT)
+endif()
+
 # Define the TARGET_NAME and DEBUG_PREFIX.
 target_compile_definitions(PluginCommon PRIVATE
   TARGET_NAME="PluginInterface"
@@ -46,7 +52,6 @@ target_compile_definitions(PluginCommon PRIVATE
 
 target_compile_options(PluginCommon PUBLIC ${offload_compile_flags})
 target_link_options(PluginCommon PUBLIC ${offload_link_flags})
-target_link_libraries(PluginCommon PRIVATE LLVMProfileData)
 
 target_include_directories(PluginCommon PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include

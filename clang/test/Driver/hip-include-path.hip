@@ -1,3 +1,4 @@
+// REQUIRES: libgcc
 // UNSUPPORTED: system-windows
 
 // RUN: %clang -c -### --target=x86_64-unknown-linux-gnu --cuda-gpu-arch=gfx900 \

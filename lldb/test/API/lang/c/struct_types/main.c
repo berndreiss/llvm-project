@@ -1,4 +1,3 @@
-// clang-format off
 struct things_to_sum {
     int a;
     int b;
@@ -19,7 +18,7 @@ int main (int argc, char const *argv[])
     }; //% self.expect("frame variable pt.padding[0]", DATA_TYPES_DISPLAYED_CORRECTLY, substrs = ["pt.padding[0] = "])
        //% self.expect("frame variable pt.padding[1]", DATA_TYPES_DISPLAYED_CORRECTLY, substrs = ["pt.padding[1] = "])
        //% self.expect_expr("pt.padding[0]", result_type="char")
-       //% self.expect("image lookup -t point_tag", DATA_TYPES_DISPLAYED_CORRECTLY, substrs = ['padding[0]'])
+       //% self.expect("image lookup -t point_tag", DATA_TYPES_DISPLAYED_CORRECTLY, substrs = ['padding[]'])
 
     struct {} empty;
     //% self.expect("frame variable empty", substrs = ["empty = {}"])

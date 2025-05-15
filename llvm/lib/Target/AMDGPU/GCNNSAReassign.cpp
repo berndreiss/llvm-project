@@ -49,8 +49,8 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<LiveIntervalsWrapperPass>();
-    AU.addRequired<VirtRegMapWrapperLegacy>();
-    AU.addRequired<LiveRegMatrixWrapperLegacy>();
+    AU.addRequired<VirtRegMap>();
+    AU.addRequired<LiveRegMatrix>();
     AU.setPreservesAll();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
@@ -95,8 +95,8 @@ private:
 INITIALIZE_PASS_BEGIN(GCNNSAReassign, DEBUG_TYPE, "GCN NSA Reassign",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(LiveIntervalsWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(VirtRegMapWrapperLegacy)
-INITIALIZE_PASS_DEPENDENCY(LiveRegMatrixWrapperLegacy)
+INITIALIZE_PASS_DEPENDENCY(VirtRegMap)
+INITIALIZE_PASS_DEPENDENCY(LiveRegMatrix)
 INITIALIZE_PASS_END(GCNNSAReassign, DEBUG_TYPE, "GCN NSA Reassign",
                     false, false)
 
@@ -242,8 +242,8 @@ bool GCNNSAReassign::runOnMachineFunction(MachineFunction &MF) {
 
   MRI = &MF.getRegInfo();
   TRI = ST->getRegisterInfo();
-  VRM = &getAnalysis<VirtRegMapWrapperLegacy>().getVRM();
-  LRM = &getAnalysis<LiveRegMatrixWrapperLegacy>().getLRM();
+  VRM = &getAnalysis<VirtRegMap>();
+  LRM = &getAnalysis<LiveRegMatrix>();
   LIS = &getAnalysis<LiveIntervalsWrapperPass>().getLIS();
 
   const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
@@ -328,14 +328,12 @@ bool GCNNSAReassign::runOnMachineFunction(MachineFunction &MF) {
         continue;
     } else {
       // Check we did not make it worse for other instructions.
-      auto *I =
-          std::lower_bound(Candidates.begin(), &C, MinInd,
-                           [this](const Candidate &C, SlotIndex I) {
-                             return LIS->getInstructionIndex(*C.first) < I;
-                           });
-      for (auto *E = Candidates.end();
-           Success && I != E && LIS->getInstructionIndex(*I->first) < MaxInd;
-           ++I) {
+      auto I = std::lower_bound(Candidates.begin(), &C, MinInd,
+                                [this](const Candidate &C, SlotIndex I) {
+                                  return LIS->getInstructionIndex(*C.first) < I;
+                                });
+      for (auto E = Candidates.end(); Success && I != E &&
+              LIS->getInstructionIndex(*I->first) < MaxInd; ++I) {
         if (I->second && CheckNSA(*I->first, true) < NSA_Status::CONTIGUOUS) {
           Success = false;
           LLVM_DEBUG(dbgs() << "\tNSA conversion conflict with " << *I->first);

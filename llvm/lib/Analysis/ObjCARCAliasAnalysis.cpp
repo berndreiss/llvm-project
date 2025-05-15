@@ -29,7 +29,9 @@
 
 #include "llvm/Analysis/ObjCARCAliasAnalysis.h"
 #include "llvm/Analysis/ObjCARCAnalysisUtils.h"
+#include "llvm/Analysis/Passes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 
 #define DEBUG_TYPE "objc-arc-aa"

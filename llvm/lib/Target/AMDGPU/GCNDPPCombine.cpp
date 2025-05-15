@@ -37,7 +37,6 @@
 // The mov_dpp instruction should reside in the same BB as all its uses
 //===----------------------------------------------------------------------===//
 
-#include "GCNDPPCombine.h"
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
@@ -52,7 +51,7 @@ STATISTIC(NumDPPMovsCombined, "Number of DPP moves combined.");
 
 namespace {
 
-class GCNDPPCombine {
+class GCNDPPCombine : public MachineFunctionPass {
   MachineRegisterInfo *MRI;
   const SIInstrInfo *TII;
   const GCNSubtarget *ST;
@@ -77,18 +76,12 @@ class GCNDPPCombine {
 
   bool combineDPPMov(MachineInstr &MI) const;
 
-  int getDPPOp(unsigned Op, bool IsShrinkable) const;
-  bool isShrinkable(MachineInstr &MI) const;
-
-public:
-  bool run(MachineFunction &MF);
-};
-
-class GCNDPPCombineLegacy : public MachineFunctionPass {
 public:
   static char ID;
 
-  GCNDPPCombineLegacy() : MachineFunctionPass(ID) {}
+  GCNDPPCombine() : MachineFunctionPass(ID) {
+    initializeGCNDPPCombinePass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -103,19 +96,22 @@ public:
     return MachineFunctionProperties()
       .set(MachineFunctionProperties::Property::IsSSA);
   }
+
+private:
+  int getDPPOp(unsigned Op, bool IsShrinkable) const;
+  bool isShrinkable(MachineInstr &MI) const;
 };
 
 } // end anonymous namespace
 
-INITIALIZE_PASS(GCNDPPCombineLegacy, DEBUG_TYPE, "GCN DPP Combine", false,
-                false)
+INITIALIZE_PASS(GCNDPPCombine, DEBUG_TYPE, "GCN DPP Combine", false, false)
 
-char GCNDPPCombineLegacy::ID = 0;
+char GCNDPPCombine::ID = 0;
 
-char &llvm::GCNDPPCombineLegacyID = GCNDPPCombineLegacy::ID;
+char &llvm::GCNDPPCombineID = GCNDPPCombine::ID;
 
 FunctionPass *llvm::createGCNDPPCombinePass() {
-  return new GCNDPPCombineLegacy();
+  return new GCNDPPCombine();
 }
 
 bool GCNDPPCombine::isShrinkable(MachineInstr &MI) const {
@@ -501,7 +497,7 @@ MachineInstr *GCNDPPCombine::createDPPInst(
       return nullptr;
     }
     CombOldVGPR = getRegSubRegPair(*Src1);
-    auto *MovDst = TII->getNamedOperand(MovMI, AMDGPU::OpName::vdst);
+    auto MovDst = TII->getNamedOperand(MovMI, AMDGPU::OpName::vdst);
     const TargetRegisterClass *RC = MRI->getRegClass(MovDst->getReg());
     if (!isOfRegClass(CombOldVGPR, *RC, *MRI)) {
       LLVM_DEBUG(dbgs() << "  failed: src1 has wrong register class\n");
@@ -753,16 +749,9 @@ bool GCNDPPCombine::combineDPPMov(MachineInstr &MovMI) const {
   return !Rollback;
 }
 
-bool GCNDPPCombineLegacy::runOnMachineFunction(MachineFunction &MF) {
-  if (skipFunction(MF.getFunction()))
-    return false;
-
-  return GCNDPPCombine().run(MF);
-}
-
-bool GCNDPPCombine::run(MachineFunction &MF) {
+bool GCNDPPCombine::runOnMachineFunction(MachineFunction &MF) {
   ST = &MF.getSubtarget<GCNSubtarget>();
-  if (!ST->hasDPP())
+  if (!ST->hasDPP() || skipFunction(MF.getFunction()))
     return false;
 
   MRI = &MF.getRegInfo();
@@ -791,20 +780,4 @@ bool GCNDPPCombine::run(MachineFunction &MF) {
     }
   }
   return Changed;
-}
-
-PreservedAnalyses GCNDPPCombinePass::run(MachineFunction &MF,
-                                         MachineFunctionAnalysisManager &) {
-  MFPropsModifier _(*this, MF);
-
-  if (MF.getFunction().hasOptNone())
-    return PreservedAnalyses::all();
-
-  bool Changed = GCNDPPCombine().run(MF);
-  if (!Changed)
-    return PreservedAnalyses::all();
-
-  auto PA = getMachineFunctionPassPreservedAnalyses();
-  PA.preserveSet<CFGAnalyses>();
-  return PA;
 }

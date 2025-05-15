@@ -35,28 +35,10 @@ convertArithOverflowFlags(arith::IntegerOverflowFlags flags) {
 
 void arith::ConstantOp::inferResultRanges(ArrayRef<ConstantIntRanges> argRanges,
                                           SetIntRangeFn setResultRange) {
-  if (auto scalarCstAttr = llvm::dyn_cast_or_null<IntegerAttr>(getValue())) {
-    const APInt &value = scalarCstAttr.getValue();
+  auto constAttr = llvm::dyn_cast_or_null<IntegerAttr>(getValue());
+  if (constAttr) {
+    const APInt &value = constAttr.getValue();
     setResultRange(getResult(), ConstantIntRanges::constant(value));
-    return;
-  }
-  if (auto arrayCstAttr =
-          llvm::dyn_cast_or_null<DenseIntElementsAttr>(getValue())) {
-    if (arrayCstAttr.isSplat()) {
-      setResultRange(getResult(), ConstantIntRanges::constant(
-                                      arrayCstAttr.getSplatValue<APInt>()));
-      return;
-    }
-
-    std::optional<ConstantIntRanges> result;
-    for (const APInt &val : arrayCstAttr) {
-      auto range = ConstantIntRanges::constant(val);
-      result = (result ? result->rangeUnion(range) : range);
-    }
-
-    assert(result && "Zero-sized vectors are not allowed");
-    setResultRange(getResult(), *result);
-    return;
   }
 }
 

@@ -26,10 +26,8 @@
 //   Returns: Di.
 //
 
-#include <cassert>
-#include <cstddef>
 #include <mdspan>
-#include <span> // dynamic_extent
+#include <cassert>
 #include <utility>
 
 #include "test_macros.h"

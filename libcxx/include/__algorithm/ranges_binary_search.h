@@ -32,7 +32,8 @@ _LIBCPP_PUSH_MACROS
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 namespace ranges {
-struct __binary_search {
+namespace __binary_search {
+struct __fn {
   template <forward_iterator _Iter,
             sentinel_for<_Iter> _Sent,
             class _Type,
@@ -56,9 +57,10 @@ struct __binary_search {
     return __ret != __last && !std::invoke(__comp, __value, std::invoke(__proj, *__ret));
   }
 };
+} // namespace __binary_search
 
 inline namespace __cpo {
-inline constexpr auto binary_search = __binary_search{};
+inline constexpr auto binary_search = __binary_search::__fn{};
 } // namespace __cpo
 } // namespace ranges
 

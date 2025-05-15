@@ -13,7 +13,9 @@
 #ifndef LLVM_CLANG_SEMA_SEMABPF_H
 #define LLVM_CLANG_SEMA_SEMABPF_H
 
-#include "clang/AST/ASTFwd.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclBase.h"
+#include "clang/AST/Expr.h"
 #include "clang/Sema/SemaBase.h"
 
 namespace clang {

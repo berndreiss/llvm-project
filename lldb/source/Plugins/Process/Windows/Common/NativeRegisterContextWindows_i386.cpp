@@ -61,7 +61,7 @@ static Status GetThreadContextHelper(lldb::thread_t thread_handle,
   memset(context_ptr, 0, sizeof(::CONTEXT));
   context_ptr->ContextFlags = control_flag;
   if (!::GetThreadContext(thread_handle, context_ptr)) {
-    error = Status(GetLastError(), eErrorTypeWin32);
+    error.SetError(GetLastError(), eErrorTypeWin32);
     LLDB_LOG(log, "{0} GetThreadContext failed with error {1}", __FUNCTION__,
              error);
     return error;
@@ -75,7 +75,7 @@ static Status SetThreadContextHelper(lldb::thread_t thread_handle,
   Status error;
 
   if (!::SetThreadContext(thread_handle, context_ptr)) {
-    error = Status(GetLastError(), eErrorTypeWin32);
+    error.SetError(GetLastError(), eErrorTypeWin32);
     LLDB_LOG(log, "{0} SetThreadContext failed with error {1}", __FUNCTION__,
              error);
     return error;
@@ -265,9 +265,9 @@ Status NativeRegisterContextWindows_i386::DRRead(const uint32_t reg,
     reg_value.SetUInt32(tls_context.Dr3);
     break;
   case lldb_dr4_i386:
-    return Status::FromErrorString("register DR4 is obsolete");
+    return Status("register DR4 is obsolete");
   case lldb_dr5_i386:
-    return Status::FromErrorString("register DR5 is obsolete");
+    return Status("register DR5 is obsolete");
   case lldb_dr6_i386:
     reg_value.SetUInt32(tls_context.Dr6);
     break;
@@ -304,9 +304,9 @@ NativeRegisterContextWindows_i386::DRWrite(const uint32_t reg,
     tls_context.Dr3 = reg_value.GetAsUInt32();
     break;
   case lldb_dr4_i386:
-    return Status::FromErrorString("register DR4 is obsolete");
+    return Status("register DR4 is obsolete");
   case lldb_dr5_i386:
-    return Status::FromErrorString("register DR5 is obsolete");
+    return Status("register DR5 is obsolete");
   case lldb_dr6_i386:
     tls_context.Dr6 = reg_value.GetAsUInt32();
     break;
@@ -324,7 +324,7 @@ NativeRegisterContextWindows_i386::ReadRegister(const RegisterInfo *reg_info,
   Status error;
 
   if (!reg_info) {
-    error = Status::FromErrorString("reg_info NULL");
+    error.SetErrorString("reg_info NULL");
     return error;
   }
 
@@ -332,10 +332,9 @@ NativeRegisterContextWindows_i386::ReadRegister(const RegisterInfo *reg_info,
   if (reg == LLDB_INVALID_REGNUM) {
     // This is likely an internal register for lldb use only and should not be
     // directly queried.
-    error = Status::FromErrorStringWithFormat(
-        "register \"%s\" is an internal-only lldb "
-        "register, cannot read directly",
-        reg_info->name);
+    error.SetErrorStringWithFormat("register \"%s\" is an internal-only lldb "
+                                   "register, cannot read directly",
+                                   reg_info->name);
     return error;
   }
 
@@ -345,7 +344,7 @@ NativeRegisterContextWindows_i386::ReadRegister(const RegisterInfo *reg_info,
   if (IsDR(reg))
     return DRRead(reg, reg_value);
 
-  return Status::FromErrorString("unimplemented");
+  return Status("unimplemented");
 }
 
 Status NativeRegisterContextWindows_i386::WriteRegister(
@@ -353,7 +352,7 @@ Status NativeRegisterContextWindows_i386::WriteRegister(
   Status error;
 
   if (!reg_info) {
-    error = Status::FromErrorString("reg_info NULL");
+    error.SetErrorString("reg_info NULL");
     return error;
   }
 
@@ -361,10 +360,9 @@ Status NativeRegisterContextWindows_i386::WriteRegister(
   if (reg == LLDB_INVALID_REGNUM) {
     // This is likely an internal register for lldb use only and should not be
     // directly written.
-    error = Status::FromErrorStringWithFormat(
-        "register \"%s\" is an internal-only lldb "
-        "register, cannot write directly",
-        reg_info->name);
+    error.SetErrorStringWithFormat("register \"%s\" is an internal-only lldb "
+                                   "register, cannot write directly",
+                                   reg_info->name);
     return error;
   }
 
@@ -374,7 +372,7 @@ Status NativeRegisterContextWindows_i386::WriteRegister(
   if (IsDR(reg))
     return DRWrite(reg, reg_value);
 
-  return Status::FromErrorString("unimplemented");
+  return Status("unimplemented");
 }
 
 Status NativeRegisterContextWindows_i386::ReadAllRegisterValues(
@@ -397,14 +395,14 @@ Status NativeRegisterContextWindows_i386::WriteAllRegisterValues(
   Status error;
   const size_t data_size = REG_CONTEXT_SIZE;
   if (!data_sp) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "NativeRegisterContextWindows_i386::%s invalid data_sp provided",
         __FUNCTION__);
     return error;
   }
 
   if (data_sp->GetByteSize() != data_size) {
-    error = Status::FromErrorStringWithFormatv(
+    error.SetErrorStringWithFormatv(
         "data_sp contained mismatched data size, expected {0}, actual {1}",
         data_size, data_sp->GetByteSize());
     return error;
@@ -420,7 +418,7 @@ Status NativeRegisterContextWindows_i386::IsWatchpointHit(uint32_t wp_index,
   is_hit = false;
 
   if (wp_index >= NumSupportedHardwareWatchpoints())
-    return Status::FromErrorString("watchpoint index out of range");
+    return Status("watchpoint index out of range");
 
   RegisterValue reg_value;
   Status error = DRRead(lldb_dr6_i386, reg_value);
@@ -456,7 +454,7 @@ Status NativeRegisterContextWindows_i386::IsWatchpointVacant(uint32_t wp_index,
   is_vacant = false;
 
   if (wp_index >= NumSupportedHardwareWatchpoints())
-    return Status::FromErrorString("Watchpoint index out of range");
+    return Status("Watchpoint index out of range");
 
   RegisterValue reg_value;
   Status error = DRRead(lldb_dr7_i386, reg_value);

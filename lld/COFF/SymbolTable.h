@@ -28,7 +28,6 @@ class COFFLinkerContext;
 class Defined;
 class DefinedAbsolute;
 class DefinedRegular;
-class ImportThunkChunk;
 class LazyArchive;
 class SectionChunk;
 class Symbol;
@@ -57,10 +56,7 @@ public:
   // Try to resolve any undefined symbols and update the symbol table
   // accordingly, then print an error message for any remaining undefined
   // symbols and warn about imported local symbols.
-  // Returns whether more files might need to be linked in to resolve lazy
-  // symbols, in which case the caller is expected to call the function again
-  // after linking those files.
-  bool resolveRemainingUndefines();
+  void resolveRemainingUndefines();
 
   // Load lazy objects that are needed for MinGW automatic import and for
   // doing stdcall fixups.
@@ -91,7 +87,7 @@ public:
   Symbol *addSynthetic(StringRef n, Chunk *c);
   Symbol *addAbsolute(StringRef n, uint64_t va);
 
-  Symbol *addUndefined(StringRef name, InputFile *f, bool overrideLazy);
+  Symbol *addUndefined(StringRef name, InputFile *f, bool isWeakAlias);
   void addLazyArchive(ArchiveFile *f, const Archive::Symbol &sym);
   void addLazyObject(InputFile *f, StringRef n);
   void addLazyDLLSymbol(DLLFile *f, DLLFile::Symbol *sym, StringRef n);
@@ -106,14 +102,12 @@ public:
   Symbol *addCommon(InputFile *f, StringRef n, uint64_t size,
                     const llvm::object::coff_symbol_generic *s = nullptr,
                     CommonChunk *c = nullptr);
-  DefinedImportData *addImportData(StringRef n, ImportFile *f,
-                                   Chunk *&location);
-  Defined *addImportThunk(StringRef name, DefinedImportData *s,
-                          ImportThunkChunk *chunk);
+  Symbol *addImportData(StringRef n, ImportFile *f);
+  Symbol *addImportThunk(StringRef name, DefinedImportData *s,
+                         uint16_t machine);
   void addLibcall(StringRef name);
   void addEntryThunk(Symbol *from, Symbol *to);
-  void addExitThunk(Symbol *from, Symbol *to);
-  void initializeECThunks();
+  void initializeEntryThunks();
 
   void reportDuplicate(Symbol *existing, InputFile *newFile,
                        SectionChunk *newSc = nullptr,
@@ -121,9 +115,6 @@ public:
 
   // A list of chunks which to be added to .rdata.
   std::vector<Chunk *> localImportChunks;
-
-  // A list of EC EXP+ symbols.
-  std::vector<Symbol *> expSymbols;
 
   // Iterates symbols in non-determinstic hash table order.
   template <typename T> void forEachSymbol(T callback) {
@@ -146,7 +137,6 @@ private:
   std::unique_ptr<BitcodeCompiler> lto;
   bool ltoCompilationDone = false;
   std::vector<std::pair<Symbol *, Symbol *>> entryThunks;
-  llvm::DenseMap<Symbol *, Symbol *> exitThunks;
 
   COFFLinkerContext &ctx;
 };

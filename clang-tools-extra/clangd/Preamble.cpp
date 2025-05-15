@@ -913,6 +913,7 @@ PreamblePatch PreamblePatch::create(llvm::StringRef FileName,
   PP.PatchedMarks = std::move(ModifiedScan->Marks);
   PP.PatchedMacros = std::move(ModifiedScan->Macros);
   dlog("Created preamble patch: {0}", Patch.str());
+  Patch.flush();
   return PP;
 }
 

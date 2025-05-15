@@ -119,15 +119,17 @@ NativeRegisterContextFreeBSD_arm64::ReadRegister(const RegisterInfo *reg_info,
                                                  RegisterValue &reg_value) {
   Status error;
 
-  if (!reg_info)
-    return Status::FromErrorString("reg_info NULL");
+  if (!reg_info) {
+    error.SetErrorString("reg_info NULL");
+    return error;
+  }
 
   const uint32_t reg = reg_info->kinds[lldb::eRegisterKindLLDB];
 
   if (reg == LLDB_INVALID_REGNUM)
-    return Status::FromErrorStringWithFormat(
-        "no lldb regnum for %s",
-        reg_info && reg_info->name ? reg_info->name : "<unknown register>");
+    return Status("no lldb regnum for %s", reg_info && reg_info->name
+                                               ? reg_info->name
+                                               : "<unknown register>");
 
   uint32_t set = GetRegisterInfo().GetRegisterSetFromRegisterIndex(reg);
   error = ReadRegisterSet(set);
@@ -145,14 +147,14 @@ Status NativeRegisterContextFreeBSD_arm64::WriteRegister(
   Status error;
 
   if (!reg_info)
-    return Status::FromErrorString("reg_info NULL");
+    return Status("reg_info NULL");
 
   const uint32_t reg = reg_info->kinds[lldb::eRegisterKindLLDB];
 
   if (reg == LLDB_INVALID_REGNUM)
-    return Status::FromErrorStringWithFormat(
-        "no lldb regnum for %s",
-        reg_info && reg_info->name ? reg_info->name : "<unknown register>");
+    return Status("no lldb regnum for %s", reg_info && reg_info->name
+                                               ? reg_info->name
+                                               : "<unknown register>");
 
   uint32_t set = GetRegisterInfo().GetRegisterSetFromRegisterIndex(reg);
   error = ReadRegisterSet(set);
@@ -190,14 +192,14 @@ Status NativeRegisterContextFreeBSD_arm64::WriteAllRegisterValues(
   Status error;
 
   if (!data_sp) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "NativeRegisterContextFreeBSD_arm64::%s invalid data_sp provided",
         __FUNCTION__);
     return error;
   }
 
   if (data_sp->GetByteSize() != m_reg_data.size()) {
-    error = Status::FromErrorStringWithFormat(
+    error.SetErrorStringWithFormat(
         "NativeRegisterContextFreeBSD_arm64::%s data_sp contained mismatched "
         "data size, expected %" PRIu64 ", actual %" PRIu64,
         __FUNCTION__, m_reg_data.size(), data_sp->GetByteSize());
@@ -206,11 +208,10 @@ Status NativeRegisterContextFreeBSD_arm64::WriteAllRegisterValues(
 
   const uint8_t *src = data_sp->GetBytes();
   if (src == nullptr) {
-    error = Status::FromErrorStringWithFormat(
-        "NativeRegisterContextFreeBSD_arm64::%s "
-        "DataBuffer::GetBytes() returned a null "
-        "pointer",
-        __FUNCTION__);
+    error.SetErrorStringWithFormat("NativeRegisterContextFreeBSD_arm64::%s "
+                                   "DataBuffer::GetBytes() returned a null "
+                                   "pointer",
+                                   __FUNCTION__);
     return error;
   }
   ::memcpy(m_reg_data.data(), src, m_reg_data.size());

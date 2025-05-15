@@ -123,13 +123,6 @@ AST_MATCHER(EnumDecl, hasSequentialInitialValues) {
   return !AllEnumeratorsArePowersOfTwo;
 }
 
-std::string getName(const EnumDecl *Decl) {
-  if (!Decl->getDeclName())
-    return "<unnamed>";
-
-  return Decl->getQualifiedNameAsString();
-}
-
 } // namespace
 
 EnumInitialValueCheck::EnumInitialValueCheck(StringRef Name,
@@ -148,18 +141,16 @@ void EnumInitialValueCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
 }
 
 void EnumInitialValueCheck::registerMatchers(MatchFinder *Finder) {
-  Finder->addMatcher(enumDecl(isDefinition(), unless(isMacro()),
-                              unless(hasConsistentInitialValues()))
-                         .bind("inconsistent"),
-                     this);
+  Finder->addMatcher(
+      enumDecl(unless(isMacro()), unless(hasConsistentInitialValues()))
+          .bind("inconsistent"),
+      this);
   if (!AllowExplicitZeroFirstInitialValue)
     Finder->addMatcher(
-        enumDecl(isDefinition(), hasZeroInitialValueForFirstEnumerator())
-            .bind("zero_first"),
+        enumDecl(hasZeroInitialValueForFirstEnumerator()).bind("zero_first"),
         this);
   if (!AllowExplicitSequentialInitialValues)
-    Finder->addMatcher(enumDecl(isDefinition(), unless(isMacro()),
-                                hasSequentialInitialValues())
+    Finder->addMatcher(enumDecl(unless(isMacro()), hasSequentialInitialValues())
                            .bind("sequential"),
                        this);
 }
@@ -167,11 +158,10 @@ void EnumInitialValueCheck::registerMatchers(MatchFinder *Finder) {
 void EnumInitialValueCheck::check(const MatchFinder::MatchResult &Result) {
   if (const auto *Enum = Result.Nodes.getNodeAs<EnumDecl>("inconsistent")) {
     DiagnosticBuilder Diag =
-        diag(
-            Enum->getBeginLoc(),
-            "initial values in enum '%0' are not consistent, consider explicit "
-            "initialization of all, none or only the first enumerator")
-        << getName(Enum);
+        diag(Enum->getBeginLoc(),
+             "inital values in enum %0 are not consistent, consider explicit "
+             "initialization of all, none or only the first enumerator")
+        << Enum;
     for (const EnumConstantDecl *ECD : Enum->enumerators())
       if (ECD->getInitExpr() == nullptr) {
         const SourceLocation EndLoc = Lexer::getLocForEndOfToken(
@@ -191,16 +181,16 @@ void EnumInitialValueCheck::check(const MatchFinder::MatchResult &Result) {
     if (Loc.isInvalid() || Loc.isMacroID())
       return;
     DiagnosticBuilder Diag = diag(Loc, "zero initial value for the first "
-                                       "enumerator in '%0' can be disregarded")
-                             << getName(Enum);
+                                       "enumerator in %0 can be disregarded")
+                             << Enum;
     cleanInitialValue(Diag, ECD, *Result.SourceManager, getLangOpts());
     return;
   }
   if (const auto *Enum = Result.Nodes.getNodeAs<EnumDecl>("sequential")) {
     DiagnosticBuilder Diag =
         diag(Enum->getBeginLoc(),
-             "sequential initial value in '%0' can be ignored")
-        << getName(Enum);
+             "sequential initial value in %0 can be ignored")
+        << Enum;
     for (const EnumConstantDecl *ECD : llvm::drop_begin(Enum->enumerators()))
       cleanInitialValue(Diag, ECD, *Result.SourceManager, getLangOpts());
     return;

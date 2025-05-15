@@ -876,13 +876,13 @@ public:
 
   /// Best-effort check if the expression operand refers to a most derived
   /// object. This is not a strong guarantee.
-  bool isMostDerived(const ASTContext &Context) const;
+  bool isMostDerived(ASTContext &Context) const;
 
   bool isTypeOperand() const { return Operand.is<TypeSourceInfo *>(); }
 
   /// Retrieves the type operand of this typeid() expression after
   /// various required adjustments (removing reference types, cv-qualifiers).
-  QualType getTypeOperand(const ASTContext &Context) const;
+  QualType getTypeOperand(ASTContext &Context) const;
 
   /// Retrieve source information for the type operand.
   TypeSourceInfo *getTypeOperandSourceInfo() const {
@@ -2176,9 +2176,8 @@ public:
   const_child_range children() const;
 };
 
-/// An expression "T()" which creates an rvalue of a non-class type T.
-/// For non-void T, the rvalue is value-initialized.
-/// See (C++98 [5.2.3p2]).
+/// An expression "T()" which creates a value-initialized rvalue of type
+/// T, which is a non-class type.  See (C++98 [5.2.3p2]).
 class CXXScalarValueInitExpr : public Expr {
   friend class ASTStmtReader;
 
@@ -4306,11 +4305,11 @@ class SizeOfPackExpr final
       : Expr(SizeOfPackExprClass, Empty), Length(NumPartialArgs) {}
 
 public:
-  static SizeOfPackExpr *Create(ASTContext &Context, SourceLocation OperatorLoc,
-                                NamedDecl *Pack, SourceLocation PackLoc,
-                                SourceLocation RParenLoc,
-                                std::optional<unsigned> Length = std::nullopt,
-                                ArrayRef<TemplateArgument> PartialArgs = {});
+  static SizeOfPackExpr *
+  Create(ASTContext &Context, SourceLocation OperatorLoc, NamedDecl *Pack,
+         SourceLocation PackLoc, SourceLocation RParenLoc,
+         std::optional<unsigned> Length = std::nullopt,
+         ArrayRef<TemplateArgument> PartialArgs = std::nullopt);
   static SizeOfPackExpr *CreateDeserialized(ASTContext &Context,
                                             unsigned NumPartialArgs);
 
@@ -4325,8 +4324,6 @@ public:
 
   /// Retrieve the parameter pack.
   NamedDecl *getPack() const { return Pack; }
-
-  void setPack(NamedDecl *NewPack) { Pack = NewPack; }
 
   /// Retrieve the length of the parameter pack.
   ///
@@ -4858,7 +4855,15 @@ public:
   CXXFoldExpr(QualType T, UnresolvedLookupExpr *Callee,
               SourceLocation LParenLoc, Expr *LHS, BinaryOperatorKind Opcode,
               SourceLocation EllipsisLoc, Expr *RHS, SourceLocation RParenLoc,
-              std::optional<unsigned> NumExpansions);
+              std::optional<unsigned> NumExpansions)
+      : Expr(CXXFoldExprClass, T, VK_PRValue, OK_Ordinary),
+        LParenLoc(LParenLoc), EllipsisLoc(EllipsisLoc), RParenLoc(RParenLoc),
+        NumExpansions(NumExpansions ? *NumExpansions + 1 : 0), Opcode(Opcode) {
+    SubExprs[SubExpr::Callee] = Callee;
+    SubExprs[SubExpr::LHS] = LHS;
+    SubExprs[SubExpr::RHS] = RHS;
+    setDependence(computeDependence(this));
+  }
 
   CXXFoldExpr(EmptyShell Empty) : Expr(CXXFoldExprClass, Empty) {}
 

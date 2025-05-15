@@ -15,7 +15,6 @@
 #include "mlir/Dialect/Arith/Utils/Utils.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Vector/IR/VectorOps.h"
-#include "mlir/Interfaces/ViewLikeInterface.h"
 #include "llvm/ADT/STLExtras.h"
 
 namespace mlir {
@@ -81,10 +80,11 @@ std::pair<LinearizedMemRefInfo, OpFoldResult> getLinearizedMemRefOffsetAndSize(
 
   // Adjust linearizedIndices and size by the scale factor (dstBits / srcBits).
   int64_t scaler = dstBits / srcBits;
+  addMulMap = addMulMap.floorDiv(scaler);
   mulMap = mulMap.floorDiv(scaler);
 
   OpFoldResult linearizedIndices = affine::makeComposedFoldedAffineApply(
-      builder, loc, addMulMap.floorDiv(scaler), offsetValues);
+      builder, loc, addMulMap, offsetValues);
   OpFoldResult linearizedSize =
       affine::makeComposedFoldedAffineApply(builder, loc, mulMap, sizes);
 
@@ -94,11 +94,7 @@ std::pair<LinearizedMemRefInfo, OpFoldResult> getLinearizedMemRefOffsetAndSize(
   OpFoldResult adjustBaseOffset = affine::makeComposedFoldedAffineApply(
       builder, loc, s0.floorDiv(scaler), {offset});
 
-  OpFoldResult intraVectorOffset = affine::makeComposedFoldedAffineApply(
-      builder, loc, addMulMap % scaler, offsetValues);
-
-  return {{adjustBaseOffset, linearizedSize, intraVectorOffset},
-          linearizedIndices};
+  return {{adjustBaseOffset, linearizedSize}, linearizedIndices};
 }
 
 LinearizedMemRefInfo
@@ -197,13 +193,15 @@ MemrefValue skipFullyAliasingOperations(MemrefValue source) {
   return source;
 }
 
-MemrefValue skipViewLikeOps(MemrefValue source) {
+MemrefValue skipSubViewsAndCasts(MemrefValue source) {
   while (auto op = source.getDefiningOp()) {
-    if (auto viewLike = dyn_cast<ViewLikeOpInterface>(op)) {
-      source = cast<MemrefValue>(viewLike.getViewSource());
-      continue;
+    if (auto subView = dyn_cast<memref::SubViewOp>(op)) {
+      source = cast<MemrefValue>(subView.getSource());
+    } else if (auto cast = dyn_cast<memref::CastOp>(op)) {
+      source = cast.getSource();
+    } else {
+      return source;
     }
-    return source;
   }
   return source;
 }

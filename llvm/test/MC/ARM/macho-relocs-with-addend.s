@@ -15,9 +15,9 @@ _with_thumb:
         .globl _with_arm
         .arm
 _with_arm:
-        bl _dest+12
+        bl _dest+10
         blx _dest+20
-        bne _dest+32
+        bne _dest+30
         b _dest+40
 
         .data

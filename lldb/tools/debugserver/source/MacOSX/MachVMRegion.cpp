@@ -208,8 +208,7 @@ std::vector<std::string> MachVMRegion::GetMemoryTypes() const {
       m_data.user_tag == VM_MEMORY_MALLOC_LARGE_REUSABLE ||
       m_data.user_tag == VM_MEMORY_MALLOC_HUGE ||
       m_data.user_tag == VM_MEMORY_REALLOC ||
-      m_data.user_tag == VM_MEMORY_SBRK ||
-      m_data.user_tag == VM_MEMORY_SANITIZER) {
+      m_data.user_tag == VM_MEMORY_SBRK) {
     types.push_back("heap");
     if (m_data.user_tag == VM_MEMORY_MALLOC_TINY) {
       types.push_back("malloc-tiny");

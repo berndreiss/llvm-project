@@ -50,8 +50,6 @@ bool Operator::hasPoisonGeneratingFlags() const {
     if (auto *NNI = dyn_cast<PossiblyNonNegInst>(this))
       return NNI->hasNonNeg();
     return false;
-  case Instruction::ICmp:
-    return cast<ICmpInst>(this)->hasSameSign();
   default:
     if (const auto *FP = dyn_cast<FPMathOperator>(this))
       return FP->hasNoNaNs() || FP->hasNoInfs();
@@ -203,7 +201,7 @@ bool GEPOperator::accumulateConstantOffset(
 
 bool GEPOperator::collectOffset(
     const DataLayout &DL, unsigned BitWidth,
-    SmallMapVector<Value *, APInt, 4> &VariableOffsets,
+    MapVector<Value *, APInt> &VariableOffsets,
     APInt &ConstantOffset) const {
   assert(BitWidth == DL.getIndexSizeInBits(getPointerAddressSpace()) &&
          "The offset bit width does not match DL specification.");

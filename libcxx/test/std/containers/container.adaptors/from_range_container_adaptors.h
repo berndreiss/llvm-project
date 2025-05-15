@@ -54,19 +54,21 @@ template <template <class ...> class Adaptor,
           class Sent,
           class Alloc>
 constexpr void test_container_adaptor_with_input(std::vector<T>&& input) {
+  auto b = Iter(input.data());
+  auto e = Iter(input.data() + input.size());
+  std::ranges::subrange in(std::move(b), Sent(std::move(e)));
+
   { // (range)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     Adaptor<T> adaptor(std::from_range, in);
     UnwrapAdaptor<Adaptor<T>> unwrap_adaptor(std::move(adaptor));
     auto& c = unwrap_adaptor.get_container();
 
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
-    assert(std::ranges::equal(input, c));
+    assert(std::ranges::equal(in, c));
     LIBCPP_ASSERT(c.__invariants());
   }
 
   { // (range, allocator)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     using C = UnderlyingContainer<T, Alloc>;
     Alloc alloc;
     Adaptor<T, C> adaptor(std::from_range, in, alloc);
@@ -75,7 +77,7 @@ constexpr void test_container_adaptor_with_input(std::vector<T>&& input) {
 
     assert(c.get_allocator() == alloc);
     assert(c.size() == static_cast<std::size_t>(std::distance(c.begin(), c.end())));
-    assert(std::ranges::equal(input, c));
+    assert(std::ranges::equal(in, c));
     LIBCPP_ASSERT(c.__invariants());
   }
 }
@@ -87,8 +89,11 @@ template <template <class ...> class UnderlyingContainer,
           class Comp,
           class Alloc>
 constexpr void test_priority_queue_with_input(std::vector<T>&& input) {
+  auto b = Iter(input.data());
+  auto e = Iter(input.data() + input.size());
+  std::ranges::subrange in(std::move(b), Sent(std::move(e)));
+
   { // (range)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     std::priority_queue<T> adaptor(std::from_range, in);
     UnwrapAdaptor<std::priority_queue<T>> unwrap_adaptor(std::move(adaptor));
     auto& c = unwrap_adaptor.get_container();
@@ -99,7 +104,6 @@ constexpr void test_priority_queue_with_input(std::vector<T>&& input) {
   }
 
   { // (range, comp)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     using C = UnderlyingContainer<T>;
     Comp comp;
 
@@ -114,7 +118,6 @@ constexpr void test_priority_queue_with_input(std::vector<T>&& input) {
   }
 
   { // (range, allocator)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     using C = UnderlyingContainer<T, Alloc>;
     Alloc alloc;
 
@@ -129,7 +132,6 @@ constexpr void test_priority_queue_with_input(std::vector<T>&& input) {
   }
 
   { // (range, comp, alloc)
-    std::ranges::subrange in(Iter(input.data()), Sent(Iter(input.data() + input.size())));
     using C = UnderlyingContainer<T, Alloc>;
     Comp comp;
     Alloc alloc;

@@ -16,6 +16,8 @@
 #include "src/__support/macros/config.h"
 #include "src/__support/macros/optimization.h" // LIBC_UNLIKELY
 
+#include <errno.h>
+
 #include "inv_trigf_utils.h"
 
 namespace LIBC_NAMESPACE_DECL {

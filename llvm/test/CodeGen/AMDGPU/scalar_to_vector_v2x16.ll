@@ -1,8 +1,10 @@
-; RUN: llc -mtriple=amdgcn -mcpu=fiji -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=GCN %s
-; RUN: llc -mtriple=amdgcn -mcpu=fiji -O0 -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=GCN %s
+; RUN: llc -mtriple=amdgcn -mcpu=fiji -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GCN-OPT %s
+; RUN: llc -mtriple=amdgcn -mcpu=fiji -O0 -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GCN-NOOPT %s
 
 ; GCN-LABEL: {{^}}scalar_to_vector_i16:
-; GCN:   v_mov_b32_e32 [[V:v[0-9]+]], 42
+; GCN-NOOPT: s_mov_b32 [[S:s[0-9]+]], 42
+; GCN-NOOPT: v_mov_b32_e32 [[V:v[0-9]+]], [[S]]
+; GCN-OPT:   v_mov_b32_e32 [[V:v[0-9]+]], 42
 ; GCN: buffer_store_short [[V]],
 define void @scalar_to_vector_i16() {
   %tmp = load <2 x i16>, ptr addrspace(5) undef
@@ -12,7 +14,9 @@ define void @scalar_to_vector_i16() {
 }
 
 ; GCN-LABEL: {{^}}scalar_to_vector_f16:
-; GCN:   v_mov_b32_e32 [[V:v[0-9]+]], 0x3c00
+; GCN-NOOPT: s_mov_b32 [[S:s[0-9]+]], 0x3c00
+; GCN-NOOPT: v_mov_b32_e32 [[V:v[0-9]+]], [[S]]
+; GCN-OPT:   v_mov_b32_e32 [[V:v[0-9]+]], 0x3c00
 ; GCN: buffer_store_short [[V]],
 define void @scalar_to_vector_f16() {
   %tmp = load <2 x half>, ptr addrspace(5) undef

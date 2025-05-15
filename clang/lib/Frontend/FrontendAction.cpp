@@ -358,7 +358,7 @@ static std::error_code collectModuleHeaderIncludes(
 
   // Add includes for each of these headers.
   for (auto HK : {Module::HK_Normal, Module::HK_Private}) {
-    for (const Module::Header &H : Module->getHeaders(HK)) {
+    for (Module::Header &H : Module->Headers[HK]) {
       Module->addTopHeader(H.Entry);
       // Use the path as specified in the module map file. We'll look for this
       // file relative to the module build directory (the directory containing
@@ -534,6 +534,7 @@ static Module *prepareToBuildModule(CompilerInstance &CI,
     }
     if (*OriginalModuleMap != CI.getSourceManager().getFileEntryRefForID(
                                   CI.getSourceManager().getMainFileID())) {
+      M->IsInferred = true;
       auto FileCharacter =
           M->IsSystem ? SrcMgr::C_System_ModuleMap : SrcMgr::C_User_ModuleMap;
       FileID OriginalModuleMapFID = CI.getSourceManager().getOrCreateFileID(
@@ -624,8 +625,8 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
     StringRef InputFile = Input.getFile();
 
     std::unique_ptr<ASTUnit> AST = ASTUnit::LoadFromASTFile(
-        InputFile, CI.getPCHContainerReader(), ASTUnit::LoadPreprocessorOnly,
-        ASTDiags, CI.getFileSystemOpts(),
+        std::string(InputFile), CI.getPCHContainerReader(),
+        ASTUnit::LoadPreprocessorOnly, ASTDiags, CI.getFileSystemOpts(),
         /*HeaderSearchOptions=*/nullptr);
     if (!AST)
       return false;
@@ -692,9 +693,9 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
     StringRef InputFile = Input.getFile();
 
     std::unique_ptr<ASTUnit> AST = ASTUnit::LoadFromASTFile(
-        InputFile, CI.getPCHContainerReader(), ASTUnit::LoadEverything, Diags,
-        CI.getFileSystemOpts(), CI.getHeaderSearchOptsPtr(),
-        CI.getLangOptsPtr());
+        std::string(InputFile), CI.getPCHContainerReader(),
+        ASTUnit::LoadEverything, Diags, CI.getFileSystemOpts(),
+        CI.getHeaderSearchOptsPtr(), CI.getLangOptsPtr());
 
     if (!AST)
       return false;

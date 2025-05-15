@@ -41,7 +41,7 @@ public:
 
   lldb::ProcessSP Attach(ProcessAttachInfo &attach_info, Debugger &debugger,
                          Target *target, Status &status) override {
-    status = Status::FromErrorString("Not supported");
+    status.SetErrorString("Not supported");
     return nullptr;
   }
 

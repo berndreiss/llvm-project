@@ -32,6 +32,7 @@ class CallInst;
 class DominatorTree;
 class Function;
 class Instruction;
+class Loop;
 class Module;
 class Type;
 class Value;
@@ -142,6 +143,16 @@ public:
                   BasicBlock *AllocationBlock = nullptr,
                   std::string Suffix = "", bool ArgsInZeroAddressSpace = false);
 
+    /// Create a code extractor for a loop body.
+    ///
+    /// Behaves just like the generic code sequence constructor, but uses the
+    /// block sequence of the loop.
+    CodeExtractor(DominatorTree &DT, Loop &L, bool AggregateArgs = false,
+                  BlockFrequencyInfo *BFI = nullptr,
+                  BranchProbabilityInfo *BPI = nullptr,
+                  AssumptionCache *AC = nullptr,
+                  std::string Suffix = "");
+
     /// Perform the extraction, returning the new function.
     ///
     /// Returns zero when called on a CodeExtractor instance where isEligible
@@ -187,8 +198,7 @@ public:
     /// sets, before extraction occurs. These modifications won't have any
     /// significant impact on the cost however.
     void findInputsOutputs(ValueSet &Inputs, ValueSet &Outputs,
-                           const ValueSet &Allocas,
-                           bool CollectGlobalInputs = false) const;
+                           const ValueSet &Allocas) const;
 
     /// Check if life time marker nodes can be hoisted/sunk into the outline
     /// region.

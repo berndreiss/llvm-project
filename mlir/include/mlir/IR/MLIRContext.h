@@ -133,7 +133,7 @@ public:
   Dialect *getOrLoadDialect(StringRef name);
 
   /// Return true if we allow to create operation for unregistered dialects.
-  [[nodiscard]] bool allowsUnregisteredDialects();
+  bool allowsUnregisteredDialects();
 
   /// Enables creating operations in unregistered dialects.
   /// This option is **heavily discouraged**: it is convenient during testing
@@ -196,11 +196,6 @@ public:
   /// Return a sorted array containing the information about all registered
   /// operations.
   ArrayRef<RegisteredOperationName> getRegisteredOperations();
-
-  /// Return a sorted array containing the information for registered operations
-  /// filtered by dialect name.
-  ArrayRef<RegisteredOperationName>
-  getRegisteredOperationsByDialect(StringRef dialectName);
 
   /// Return true if this operation name is registered in this context.
   bool isOperationRegistered(StringRef name);
