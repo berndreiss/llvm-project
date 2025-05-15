@@ -201,7 +201,6 @@ void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) con
       llvm::outs() << "Param " << Param->getNameAsString() << " has no known value.\n";
     }
 
-    checkUseAfterFree();
     //std::optional<IntegerLiteral> IL = dyn_cast<IntegerLiteral>(arg);
     //if (!IL)
       //continue;
