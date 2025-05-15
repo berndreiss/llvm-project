@@ -1,3 +1,3 @@
 #/bin/bash
-cd ../release
+cd $LLVM_HOME/release
 ninja clang lldb -j 24

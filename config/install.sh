@@ -1,3 +1,3 @@
 #/bin/bash
-cd ../llvm-project/release
-ninja install -j 10
+cd $LLVM_HOME/release
+ninja install -j$LLVM_INSTALL_CORES
