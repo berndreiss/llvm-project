@@ -25,7 +25,9 @@
 #include <clang/Analysis/ProgramPoint.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/ProgramState_Fwd.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/SVals.h>
+#include <llvm/ADT/StringMap.h>
 #include <llvm/Object/ObjectFile.h>
+#include <string>
 
 using namespace clang;
 using namespace ento;
@@ -36,22 +38,23 @@ class PostgresChecker :
 
 public:
   void checkPreCall(const CallEvent &Call, CheckerContext &C) const;
+  bool checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S);
 };
 
 class RefState {
   enum Kind {
-    // Reference to allocated memory.
-    Allocated,
-    // Reference to zero-allocated memory.
-    AllocatedOfSizeZero,
     // Reference to released/freed memory.
     Released,
+    // Possilbe reference to released/freed memory.
+    PossiblyReleased,
     // The responsibility for freeing resources has transferred from
     // this reference. A relinquished symbol should not be freed.
+    // TODO HOW TO HANDLE THIS?
     Relinquished,
     // We are no longer guaranteed to have observed all manipulations
     // of this pointer/memory. For example, it could have been
     // passed as a parameter to an opaque function.
+    // TODO HOW TO HANDLE THIS?
     Escaped
   };
 
@@ -63,9 +66,8 @@ class RefState {
       : S(s), K(k) {}
 
 public:
-  bool isAllocated() const { return K == Allocated; }
-  bool isAllocatedOfSizeZero() const { return K == AllocatedOfSizeZero; }
   bool isReleased() const { return K == Released; }
+  bool isPossiblyReleased() const { return K == PossiblyReleased; }
   bool isRelinquished() const { return K == Relinquished; }
   bool isEscaped() const { return K == Escaped; }
   const Stmt *getStmt() const { return S; }
@@ -76,6 +78,9 @@ public:
 
   static RefState getReleased(const Stmt *s) {
     return RefState(Released, s);
+  }
+  static RefState getPossiblyReleased(const Stmt *s) {
+    return RefState(PossiblyReleased, s);
   }
   static RefState getRelinquished(const Stmt *s) {
     return RefState(Relinquished, s);
@@ -92,9 +97,8 @@ public:
   LLVM_DUMP_METHOD void dump(raw_ostream &OS) const {
     switch (K) {
 #define CASE(ID) case ID: OS << #ID; break;
-    CASE(Allocated)
-    CASE(AllocatedOfSizeZero)
     CASE(Released)
+    CASE(PossiblyReleased)
     CASE(Relinquished)
     CASE(Escaped)
     }
@@ -105,6 +109,14 @@ public:
 
 
 REGISTER_MAP_WITH_PROGRAMSTATE(RegionState, SymbolRef, RefState)
+
+class Dependency{
+  std::string arg;
+  int value;
+};
+
+llvm::StringMap<std::string> StrictMap;
+llvm::StringMap<Dependency> DendentMap;
 
 void handleDoubleFree(){
   llvm::outs() << "DOUBLE FREE!\n";
@@ -189,11 +201,15 @@ void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) con
       llvm::outs() << "Param " << Param->getNameAsString() << " has no known value.\n";
     }
 
+    checkUseAfterFree();
     //std::optional<IntegerLiteral> IL = dyn_cast<IntegerLiteral>(arg);
     //if (!IL)
       //continue;
     //llvm::errs() << IL.has_value() << "\n";
   }
+}
+bool checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S){
+  return true;
 }
 
 namespace clang {
