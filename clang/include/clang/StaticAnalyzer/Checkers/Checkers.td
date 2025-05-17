@@ -1378,7 +1378,7 @@ def MPIChecker : Checker<"MPI-Checker">,
 
 let ParentPackage = Postgres in {
 
-def PostgresChecker : Checker<"Postgres-Checker">,
+def PostgresChecker : Checker<"PostgresChecker">,
   HelpText<"Checks Postgres code">,
   Documentation<HasDocumentation>;
 

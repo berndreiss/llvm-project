@@ -6,3 +6,4 @@ if [ ! -d release ]; then
 fi
 ./config/buildconf.sh
 ./config/install.sh
+./release/bin/llvm-lit -v clang/test/Analysis/postgres.c 
