@@ -24,6 +24,8 @@
 #include <clang/AST/Expr.h>
 #include <clang/Analysis/ProgramPoint.h>
 #include <clang/Basic/LLVM.h>
+#include <clang/Basic/SourceLocation.h>
+#include <clang/Basic/SourceManager.h>
 #include <clang/StaticAnalyzer/Core/BugReporter/BugReporter.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/ExplodedGraph.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/MemRegion.h>
@@ -34,6 +36,7 @@
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
+#include <sstream>
 #include <string>
 
 using namespace clang;
@@ -87,8 +90,12 @@ class RefState {
 
   Kind K;
 
-  RefState(Kind k, const Stmt *s)
-      : S(s), K(k) {}
+  ExplodedNode *EN;
+
+  const CallEvent &CE;
+
+  RefState(Kind k, const Stmt *s, ExplodedNode *EN, const CallEvent &CE)
+      : S(s), K(k), EN(EN), CE(CE) {}
 
 public:
   bool isReleased() const { return K == Released; }
@@ -96,27 +103,44 @@ public:
   bool isRelinquished() const { return K == Relinquished; }
   bool isEscaped() const { return K == Escaped; }
   const Stmt *getStmt() const { return S; }
+  const CallEvent &getCall() const { return CE; }
 
   bool operator==(const RefState &X) const {
     return K == X.K && S == X.S;
   }
 
-  static RefState getReleased(const Stmt *s) {
-    return RefState(Released, s);
+  static RefState getReleased(const Stmt *s, ExplodedNode *EN, const CallEvent &CE) {
+    return RefState(Released, s, EN, CE);
   }
-  static RefState getPossiblyReleased(const Stmt *s) {
-    return RefState(PossiblyReleased, s);
+  static RefState getPossiblyReleased(const Stmt *s, ExplodedNode *EN, const CallEvent &CE) {
+    return RefState(PossiblyReleased, s, EN, CE);
   }
-  static RefState getRelinquished(const Stmt *s) {
-    return RefState(Relinquished, s);
+  static RefState getRelinquished(const Stmt *s, ExplodedNode *EN, const CallEvent &CE) {
+    return RefState(Relinquished, s, EN, CE);
   }
-  static RefState getEscaped(const RefState *RS) {
-    return RefState(Escaped, RS->getStmt());
+  static RefState getEscaped(const RefState *RS, ExplodedNode *EN, const CallEvent &CE) {
+    return RefState(Escaped, RS->getStmt(), EN, CE);
   }
 
+  
+  const PresumedLoc getLocation(CheckerContext &C) const{
+
+    const SourceManager &SM = C.getSourceManager();
+    const Expr *E = getCall().getOriginExpr();
+    if (!E)
+      return PresumedLoc();
+    SourceLocation Loc = getCall().getOriginExpr()->getExprLoc();
+    PresumedLoc PLoc = SM.getPresumedLoc(Loc);
+    return PLoc;
+  }
+  const std::string getFunction() const{
+    return "pfree";
+  }
   void Profile(llvm::FoldingSetNodeID &ID) const {
     ID.AddInteger(K);
     ID.AddPointer(S);
+    ID.AddPointer(EN);
+    //ID.Add(CE);
   }
 
   LLVM_DUMP_METHOD void dump(raw_ostream &OS) const {
@@ -137,6 +161,7 @@ public:
 REGISTER_MAP_WITH_PROGRAMSTATE(RegionState, SymbolRef, RefState)
 
 static bool isReleased(SymbolRef Sym, CheckerContext &C);
+static std::string getLocMessage(SymbolRef Sym, CheckerContext &C, std::string PreFix);
 
 struct DependencyInfo{
   std::string freeType;
@@ -165,7 +190,7 @@ void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
   std::string message;
   switch(Cat){
     case (Strict):
-      message = "Attempt to use released memory";
+      message = "Attempt to use memory released by";
       if (!BT_Free_Strict)
         BT_Free_Strict.reset(new BugType(this, message));
       BT = BT_Free_Strict.get();
@@ -178,6 +203,7 @@ void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
 
   }
 
+  message = getLocMessage(Sym, C, message);
   ExplodedNode *N = C.generateNonFatalErrorNode(C.getState(), this);
   //ExplodedNode *N = C.generateErrorNode(C.getState(), this);
   if (!N)
@@ -318,7 +344,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
   //DO WE NEED THIS?
     // Blocks might show up as heap data, but should not be free()d
   //if (isa<BlockDataRegion>(R)) {
-    //HandleNonHeapDealloc(C, ArgVal, ArgExpr->getSourceRange(), ParentExpr,
+  //HandleNonHeapDealloc(C, ArgVal, ArgExpr->getSourceRange(), ParentExpr,
       //                   Family);
     //return nullptr;
   //}
@@ -365,7 +391,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
     }
   }
 
-  State = State->set<RegionState>(SymBase, RefState::getReleased(ParentExpr));
+  State = State->set<RegionState>(SymBase, RefState::getReleased(ParentExpr, NULL, Call));
 
   C.addTransition(State);
 }
@@ -476,6 +502,17 @@ void PostgresChecker::checkLocation(SVal l, bool isLoad, const Stmt *S,
 }
 
 
+static std::string getLocMessage(SymbolRef Sym, CheckerContext &C, std::string PreFix){
+  const RefState *RS = C.getState()->get<RegionState>(Sym);
+
+  const PresumedLoc PLoc = RS->getLocation(C);
+  if (PLoc.isInvalid())
+    return PreFix;
+  
+  std::ostringstream oss;
+  oss << PreFix << " " << RS->getFunction() << " ("<< PLoc.getFilename() << ":" << PLoc.getLine() << ":" << PLoc.getColumn() << ")";
+  return oss.str();
+}
 
 namespace clang {
 namespace ento {
