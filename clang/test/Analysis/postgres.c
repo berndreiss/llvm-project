@@ -257,4 +257,41 @@ int testNoCheckerDataPropogationFromLogicalOpOperandToOpResult(void) {
    // Previously we ended up with 'Attempt to use released memory' on return.
    return ok; // no warning
 }
+
+typedef struct {
+    // no members
+} RelOptInfo;
+typedef struct {
+    // no members
+} Path;
+void add_partial_path(RelOptInfo *parent_rel, Path *new_path);
+void use_path(Path *path);
+void arbitrary_use(void){
+  Path *new_path= palloc(sizeof(Path));
+  RelOptInfo *parent_rel= palloc(sizeof(Path));
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
+  use_path(new_path); // expected-warning{{Attempt to use potentially released memory}}
+}
+
+void arbitrary_double_free(void){
+  Path *new_path= palloc(sizeof(Path));
+  RelOptInfo *parent_rel= palloc(sizeof(Path));
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
+  pfree(new_path); // expected-warning{{Attempt to free potentially released memory}}
+}
+
+void arbitrary_potential_double_free(void){
+  Path *new_path= palloc(sizeof(Path));
+  RelOptInfo *parent_rel= palloc(sizeof(Path));
+  pfree(new_path); // expected-note{{Freeing function: pfree}}
+  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free released memory}}
+}
+
+void arbitrary_possibly_potential_double_free(void){
+  Path *new_path= palloc(sizeof(Path));
+  RelOptInfo *parent_rel= palloc(sizeof(Path));
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
+  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free potentially released memory}}
+}
+
 //HANDLE ARBITRARY AND DEPENDEN
