@@ -24,7 +24,6 @@ typedef unsigned short wchar_t;
 #endif // !defined(_WCHAR_T_DEFINED)
 
 typedef __typeof(sizeof(int)) size_t;
-struct BitmapSet;
 void *malloc(size_t);
 void *palloc(size_t);
 void free(void *);
@@ -294,4 +293,18 @@ void arbitrary_possibly_potential_double_free(void){
   add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free potentially released memory}}
 }
 
-//HANDLE ARBITRARY AND DEPENDEN
+typedef struct {} Bitmapset;
+Bitmapset *bms_int_members(Bitmapset *a, const Bitmapset *b);
+void use_bms(Bitmapset *a);
+
+void bitmapset(void){
+  Bitmapset *a = palloc(sizeof(Bitmapset));
+  Bitmapset *b = NULL;
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
+  use_bms(a); // expected-warning{{Attempt to use released memory}}
+
+
+}
+
+//HANDLE DEPENDENT
+//

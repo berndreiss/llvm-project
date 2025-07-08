@@ -40,6 +40,7 @@
 #include <clang/Basic/SourceLocation.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/StaticAnalyzer/Core/BugReporter/BugReporter.h>
+#include <clang/StaticAnalyzer/Core/PathSensitive/ConstraintManager.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/ExplodedGraph.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/MemRegion.h>
 #include <clang/StaticAnalyzer/Core/PathSensitive/ProgramState_Fwd.h>
@@ -49,6 +50,7 @@
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
+#include <optional>
 #include <string>
 
 using namespace clang;
@@ -151,13 +153,17 @@ static bool isReleased(SymbolRef Sym, CheckerContext &C);
 
 //This struct contains information about a dependent function.
 struct DependencyInfo{
-  //the number of the argument (0 for first, 1 for second etc.)
-  int argNum;
+  //the type of the freed argument 
+  std::string typeFreed;
+  //the type of the dependence argument 
+  std::string type;
   //the condition for making this function strict
-  std::function<bool(void *)> isFreeing;
+  std::function<bool(CallEvent &, CheckerContext &, SVal val)> isFreeing;
 
-  DependencyInfo(int an, std::function<bool(void *)> f)
-    : argNum(an), isFreeing(f) {}
+  DependencyInfo() : type(""), isFreeing([](CallEvent &, CheckerContext &, SVal val) { return false; }) {}
+
+  DependencyInfo(std::string typeFreed, std::string type, std::function<bool(CallEvent &, CheckerContext &, SVal val)> f)
+    : typeFreed(typeFreed), type(type), isFreeing(f) {}
 };
 
 llvm::StringMap<std::string> CMemoryMap{
@@ -170,8 +176,16 @@ llvm::StringMap<std::string> StrictMap{
 };
 
 llvm::StringMap<DependencyInfo> DependentMap{
-  {"dependent", DependencyInfo(1, [](void *x){return *static_cast<int*>(x) != 0;})}
+  {"bms_int_members", DependencyInfo("Bitmapset *", "const Bitmapset *", [](CallEvent &Call, CheckerContext &C, SVal val){
+      if (val.isUnknownOrUndef()) return false;
+      if (val.isZeroConstant()) return true;
+      return false;
+    }
+  )}
 };
+  //{"dependent", DependencyInfo("void *", "int", [](void *x){return *static_cast<int*>(x) != 0;})}
+
+
 
 llvm::StringMap<std::string> ArbitraryMap{
   {"add_partial_path", "Path *"}
@@ -180,13 +194,10 @@ llvm::StringMap<std::string> ArbitraryMap{
 void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
                           SymbolRef Sym, Category Cat) const{
 
-  //llvm::errs() << "HERE " << Cat << "\n";
   BugType *BT;
-  llvm::errs() << "HERE " << "\n";
   std::string message;
   switch(Cat){
     case (Strict):
-      llvm::errs() << "STR\n";
       message = "Attempt to use released memory";
       if (!BT_Free_Strict)
         BT_Free_Strict.reset(new BugType(this, message));
@@ -196,14 +207,12 @@ void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
     //case (Dependent):
     //break;
     case (Arbitrary):
-      llvm::errs() << "ARBI\n";
       message = "Attempt to use potentially released memory";
       if (!BT_Free_Arbitrary)
         BT_Free_Arbitrary.reset(new BugType(this, message));
       BT = BT_Free_Arbitrary.get();
     break;
   }
-  llvm::errs() << "\\HERE\n";
   emitReport(Sym, BT, C, message);
 }
 
@@ -273,54 +282,52 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
   if (!FD)
     return;
 
-
   ProgramStateRef State = C.getState();
   
-  llvm::errs() << "HANDLE 0\n";
-   if (!State)
+  if (!State)
     return;
-
-  llvm::errs() << "HANDLE 1\n";
 
   SVal ArgVal;
   for (int i = 0; i < Call.getNumArgs(); i++){
     ArgVal =  C.getSVal(Call.getArgExpr(i));
     const Expr *ArgExpr = Call.getArgExpr(0);
     if (!ArgExpr)
-        continue;
+      continue;
     QualType ArgType = ArgExpr->getType();
     switch (Cat){
-      case (Strict):
-        if (auto Type = StrictMap.lookup(FD->getName()) == ArgType.getAsString()){
-          ArgVal = C.getSVal(Call.getArgExpr(i));
-          goto break_outer;
-        }
-      case (Arbitrary):
-        if (auto Type = ArbitraryMap.lookup(FD->getName()) == ArgType.getAsString()){
-          ArgVal = C.getSVal(Call.getArgExpr(i));
-          goto break_outer;
-        }
+      case (Strict): {
+        auto Type = StrictMap.lookup(FD->getName());
+        if (Type != ArgType.getAsString())
+          continue;
+        ArgVal = C.getSVal(Call.getArgExpr(i));
+        goto break_outer;
+      }
+      case (Dependent): {
+        auto TypeFreed = DependentMap.lookup(FD->getName()).typeFreed;
+        auto ParmType = FD->getParamDecl(i)->getType().getAsString();
+        llvm::errs() << "TYPE FREED " << TypeFreed << "\n";
+        llvm::errs() << "TYPE PARM " << ParmType << "\n";
+        if (TypeFreed != ParmType)
+          continue;
+        llvm::errs() << "GOTCHA\n";
+        ArgVal = C.getSVal(Call.getArgExpr(i));
+        goto break_outer;
+      }
+      case (Arbitrary): {
+        auto Type = StrictMap.lookup(FD->getName());
+        if (Type != ArgType.getAsString())
+          continue;
+        ArgVal = C.getSVal(Call.getArgExpr(i));
+        goto break_outer;
+      }
     }
   }
   break_outer:
-  //if (!isa<DefinedOrUnknownSVal>(ArgVal))
-    //return;
-
-  //DefinedOrUnknownSVal location = ArgVal.castAs<DefinedOrUnknownSVal>();
-  //if (!isa<Loc>(location))
-    //return;
-  // TODO checks for this: free(0); Do we care about this?
-  // The explicit NULL case, no operation is performed.
-  //ProgramStateRef notNullState, nullState;
-  //std::tie(notNullState, nullState) = State->assume(location);
-  //if (nullState && !notNullState)
-    //return;
 
   // Unknown values could easily be okay
   // Undefined values are handled elsewhere
   if (ArgVal.isUnknownOrUndef())
     return;
-  llvm::errs() << "HANDLE 2\n";
   DefinedSVal location = ArgVal.castAs<DefinedSVal>();
   if (!isa<Loc>(location))
     return;
@@ -330,8 +337,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
   const Expr *ParentExpr = Call.getOriginExpr();
   if (!ParentExpr)
     return;
-  //TODO do we need this?
-  llvm::errs() << "HANDLE 3\n";
+
   R = R->StripCasts();
 
   const SymbolicRegion *SrBase = dyn_cast<SymbolicRegion>(R->getBaseRegion());
@@ -340,12 +346,8 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
   if (!SrBase)
     return;
 
-  llvm::errs() << "HANDLE 4\n";
   SymbolRef SymBase = SrBase->getSymbol();
 
-  //llvm::errs() << ArgVal.getAsSymbol() << "\n";
-  //llvm::errs() << "SymBase: " << SymBase << "\n";
-  //llvm::errs() << "Symbol: " << SrBase->getKind() << "\n";
   const RefState *RsBase = State->get<RegionStatePG>(SymBase);
   SymbolRef PreviousRetStatusSymbol = nullptr;
 
@@ -354,15 +356,19 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
       Category CatFirst = RsBase->isReleased() ? Strict : Arbitrary;
       HandleDoubleFree(C, ParentExpr->getSourceRange(), SymBase, PreviousRetStatusSymbol, CatFirst, Cat);
   }
-  llvm::errs() << "HANDLE 5\n";
 
+  //Generate an error node with information about the free location
   ExplodedNode * EN = C.generateNonFatalErrorNode();
 
   if (!EN)
     return;
 
+  //Depending on the category of the freeing function get a released or possibly released state
   switch (Cat){
     case Strict:
+      State = State->set<RegionStatePG>(SymBase, RefState::getReleased(ParentExpr, EN, FD));
+      break;
+    case Dependent:
       State = State->set<RegionStatePG>(SymBase, RefState::getReleased(ParentExpr, EN, FD));
       break;
     case Arbitrary:
@@ -370,17 +376,15 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
       break;
     default:
       return;
-
   }
-  llvm::errs() << "ADDED " << SymBase << " FOR " << FD->getName() << "\n";
+
   C.addTransition(State);
 }
 
 void PostgresChecker::checkPostCall(const CallEvent &Call,
                                   CheckerContext &C) const {
-  //TODO do we care?
-  //if (C.wasInlined)
-    //return;
+  if (C.wasInlined)
+    return;
   if (!Call.getOriginExpr())
     return;
 
@@ -390,59 +394,60 @@ void PostgresChecker::checkPostCall(const CallEvent &Call,
   if (!FD)
     return;
 
-  llvm::errs() << FD->getName() << "\n";
-  //llvm::errs() << "SEARCHING FOR: " << FD->getNameAsString() << "\n";
 
-  if (DependentMap.contains(FD->getNameAsString())){
-   llvm::errs() << "FOUND\n";
-    auto It = DependentMap.find(FD->getNameAsString());
-    if (It != DependentMap.end()) {
-      llvm::errs() << "Something there\n";
-      DependencyInfo Info = It->second;
-      int i = 0;
-      for (const ParmVarDecl *param : FD->parameters()) {
-        if (i != Info.argNum){
-          i++;
-          continue;
-        }
-  llvm::errs() << "Found param: '" << param->getNameAsString() << "'\n";
-        SVal argVal = Call.getArgSVal(i);
-        if (auto CI = argVal.getAs<nonloc::ConcreteInt>()){
-          llvm::APSInt intValue = CI->getValue();
-          llvm::errs() << "Konkreter Argumentwert: " << intValue << "\n";
-
-          if (Info.isFreeing(&intValue)){
-            HandleFree(Call, C, Strict);
-            llvm::errs() << "FREE\n";
-          } else{
-            llvm::errs() << "FALSE\n";
-          }
-        } else {
-            HandleFree(Call, C, Arbitrary);
-          llvm::errs() << "Argument ist symbolisch oder nicht konkret\n";
-        }
-        i++;
-      }
-    }
-    return;
-  }
-
+  //Handle C type functions
   if (CMemoryMap.contains(FD->getName())){
     //TODO handle
     return;
   }
+  //Handle strict functions
   if (StrictMap.contains(FD->getName())){
-    llvm::errs() << "STRICT\n";
     HandleFree(Call, C, Strict);
     return;
   }
+  llvm::errs() << FD->getName() << "\n";
+  //Handle dependent functions -> these too will either be resolved to strict or arbitrary cases or do nothing
   if (DependentMap.contains(FD->getName())){
     //TODO 
-    //HandleFree(Call, C, Strict);
-    return;
+    llvm::errs() << "DEPENDENT " << FD->getName() << "\n";
+    auto It = DependentMap.find(FD->getNameAsString());
+    if (It != DependentMap.end()) {
+      DependencyInfo Info = It->second;
+      int i = 0;
+      for (const ParmVarDecl *param : FD->parameters()) {
+        SVal ArgVal =  C.getSVal(Call.getArgExpr(i));
+        const Expr *ArgExpr = Call.getArgExpr(0);
+        if (!ArgExpr)
+          continue;
+        const std::string &Type = DependentMap.lookup(FD->getName()).type;
+        const std::string ArgTypeString = param->getType().getAsString();
+        llvm::errs() << ArgTypeString << "\n";
+        llvm::errs() << Type << "\n";
+        llvm::errs() << (ArgTypeString == Type) << "\n";
+        if (Type == ArgTypeString) {
+          ArgVal = C.getSVal(Call.getArgExpr(i));
+          llvm::errs() << "STILL HERE\n";
+          //if (auto CI = ArgVal.getAs<nonloc::ConcreteInt>()){
+            //llvm::APSInt intValue = CI->getValue();
+            //llvm::errs() << "Konkreter Argumentwert: " << intValue << "\n";
+
+            if (Info.isFreeing(const_cast<CallEvent &>(Call), C, ArgVal)){
+              llvm::errs() << "We ARE FREEING\n";
+              HandleFree(Call, C, Dependent);//STRICT!
+            } else{
+            //}
+          //} else {
+            HandleFree(Call, C, Arbitrary);
+          //llvm::errs() << "Argument ist symbolisch oder nicht konkret\n";
+        }
+        }
+        i++;
+        }
+      }
+    //return;
   }
+  //Handle arbitrary functions
   if (ArbitraryMap.contains(FD->getName())){
-    llvm::errs() << "ARBITRARY\n";
     HandleFree(Call, C, Arbitrary);
     return;
   }
@@ -492,7 +497,6 @@ void PostgresChecker::checkEscapeOnReturn(const ReturnStmt *S,
 
 
 bool PostgresChecker::checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const Stmt * S) const{
-  llvm::errs() << "CHECK USE AFTER FREE FOR " << Sym << "\n";
 
   assert(Sym);
   const RefState *RS = C.getState()->get<RegionStatePG>(Sym);
@@ -514,7 +518,6 @@ bool PostgresChecker::checkUseAfterFree(SymbolRef Sym, CheckerContext &C, const 
 void PostgresChecker::checkLocation(SVal l, bool isLoad, const Stmt *S,
                                   CheckerContext &C) const {
 
-  llvm::errs() << "CHECK LOCATION\n";
   //if (l.getAs<Loc>()){
     //const MemRegion *MR = l.getAsRegion();
     //if (MR){
