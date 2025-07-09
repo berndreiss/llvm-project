@@ -1,5 +1,5 @@
-// RUN: %clang_analyze_cc1 -Wno-strict-prototypes -Wno-error=implicit-int -verify %s \
-// RUN:   -analyzer-checker=postgres.PostgresChecker 
+// RUN: %clang -Wno-strict-prototypes -Wno-error=implicit-int %s \
+// RUN:   --analyze -Xclang -analyzer-checker=postgres.PostgresChecker
 
 #include "Inputs/system-header-simulator.h"
 
@@ -303,7 +303,39 @@ void bitmapset(void){
   bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
   use_bms(a); // expected-warning{{Attempt to use released memory}}
 
+  a = palloc(sizeof(Bitmapset));
+  b = palloc(sizeof(Bitmapset));
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
+  use_bms(a); // expected-warning{{Attempt to use potentially released memory}}
+}
 
+void bitmapset_argument(Bitmapset *b){
+  Bitmapset *a = palloc(sizeof(Bitmapset));
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
+  use_bms(a); // expected-warning{{Attempt to use potentially released memory}}
+}
+
+typedef struct TupleDescData{
+  int tdrefcount;
+}TupleDescData;
+typedef struct TupleDescData *TupleDesc;
+
+void DecrTupleDescRefCount(TupleDesc tupdesc);
+void use_tupledesc(TupleDesc tupdesc);
+
+void tupledesc(void){
+  TupleDesc tupdesc = palloc(sizeof(TupleDescData));
+  tupdesc->tdrefcount = 2;
+  DecrTupleDescRefCount(tupdesc);
+  use_tupledesc(tupdesc);
+  tupdesc->tdrefcount = 1;
+  DecrTupleDescRefCount(tupdesc); // expected-note{{Freeing function: DecrTupleDescRefCount}}
+  use_tupledesc(tupdesc); // expected-warning{{Attempt to use released memory}}
+}
+
+void tupledesc_argument(TupleDesc tupdesc){
+  DecrTupleDescRefCount(tupdesc); // expected-note{{Freeing function: DecrTupleDescRefCount}}
+  use_tupledesc(tupdesc); // expected-warning{{Attempt to use potentially released memory}}
 }
 
 //HANDLE DEPENDENT
