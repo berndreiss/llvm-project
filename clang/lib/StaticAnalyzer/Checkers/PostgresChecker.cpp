@@ -181,6 +181,49 @@ llvm::StringMap<std::string> StrictMap{
   {{"pfree"}, {"void *"}}
 };
 
+SVal getFieldSVal(CheckerContext &C, SVal val, std::string fieldName){
+
+      ProgramStateRef state = C.getState();
+      SValBuilder &SVB = C.getSValBuilder();
+      const MemRegion *baseRegion = val.getAsRegion(); // usually a SymbolicRegion or TypedValueRegion
+
+      if (baseRegion == nullptr)
+        return UndefinedVal();
+      // Usually cast to TypedValueRegion to get the struct type
+      const TypedValueRegion *typedRegion = dyn_cast<TypedValueRegion>(baseRegion);
+      if (!typedRegion) 
+        return UndefinedVal();
+
+      // Get the FieldDecl for tdrefcount
+      QualType structType = typedRegion->getValueType();
+      const RecordType *recordType = structType->getAsStructureType();
+      if (!recordType) 
+        return UndefinedVal();
+
+      const RecordDecl *recordDecl = recordType->getDecl();
+      for (const FieldDecl *field : recordDecl->fields()) {
+        if (field->getNameAsString() == fieldName) {
+          const FieldRegion *fieldRegion = C.getSValBuilder().getRegionManager().getFieldRegion(field, typedRegion);
+          return state->getSVal(fieldRegion);
+    }
+}
+    return UndefinedVal();
+}
+template<typename Comparator>
+Tristate checkConcreteInt(SVal SValToCheck, Comparator comparator){
+          if (std::optional<nonloc::ConcreteInt> intVal = SValToCheck.getAs<nonloc::ConcreteInt>()) {
+            const llvm::APSInt &val = intVal->getValue();
+            llvm::errs() << "CONCRETE VALUE: " << val << "\n";
+            if (comparator(val))
+              return True;
+            else
+              return False;
+          } else {
+            llvm::errs() << "UNDEFINED\n";
+            return Undefined;
+          }
+
+  }
 llvm::StringMap<DependencyInfo> DependentMap{
   {"bms_int_members", DependencyInfo("Bitmapset *", "const Bitmapset *", true, [](CallEvent &Call, CheckerContext &C, SVal val){
       if (val.isUnknownOrUndef()) return Undefined;
@@ -193,54 +236,11 @@ llvm::StringMap<DependencyInfo> DependentMap{
       return False;
     })},
   {"DecrTupleDescRefCount", DependencyInfo("TupleDesc", "TupleDesc", false, [](CallEvent &Call, CheckerContext &C, SVal tupdesc){
-      ProgramStateRef state = C.getState();
-      SValBuilder &SVB = C.getSValBuilder();
-      const MemRegion *baseRegion = tupdesc.getAsRegion(); // usually a SymbolicRegion or TypedValueRegion
-
-      if (baseRegion == nullptr)
-        return Undefined;
-      // Usually cast to TypedValueRegion to get the struct type
-      const TypedValueRegion *typedRegion = dyn_cast<TypedValueRegion>(baseRegion);
-      if (!typedRegion) 
-        return Undefined;
-
-      // Get the FieldDecl for tdrefcount
-      QualType structType = typedRegion->getValueType();
-      const RecordType *recordType = structType->getAsStructureType();
-      if (!recordType) 
-        return Undefined;
-
-      const RecordDecl *recordDecl = recordType->getDecl();
-      for (const FieldDecl *field : recordDecl->fields()) {
-        if (field->getNameAsString() == "tdrefcount") {
-          const FieldRegion *fieldRegion = C.getSValBuilder().getRegionManager().getFieldRegion(field, typedRegion);
-          SVal fieldVal = state->getSVal(fieldRegion);
-          if (std::optional<nonloc::ConcreteInt> intVal = fieldVal.getAs<nonloc::ConcreteInt>()) {
-            const llvm::APSInt &val = intVal->getValue();
-            llvm::errs() << "CONCRETE VALUE: " << val << "\n";
-            if (val == 1)
-              return True;
-            else
-              return False;
-          } else {
-            llvm::errs() << "UNDEFINED\n";
-            return Undefined;
-          }
-        }
-      }
-
-    return Undefined;
+          SVal fieldVal = getFieldSVal(C, tupdesc, "tdrefcount");
+      return checkConcreteInt(fieldVal, [](const llvm::APSInt &a){return a == 1;});
   })},
   {"dump_variables", DependencyInfo("struct arguments *", "int", false, [](CallEvent &Call, CheckerContext &C, SVal mode){
-    if (std::optional<nonloc::ConcreteInt> intVal = mode.getAs<nonloc::ConcreteInt>()) {
-      const llvm::APSInt &val = intVal->getValue();
-      if (val != 0)
-        return True;
-      else
-       return False;
-    }
-
-    return Undefined;
+    return checkConcreteInt(mode, [](const llvm::APSInt &a){return a !=0;});
   })},
 };
   //{"dependent", DependencyInfo("void *", "int", [](void *x){return *static_cast<int*>(x) != 0;})}

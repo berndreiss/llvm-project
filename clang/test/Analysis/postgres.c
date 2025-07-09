@@ -333,9 +333,20 @@ void tupledesc(void){
   use_tupledesc(tupdesc); // expected-warning{{Attempt to use released memory}}
 }
 
-void tupledesc_argument(TupleDesc tupdesc){
-  DecrTupleDescRefCount(tupdesc); // expected-note{{Freeing function: DecrTupleDescRefCount}}
-  use_tupledesc(tupdesc); // expected-warning{{Attempt to use potentially released memory}}
+struct arguments {};
+void dump_variables(struct arguments *list, int mode);
+void use_arguments(struct arguments *list);
+void dump_vars(void){
+  struct arguments *list = palloc(sizeof(struct arguments));
+  dump_variables(list, 0);
+  use_arguments(list);
+  dump_variables(list, 1); // expected-note{{Freeing function: dump_variables}}
+  use_arguments(list); // expected-warning{{Attempt to use released memory}}
+}
+void dump_vars_argument(int mode){
+  struct arguments *list = palloc(sizeof(struct arguments));
+  dump_variables(list, mode); // expected-note{{Freeing function: dump_variables}}
+  use_arguments(list); // expected-warning{{Attempt to use potentially released memory}}
 }
 
 //HANDLE DEPENDENT
