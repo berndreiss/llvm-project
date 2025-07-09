@@ -1,5 +1,5 @@
-// RUN: %clang -Wno-strict-prototypes -Wno-error=implicit-int %s \
-// RUN:   --analyze -Xclang -analyzer-checker=postgres.PostgresChecker
+// RUN: %clang_analyze_cc1 -Wno-strict-prototypes -Wno-error=implicit-int -verify %s \
+// RUN:   -analyzer-checker=postgres.PostgresChecker
 
 #include "Inputs/system-header-simulator.h"
 
@@ -328,7 +328,7 @@ void tupledesc(void){
   tupdesc->tdrefcount = 2;
   DecrTupleDescRefCount(tupdesc);
   use_tupledesc(tupdesc);
-  tupdesc->tdrefcount = 1;
+  tupdesc->tdrefcount = 1;  
   DecrTupleDescRefCount(tupdesc); // expected-note{{Freeing function: DecrTupleDescRefCount}}
   use_tupledesc(tupdesc); // expected-warning{{Attempt to use released memory}}
 }

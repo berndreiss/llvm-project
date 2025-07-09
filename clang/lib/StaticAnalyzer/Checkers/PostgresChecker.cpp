@@ -218,16 +218,27 @@ llvm::StringMap<DependencyInfo> DependentMap{
           if (std::optional<nonloc::ConcreteInt> intVal = fieldVal.getAs<nonloc::ConcreteInt>()) {
             const llvm::APSInt &val = intVal->getValue();
             llvm::errs() << "CONCRETE VALUE: " << val << "\n";
-            if (val == 0)
+            if (val == 1)
               return True;
             else
               return False;
           } else {
-    llvm::errs() << "HERE\n";
+            llvm::errs() << "UNDEFINED\n";
             return Undefined;
           }
         }
       }
+
+    return Undefined;
+  })},
+  {"dump_variables", DependencyInfo("struct arguments *", "int", false, [](CallEvent &Call, CheckerContext &C, SVal mode){
+    if (std::optional<nonloc::ConcreteInt> intVal = mode.getAs<nonloc::ConcreteInt>()) {
+      const llvm::APSInt &val = intVal->getValue();
+      if (val != 0)
+        return True;
+      else
+       return False;
+    }
 
     return Undefined;
   })},
@@ -303,8 +314,38 @@ void PostgresChecker::checkPreCall(const CallEvent &Call, CheckerContext &C) con
   const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(Call.getDecl());
   if (!FD)
     return;
-  if (StrictMap.contains(FD->getNameAsString()) || DependentMap.contains(FD->getNameAsString()) || ArbitraryMap.contains(FD->getNameAsString()) || CMemoryMap.contains(FD->getNameAsString()))
+  if (StrictMap.contains(FD->getNameAsString()) || DependentMap.contains(FD->getNameAsString()) || ArbitraryMap.contains(FD->getNameAsString()) || CMemoryMap.contains(FD->getNameAsString())){
+  //if (C.wasInlined)
+    //return;
+  if (!Call.getOriginExpr())
     return;
+
+  ProgramStateRef State = C.getState();
+
+  //llvm::errs() << FD->getName() << "\n";
+
+  //Handle C type functions
+  if (CMemoryMap.contains(FD->getName())){
+    //TODO handle
+    return;
+  }
+  //Handle strict functions
+  if (StrictMap.contains(FD->getName())){
+    HandleFree(Call, C, Strict);
+    return;
+  }
+  //Handle dependent functions -> these too will either be resolved to strict or arbitrary cases or do nothing
+  if (DependentMap.contains(FD->getName())){
+    HandleFree(Call, C, Dependent);
+    return;
+  }
+  //Handle arbitrary functions
+  if (ArbitraryMap.contains(FD->getName())){
+    HandleFree(Call, C, Arbitrary);
+    return;
+  }
+    return;
+  }
   for (unsigned I = 0, E = Call.getNumArgs(); I != E; ++I) {
     SVal ArgSVal = Call.getArgSVal(I);
     if (isa<Loc>(ArgSVal)) {
@@ -463,38 +504,6 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
 
 void PostgresChecker::checkPostCall(const CallEvent &Call,
                                   CheckerContext &C) const {
-  //if (C.wasInlined)
-    //return;
-  if (!Call.getOriginExpr())
-    return;
-
-  ProgramStateRef State = C.getState();
-
-  const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(Call.getDecl());
-  if (!FD)
-    return;
-
-  //llvm::errs() << FD->getName() << "\n";
-
-  //Handle C type functions
-  if (CMemoryMap.contains(FD->getName())){
-    //TODO handle
-    return;
-  }
-  //Handle strict functions
-  if (StrictMap.contains(FD->getName())){
-    HandleFree(Call, C, Strict);
-    return;
-  }
-  //Handle dependent functions -> these too will either be resolved to strict or arbitrary cases or do nothing
-  if (DependentMap.contains(FD->getName())){
-    HandleFree(Call, C, Dependent);
-  }
-  //Handle arbitrary functions
-  if (ArbitraryMap.contains(FD->getName())){
-    HandleFree(Call, C, Arbitrary);
-    return;
-  }
 }
 
 void PostgresChecker::checkPreStmt(const ReturnStmt *S,
@@ -627,4 +636,3 @@ bool shouldRegisterPostgresChecker(const CheckerManager &mgr) {
 
 } // namespace ento
 } // namespace clang
-
