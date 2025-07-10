@@ -156,29 +156,29 @@ static bool isReleased(SymbolRef Sym, CheckerContext &C);
 
 //This struct contains information about a dependent function.
 struct DependencyInfo{
-  //the type of the freed argument 
-  std::string typeFreed;
-  //the type of the dependence argument 
-  std::string type;
+  //the position of the freed argument 
+  int positionFreed;
+  //the position of the argument the free depends on
+  int positionDependent;
   //the condition for making this function strict
   std::function<Tristate(CallEvent &, CheckerContext &, SVal val)> isFreeing;
   //defines whether the function becomes arbitrary when isFreeing is false
   bool isArbitrary = false;
 
   //default constructor
-  DependencyInfo() : typeFreed(""), type(""), isFreeing([](CallEvent &, CheckerContext &, SVal val) { return False; }) {}
+  DependencyInfo() : positionFreed(0), positionDependent(0), isFreeing([](CallEvent &, CheckerContext &, SVal val) { return False; }) {}
 
-  DependencyInfo(std::string typeFreed, std::string type, bool isArbitrary, std::function<Tristate(CallEvent &, CheckerContext &, SVal val)> f)
-    : typeFreed(typeFreed), type(type), isFreeing(f), isArbitrary(isArbitrary) {}
+  DependencyInfo(int positionFreed, int positionDependent, bool isArbitrary, std::function<Tristate(CallEvent &, CheckerContext &, SVal val)> f)
+    : positionFreed(positionFreed), positionDependent(positionDependent), isFreeing(f), isArbitrary(isArbitrary) {}
 };
 
-llvm::StringMap<std::string> CMemoryMap{
-  {{"free"}, {""}},
-  {{"realloc"}, {""}}, 
+llvm::StringMap<int> CMemoryMap{
+  {{"free"}, {0}},
+  {{"realloc"}, {0}}, 
 };
 
-llvm::StringMap<std::string> StrictMap{
-  {{"pfree"}, {"void *"}}
+llvm::StringMap<int> StrictMap{
+  {{"pfree"}, {0}}
 };
 
 SVal getFieldSVal(CheckerContext &C, SVal val, std::string fieldName){
@@ -213,45 +213,37 @@ template<typename Comparator>
 Tristate checkConcreteInt(SVal SValToCheck, Comparator comparator){
           if (std::optional<nonloc::ConcreteInt> intVal = SValToCheck.getAs<nonloc::ConcreteInt>()) {
             const llvm::APSInt &val = intVal->getValue();
-            llvm::errs() << "CONCRETE VALUE: " << val << "\n";
             if (comparator(val))
               return True;
             else
               return False;
           } else {
-            llvm::errs() << "UNDEFINED\n";
             return Undefined;
           }
 
   }
 llvm::StringMap<DependencyInfo> DependentMap{
-  {"bms_int_members", DependencyInfo("Bitmapset *", "const Bitmapset *", true, [](CallEvent &Call, CheckerContext &C, SVal val){
+  {"bms_int_members", DependencyInfo(0, 1, true, [](CallEvent &Call, CheckerContext &C, SVal val){
       if (val.isUnknownOrUndef()) return Undefined;
       if (val.isZeroConstant()) return True;
       return False;
     })},
-  {"bms_replace_members", DependencyInfo("Bitmapset *", "const Bitmapset *", true, [](CallEvent &Call, CheckerContext &C, SVal val){
+  {"bms_replace_members", DependencyInfo(0, 1, true, [](CallEvent &Call, CheckerContext &C, SVal val){
       if (val.isUnknownOrUndef()) return Undefined;
       if (val.isZeroConstant()) return True;
       return False;
     })},
-  {"DecrTupleDescRefCount", DependencyInfo("TupleDesc", "TupleDesc", false, [](CallEvent &Call, CheckerContext &C, SVal tupdesc){
+  {"DecrTupleDescRefCount", DependencyInfo(0, 0, false, [](CallEvent &Call, CheckerContext &C, SVal tupdesc){
           SVal fieldVal = getFieldSVal(C, tupdesc, "tdrefcount");
       return checkConcreteInt(fieldVal, [](const llvm::APSInt &a){return a == 1;});
   })},
-  {"dump_variables", DependencyInfo("struct arguments *", "int", false, [](CallEvent &Call, CheckerContext &C, SVal mode){
+  {"dump_variables", DependencyInfo(0, 1, false, [](CallEvent &Call, CheckerContext &C, SVal mode){
     return checkConcreteInt(mode, [](const llvm::APSInt &a){return a !=0;});
   })},
 };
-  //{"dependent", DependencyInfo("void *", "int", [](void *x){return *static_cast<int*>(x) != 0;})}
-          //if (auto CI = ArgVal.getAs<nonloc::ConcreteInt>()){
-            //llvm::APSInt intValue = CI->getValue();
-            //llvm::errs() << "Konkreter Argumentwert: " << intValue << "\n";
 
-
-
-llvm::StringMap<std::string> ArbitraryMap{
-  {"add_partial_path", "Path *"}
+llvm::StringMap<int> ArbitraryMap{
+  {"add_partial_path", 1}
 };
 
 void PostgresChecker::HandleUseAfterFree(CheckerContext &C, SourceRange Range,
@@ -381,69 +373,60 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
     return;
 
   SVal ArgVal;
-  for (int i = 0; i < Call.getNumArgs(); i++){
-    const Expr *ArgExpr = Call.getArgExpr(i);
-    if (!ArgExpr)
-      continue;
-    QualType ArgType = ArgExpr->getType();
-    switch (Cat){
-      case (Strict): {
-        auto Type = StrictMap.lookup(FD->getName());
-        if (Type != ArgType.getAsString())
-          continue;
-        ArgVal = C.getSVal(Call.getArgExpr(i));
-        goto break_outer;
-      }
-      //for dependent we have to check two arguments (both can be the same argument):
-      //  - the one the free depends on 
-      //  - the one that is actually freed
-      case (Dependent): {
-        auto It = DependentMap.find(FD->getNameAsString());
-        if (It != DependentMap.end()) {
-          DependencyInfo Info = It->second;
-          const ParmVarDecl *param = FD->getParamDecl(i);
-          SVal DependenceArg =  C.getSVal(Call.getArgExpr(i));
-          const Expr *ArgExpr = Call.getArgExpr(i);
-          if (!ArgExpr)
-            continue;
-          const std::string &Type = DependentMap.lookup(FD->getName()).type;
-          const std::string ArgTypeString = param->getType().getAsString();
-          if (Type == ArgTypeString) {
-            DependenceArg = C.getSVal(Call.getArgExpr(i));
+  switch (Cat){
+    case (Strict): {
+      auto Position = StrictMap.lookup(FD->getName());
+      if (Call.getNumArgs()<=Position)
+        return;
+      const Expr *ArgExpr = Call.getArgExpr(Position);
+      if (!ArgExpr)
+        return;
+      ArgVal = C.getSVal(ArgExpr);
+    }
+    //for dependent we have to check two arguments (both can be the same argument):
+    //  - the one the free depends on 
+    //  - the one that is actually freed
+    case (Dependent): {
+      auto It = DependentMap.find(FD->getNameAsString());
+      if (It != DependentMap.end()) {
+        DependencyInfo Info = It->second;
+        if (Call.getNumArgs() <= Info.positionFreed || Call.getNumArgs() <= Info.positionDependent)
+          return;
+          const Expr *ArgExprDep = Call.getArgExpr(Info.positionDependent);
+          if (!ArgExprDep)
+            return;
+          SVal DependenceArg = C.getSVal(ArgExprDep);
 
-            auto result = Info.isFreeing(const_cast<CallEvent &>(Call), C, DependenceArg);
-            if (result == True){
-            //function is freeing
-                Cat = Strict;
-            } else if (result == False){
-              //fall back option
-              if (Info.isArbitrary)
-                Cat = Arbitrary;
-              //function does not free at all
-              else
-               return;
-          } else{
+          const Expr *ArgExpr = Call.getArgExpr(Info.positionFreed);
+          if (!ArgExpr)
+            return;
+          ArgVal = C.getSVal(ArgExpr);
+          auto result = Info.isFreeing(const_cast<CallEvent &>(Call), C, DependenceArg);
+          if (result == True){
+          //function is freeing
+              Cat = Strict;
+          } else if (result == False){
+            //fall back option
+            if (Info.isArbitrary)
               Cat = Arbitrary;
-            }
-        }
-      }
-        auto TypeFreed = DependentMap.lookup(FD->getName()).typeFreed;
-        auto ParmType = FD->getParamDecl(i)->getType().getAsString();
-        if (TypeFreed != ParmType)
-          continue;
-        ArgVal = C.getSVal(Call.getArgExpr(i));
-        //do not break, because we need to keep iterating for the dependence argument
-      }
-      case (Arbitrary): {
-        auto Type = ArbitraryMap.lookup(FD->getName());
-        if (Type != ArgType.getAsString())
-          continue;
-        ArgVal = C.getSVal(Call.getArgExpr(i));
-        goto break_outer;
+            //function does not free at all
+            else
+             return;
+        } else{
+            Cat = Arbitrary;
+          }
       }
     }
+    case (Arbitrary): {
+      auto Position = ArbitraryMap.lookup(FD->getName());
+      if (Call.getNumArgs()<=Position)
+        return;
+      const Expr *ArgExpr = Call.getArgExpr(Position);
+      if (!ArgExpr)
+        return;
+      ArgVal = C.getSVal(ArgExpr);
+    }
   }
-  break_outer:
 
   // Unknown values could easily be okay
   // Undefined values are handled elsewhere
