@@ -159,17 +159,17 @@ struct DependencyInfo{
   //the position of the freed argument 
   int positionFreed;
   //the position of the argument the free depends on
-  int positionDependent;
+  //int positionDependent;
   //the condition for making this function strict
-  std::function<Tristate(CallEvent &, CheckerContext &, SVal val)> isFreeing;
+  std::function<Tristate(CallEvent &, CheckerContext &)> isFreeing;
   //defines whether the function becomes arbitrary when isFreeing is false
   bool isArbitrary = false;
 
   //default constructor
-  DependencyInfo() : positionFreed(0), positionDependent(0), isFreeing([](CallEvent &, CheckerContext &, SVal val) { return False; }) {}
+  DependencyInfo() : positionFreed(0), isFreeing([](CallEvent &, CheckerContext &) { return False; }) {}
 
-  DependencyInfo(int positionFreed, int positionDependent, bool isArbitrary, std::function<Tristate(CallEvent &, CheckerContext &, SVal val)> f)
-    : positionFreed(positionFreed), positionDependent(positionDependent), isFreeing(f), isArbitrary(isArbitrary) {}
+  DependencyInfo(int positionFreed, bool isArbitrary, std::function<Tristate(CallEvent &, CheckerContext &)> f)
+    : positionFreed(positionFreed), isFreeing(f), isArbitrary(isArbitrary) {}
 };
 
 llvm::StringMap<int> CMemoryMap{
@@ -222,23 +222,80 @@ Tristate checkConcreteInt(SVal SValToCheck, Comparator comparator){
           }
 
   }
+SVal getArgumentAsVal(CallEvent &Call, CheckerContext &C, int position){
+  const Expr *ValExpr = Call.getArgExpr(position);
+  if (!ValExpr)
+    return UndefinedVal();
+  return C.getSVal(ValExpr);
+
+}
+void printSVal(const SVal &sval) {
+    if (auto concreteInt = sval.getAs<nonloc::ConcreteInt>()) {
+        llvm::errs() << "ConcreteInt: " << concreteInt->getValue() << "\n";
+    } else if (auto symbol = sval.getAs<nonloc::SymbolVal>()) {
+        llvm::errs() << "SymbolVal: ";
+        symbol->getSymbol()->dump();
+    } else if (auto loc = sval.getAs<Loc>()) {
+        llvm::errs() << "Location: ";
+        loc->dump();
+    } else if (sval.isUndef()) {
+        llvm::errs() << "Undefined\n";
+    } else if (sval.isUnknown()) {
+        llvm::errs() << "Unknown\n";
+    } else {
+        llvm::errs() << "Other SVal type\n";
+        sval.dump();
+    }
+}
 llvm::StringMap<DependencyInfo> DependentMap{
-  {"bms_int_members", DependencyInfo(0, 1, true, [](CallEvent &Call, CheckerContext &C, SVal val){
+  {"bms_int_members", DependencyInfo(0, true, [](CallEvent &Call, CheckerContext &C){
+      SVal val = getArgumentAsVal(Call, C, 1);
       if (val.isUnknownOrUndef()) return Undefined;
       if (val.isZeroConstant()) return True;
       return False;
     })},
-  {"bms_replace_members", DependencyInfo(0, 1, true, [](CallEvent &Call, CheckerContext &C, SVal val){
+  {"bms_replace_members", DependencyInfo(0, true, [](CallEvent &Call, CheckerContext &C){
+      SVal val = getArgumentAsVal(Call, C, 1);
       if (val.isUnknownOrUndef()) return Undefined;
       if (val.isZeroConstant()) return True;
       return False;
     })},
-  {"DecrTupleDescRefCount", DependencyInfo(0, 0, false, [](CallEvent &Call, CheckerContext &C, SVal tupdesc){
-          SVal fieldVal = getFieldSVal(C, tupdesc, "tdrefcount");
+  {"DecrTupleDescRefCount", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+     SVal tupdesc = getArgumentAsVal(Call, C, 0);
+      SVal fieldVal = getFieldSVal(C, tupdesc, "tdrefcount");
       return checkConcreteInt(fieldVal, [](const llvm::APSInt &a){return a == 1;});
   })},
-  {"dump_variables", DependencyInfo(0, 1, false, [](CallEvent &Call, CheckerContext &C, SVal mode){
+  {"dump_variables", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+    SVal mode = getArgumentAsVal(Call, C, 1);
+    if (mode.isUnknownOrUndef())
+      return Undefined;
     return checkConcreteInt(mode, [](const llvm::APSInt &a){return a !=0;});
+  })},
+  {"ExecForceStoreMinimalTuple", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+    SVal shouldFree = getArgumentAsVal(Call, C, 2);
+    if (shouldFree.isUnknownOrUndef()) return Undefined;
+    Tristate notFreeing = checkConcreteInt(shouldFree, [](const llvm::APSInt &a){return a == 0;});
+    if (notFreeing == True) return False;
+    return Undefined;
+  })},
+  {"ExecForceStoreHeapTuple", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+    SVal shouldFree = getArgumentAsVal(Call, C, 2);
+    if (shouldFree.isUnknownOrUndef()) return Undefined;
+    Tristate notFreeing = checkConcreteInt(shouldFree, [](const llvm::APSInt &a){return a == 0;});
+    if (notFreeing == True) return False;
+    return Undefined;
+  })},
+  {"ExecResetTupleTable", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+    SVal shouldFree = getArgumentAsVal(Call, C, 1);
+    if (shouldFree.isUnknownOrUndef()) return Undefined;
+    return checkConcreteInt(shouldFree, [](const llvm::APSInt &a){return a != 0;});
+  })},
+  {"freeJsonLexContext", DependencyInfo(0, false, [](CallEvent &Call, CheckerContext &C){
+    SVal lexContext = getArgumentAsVal(Call, C, 0);
+    if (lexContext.isUnknownOrUndef()) return Undefined;
+    SVal flags = getFieldSVal(C, lexContext, "flags");
+    if (flags.isUnknownOrUndef()) return Undefined;
+    return checkConcreteInt(flags, [](const llvm::APSInt &a){return a[0];});
   })},
 };
 
@@ -388,33 +445,30 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
     //  - the one that is actually freed
     case (Dependent): {
       auto It = DependentMap.find(FD->getNameAsString());
+      llvm::errs() << FD->getNameAsString() << "\n";
       if (It != DependentMap.end()) {
         DependencyInfo Info = It->second;
-        if (Call.getNumArgs() <= Info.positionFreed || Call.getNumArgs() <= Info.positionDependent)
+        if (Call.getNumArgs() <= Info.positionFreed)
           return;
-          const Expr *ArgExprDep = Call.getArgExpr(Info.positionDependent);
-          if (!ArgExprDep)
-            return;
-          SVal DependenceArg = C.getSVal(ArgExprDep);
-
-          const Expr *ArgExpr = Call.getArgExpr(Info.positionFreed);
-          if (!ArgExpr)
-            return;
-          ArgVal = C.getSVal(ArgExpr);
-          auto result = Info.isFreeing(const_cast<CallEvent &>(Call), C, DependenceArg);
+          auto result = Info.isFreeing(const_cast<CallEvent &>(Call), C);
           if (result == True){
           //function is freeing
               Cat = Strict;
           } else if (result == False){
             //fall back option
-            if (Info.isArbitrary)
+            if (Info.isArbitrary){
               Cat = Arbitrary;
             //function does not free at all
+            }
             else
              return;
         } else{
             Cat = Arbitrary;
           }
+          const Expr *ArgExpr = Call.getArgExpr(Info.positionFreed);
+          if (!ArgExpr)
+            return;
+          ArgVal = C.getSVal(ArgExpr);
       }
     }
     case (Arbitrary): {

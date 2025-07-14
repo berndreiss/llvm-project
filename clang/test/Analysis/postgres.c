@@ -3,7 +3,6 @@
 
 #include "Inputs/system-header-simulator.h"
 
-
 void clang_analyzer_eval(int);
 void clang_analyzer_dump(int);
 void clang_analyzer_dumpExtent(void *);
@@ -348,6 +347,103 @@ void dump_vars_argument(int mode){
   dump_variables(list, mode); // expected-note{{Freeing function: dump_variables}}
   use_arguments(list); // expected-warning{{Attempt to use potentially released memory}}
 }
+
+typedef int bool;
+#define true 1
+#define false 0
+
+typedef struct {}TupleTableSlot;
+typedef struct {}MinimalTupleStruct;
+typedef MinimalTupleStruct * MinimalTuple;
+typedef struct {}HeapTupleStruct;
+typedef HeapTupleStruct * HeapTuple;
+
+void ExecForceStoreMinimalTuple(MinimalTuple mtup, TupleTableSlot *slot, bool shouldFree);
+void ExecForceStoreHeapTuple(HeapTuple mtup, TupleTableSlot *slot, bool shouldFree);
+void useTupleMin(MinimalTuple tup);
+void useTupleHeap(HeapTuple tup);
+
+void exec_force_minimal(void){
+  MinimalTuple tuple = palloc(sizeof(MinimalTuple));
+  TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
+  ExecForceStoreMinimalTuple(tuple, slot, false);
+  useTupleMin(tuple);
+  ExecForceStoreMinimalTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreMinimalTuple}}
+  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory}}
+
+}
+
+void exec_force_minimal_argument(bool shouldFree){
+  MinimalTuple tuple = palloc(sizeof(MinimalTuple));
+  TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
+  ExecForceStoreMinimalTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreMinimalTuple}}
+  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory}}
+
+}
+
+void exec_force_heap(void){
+  HeapTuple tuple = palloc(sizeof(HeapTuple));
+  TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
+  ExecForceStoreHeapTuple(tuple, slot, false);
+  useTupleHeap(tuple);
+  ExecForceStoreHeapTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreHeapTuple}}
+  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory}}
+
+}
+
+void exec_force_heap_argument(bool shouldFree){
+  HeapTuple tuple = palloc(sizeof(HeapTuple));
+  TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
+  ExecForceStoreHeapTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreHeapTuple}}
+  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory}}
+
+}
+
+typedef struct {}List;
+
+void ExecResetTupleTable(List *tupleTable,	bool shouldFree);
+void useList(List *list);
+
+void exec_reset_tt(void){
+  List *list = palloc(sizeof(List));
+  ExecResetTupleTable(list, false);
+  useList(list);
+  ExecResetTupleTable(list, true); // expected-note{{Freeing function: ExecResetTupleTable}}
+  useList(list); // expected-warning{{Attempt to use released memory}}
+}
+
+void exec_reset_tt_argument(bool shouldFree){
+  List *list = palloc(sizeof(List));
+  ExecResetTupleTable(list, shouldFree); // expected-note{{Freeing function: ExecResetTupleTable}}
+  useList(list); // expected-warning{{Attempt to use potentially released memory}}
+}
+
+typedef unsigned int bits32;
+typedef struct {
+  bits32 flags;
+}JsonLexContext;
+void freeJsonLexContext(JsonLexContext *lex);
+void useJsonLexContext(JsonLexContext *lex);
+
+void free_json_lc(void){
+  JsonLexContext *lexContext = palloc(sizeof(JsonLexContext));
+  lexContext->flags = 0;
+  freeJsonLexContext(lexContext);
+  useJsonLexContext(lexContext);
+  lexContext->flags |= (1 << 0);
+  lexContext->flags = (1 << 0);
+  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext}}
+  useJsonLexContext(lexContext); // expected-warning{{Attempt to use released memory}}
+}
+
+void free_json_lc_argument(bits32 flags){
+  JsonLexContext *lexContext = palloc(sizeof(JsonLexContext));
+  lexContext->flags = flags;
+  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext}}
+  useJsonLexContext(lexContext); // expected-warning{{Attempt to use potentially released memory}}
+}
+
+
 
 //HANDLE DEPENDENT
 //
