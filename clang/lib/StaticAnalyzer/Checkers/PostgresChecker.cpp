@@ -297,6 +297,13 @@ llvm::StringMap<DependencyInfo> DependentMap{
     if (flags.isUnknownOrUndef()) return Undefined;
     return checkConcreteInt(flags, [](const llvm::APSInt &a){return a[0];});
   })},
+  {"pgfdw_report_error", DependencyInfo(1, false, [](CallEvent &Call, CheckerContext &C){
+    llvm::errs() << "HERE\n";
+    SVal clear = getArgumentAsVal(Call, C, 3);
+    printSVal(clear);
+    if (clear.isUnknownOrUndef()) return Undefined;
+    return checkConcreteInt(clear, [](const llvm::APSInt &a){return a != 0;});
+  })},
 };
 
 llvm::StringMap<int> ArbitraryMap{
@@ -439,6 +446,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
       if (!ArgExpr)
         return;
       ArgVal = C.getSVal(ArgExpr);
+      break;
     }
     //for dependent we have to check two arguments (both can be the same argument):
     //  - the one the free depends on 
@@ -454,6 +462,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
           if (result == True){
           //function is freeing
               Cat = Strict;
+          llvm::errs() << "TRUE\n";
           } else if (result == False){
             //fall back option
             if (Info.isArbitrary){
@@ -469,6 +478,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
           if (!ArgExpr)
             return;
           ArgVal = C.getSVal(ArgExpr);
+        break;
       }
     }
     case (Arbitrary): {
@@ -479,6 +489,7 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
       if (!ArgExpr)
         return;
       ArgVal = C.getSVal(ArgExpr);
+      break; // Doing this for safety reasons in case enum gets expanded
     }
   }
 
@@ -486,12 +497,16 @@ void PostgresChecker::HandleFree(const CallEvent &Call, CheckerContext &C, Categ
   // Undefined values are handled elsewhere
   if (ArgVal.isUnknownOrUndef())
     return;
-  DefinedSVal location = ArgVal.castAs<DefinedSVal>();
-  if (!isa<Loc>(location))
-    return;
+  //Call.getArgExpr(0)->dump();
+  //Call.getArgExpr(1)->dump();
+  //ArgVal.dump();
+  //DefinedSVal location = ArgVal.castAs<DefinedSVal>();
+  //if (!isa<Loc>(location))
+    //return;
    const MemRegion *R = ArgVal.getAsRegion();
   if (!R)
     return;
+  llvm::errs() << "ADDING TRANSITION\n";
   const Expr *ParentExpr = Call.getOriginExpr();
   if (!ParentExpr)
     return;

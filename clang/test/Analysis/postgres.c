@@ -443,7 +443,27 @@ void free_json_lc_argument(bits32 flags){
   useJsonLexContext(lexContext); // expected-warning{{Attempt to use potentially released memory}}
 }
 
+typedef struct {}PGresult;
+typedef struct {}PGconn;
 
+void pgfdw_report_error(int elevel, PGresult *res, PGconn *conn, bool clear, const char *sql);
 
+void usePGresult(PGresult *res);
+
+void free_pgfdw_report_error(void){
+  PGresult *res = palloc(sizeof(PGresult));
+  PGconn *conn = palloc(sizeof(PGconn));
+  pgfdw_report_error(0, res, conn, false, "PG is great");
+  usePGresult(res); 
+  pgfdw_report_error(0, res, conn, true, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error}}
+  usePGresult(res); // expected-warning{{Attempt to use released memory}}
+}
+
+void free_pgfdw_report_error_argument(bool clear){
+  PGresult *res = palloc(sizeof(PGresult));
+  PGconn *conn = palloc(sizeof(PGconn));
+  pgfdw_report_error(0, res, conn, clear, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error}}
+  usePGresult(res); // expected-warning{{Attempt to use potentially released memory}}
+}
 //HANDLE DEPENDENT
 //
