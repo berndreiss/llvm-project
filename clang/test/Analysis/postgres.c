@@ -47,26 +47,26 @@ char *fooRetPtr(void);
 //PFREE
 void f2(void) {
   int *p = palloc(12);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  pfree(p); // expected-warning{{Attempt to free released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  pfree(p); // expected-warning{{Attempt to free released memory: p}}
 }
 
 void f7(void) {
   char *x = (char*) palloc(4);
-  pfree(x); // expected-note{{Freeing function: pfree}}
+  pfree(x); // expected-note{{Freeing function: pfree (x)}}
   x[0] = 'a'; // expected-warning{{Attempt to use released memory}}
 }
 
 void f8(void) {
   char *x = (char*) palloc(4);
-  pfree(x); // expected-note{{Freeing function: pfree}}
-  char *y = strndup(x, 4); // expected-warning{{Attempt to use released memory}}
+  pfree(x); // expected-note{{Freeing function: pfree (x)}}
+  char *y = strndup(x, 4); // expected-warning{{Attempt to use released memory: x}}
 }
 
 void paramFree(int *p) {
   myfoo(p);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  myfoo(p); // expected-warning {{Attempt to use released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  myfoo(p); // expected-warning {{Attempt to use released memory: p}}
 }
 
 
@@ -79,15 +79,15 @@ void mallocEscapeFree(void) {
 void mallocEscapeFreeFree(void) {
   int *p = palloc(12);
   myfoo(p);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  pfree(p); // expected-warning{{Attempt to free released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  pfree(p); // expected-warning{{Attempt to free released memory: p}}
 }
 
 void mallocEscapeFreeUse(void) {
   int *p = palloc(12);
   myfoo(p);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  myfoo(p); // expected-warning{{Attempt to use released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  myfoo(p); // expected-warning{{Attempt to use released memory: p}}
 }
 
 int *myalloc(void);
@@ -113,8 +113,8 @@ void mallocEscapeFreeCustomAlloc2(void) {
 void mallocBindFreeUse(void) {
   int *x = palloc(12);
   int *y = x;
-  pfree(y); // expected-note{{Freeing function: pfree}}
-  myfoo(x); // expected-warning{{Attempt to use released memory}}
+  pfree(y); // expected-note{{Freeing function: pfree (y)}}
+  myfoo(x); // expected-warning{{Attempt to use released memory: x}}
 }
 
 void mallocFreeMalloc(void) {
@@ -126,13 +126,13 @@ void mallocFreeMalloc(void) {
 
 void mallocFreeUse_params(void) {
   int *p = palloc(12);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  myfoo(p); //expected-warning{{Attempt to use released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  myfoo(p); //expected-warning{{Attempt to use released memory: p}}
 }
 
 void mallocFreeUse_params2(void) {
   int *p = palloc(12);
-  pfree(p); // expected-note{{Freeing function: pfree}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
   myfooint(*p); //expected-warning{{Attempt to use released memory}}
 }
 
@@ -142,14 +142,14 @@ struct StructWithInt {
 
 int *mallocReturnFreed(void) {
   int *p = palloc(12);
-  pfree(p); // expected-note{{Freeing function: pfree}}
-  return p; // expected-warning {{Attempt to use released memory}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
+  return p; // expected-warning {{Attempt to use released memory: p}}
 }
 
 int useAfterFreeStruct(void) {
   struct StructWithInt *px= palloc(sizeof(struct StructWithInt));
   px->g = 5;
-  pfree(px); // expected-note{{Freeing function: pfree}}
+  pfree(px); // expected-note{{Freeing function: pfree (px)}}
   return px->g; // expected-warning {{Attempt to use released memory}}
 }
 
@@ -207,16 +207,16 @@ void testElemRegion3(int **pp) {
 // Make sure we catch errors when we free in a function which does not allocate memory.
 void freeButNoMalloc(int *p, int x){
   if (x) {
-    pfree(p); // expected-note{{Freeing function: pfree}}
+    pfree(p); // expected-note{{Freeing function: pfree (p)}}
     //user forgot a return here.
   }
-  pfree(p); // expected-warning {{Attempt to free released memory}}
+  pfree(p); // expected-warning {{Attempt to free released memory: p}}
 }
 
 void testOffsetZeroDoubleFree(void) {
   int *array = palloc(sizeof(int)*2);
   int *p = &array[0];
-  pfree(p); // expected-note{{Freeing function: pfree}}
+  pfree(p); // expected-note{{Freeing function: pfree (p)}}
   pfree(&array[0]); // expected-warning{{Attempt to free released memory}}
 }
 
@@ -267,29 +267,29 @@ void use_path(Path *path);
 void arbitrary_use(void){
   Path *new_path= palloc(sizeof(Path));
   RelOptInfo *parent_rel= palloc(sizeof(Path));
-  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
-  use_path(new_path); // expected-warning{{Attempt to use potentially released memory}}
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path (new_path)}}
+  use_path(new_path); // expected-warning{{Attempt to use potentially released memory: new_path}}
 }
 
 void arbitrary_double_free(void){
   Path *new_path= palloc(sizeof(Path));
   RelOptInfo *parent_rel= palloc(sizeof(Path));
-  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
-  pfree(new_path); // expected-warning{{Attempt to free potentially released memory}}
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path (new_path)}}
+  pfree(new_path); // expected-warning{{Attempt to free potentially released memory: new_path}}
 }
 
 void arbitrary_potential_double_free(void){
   Path *new_path= palloc(sizeof(Path));
   RelOptInfo *parent_rel= palloc(sizeof(Path));
-  pfree(new_path); // expected-note{{Freeing function: pfree}}
-  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free released memory}}
+  pfree(new_path); // expected-note{{Freeing function: pfree (new_path)}}
+  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free released memory: new_path}}
 }
 
 void arbitrary_possibly_potential_double_free(void){
   Path *new_path= palloc(sizeof(Path));
   RelOptInfo *parent_rel= palloc(sizeof(Path));
-  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path}}
-  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free potentially released memory}}
+  add_partial_path(parent_rel, new_path); // expected-note{{Freeing function: add_partial_path (new_path)}}
+  add_partial_path(parent_rel, new_path); // expected-warning{{Possible attempt to free potentially released memory: new_path}}
 }
 
 typedef struct {} Bitmapset;
@@ -299,37 +299,19 @@ void use_bms(Bitmapset *a);
 void bitmapset(void){
   Bitmapset *a = palloc(sizeof(Bitmapset));
   Bitmapset *b = NULL;
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
-  use_bms(a); // expected-warning{{Attempt to use released memory}}
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  use_bms(a); // expected-warning{{Attempt to use released memory: a}}
 
   a = palloc(sizeof(Bitmapset));
   b = palloc(sizeof(Bitmapset));
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
-  use_bms(a); // expected-warning{{Attempt to use potentially released memory}}
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  use_bms(a); // expected-warning{{Attempt to use potentially released memory: a}}
 }
 
 void bitmapset_argument(Bitmapset *b){
   Bitmapset *a = palloc(sizeof(Bitmapset));
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members}}
-  use_bms(a); // expected-warning{{Attempt to use potentially released memory}}
-}
-
-typedef struct TupleDescData{
-  int tdrefcount;
-}TupleDescData;
-typedef struct TupleDescData *TupleDesc;
-
-void DecrTupleDescRefCount(TupleDesc tupdesc);
-void use_tupledesc(TupleDesc tupdesc);
-
-void tupledesc(void){
-  TupleDesc tupdesc = palloc(sizeof(TupleDescData));
-  tupdesc->tdrefcount = 2;
-  DecrTupleDescRefCount(tupdesc);
-  use_tupledesc(tupdesc);
-  tupdesc->tdrefcount = 1;  
-  DecrTupleDescRefCount(tupdesc); // expected-note{{Freeing function: DecrTupleDescRefCount}}
-  use_tupledesc(tupdesc); // expected-warning{{Attempt to use released memory}}
+  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  use_bms(a); // expected-warning{{Attempt to use potentially released memory: a}}
 }
 
 struct arguments {};
@@ -339,13 +321,13 @@ void dump_vars(void){
   struct arguments *list = palloc(sizeof(struct arguments));
   dump_variables(list, 0);
   use_arguments(list);
-  dump_variables(list, 1); // expected-note{{Freeing function: dump_variables}}
-  use_arguments(list); // expected-warning{{Attempt to use released memory}}
+  dump_variables(list, 1); // expected-note{{Freeing function: dump_variables (list)}}
+  use_arguments(list); // expected-warning{{Attempt to use released memory: list}}
 }
 void dump_vars_argument(int mode){
   struct arguments *list = palloc(sizeof(struct arguments));
-  dump_variables(list, mode); // expected-note{{Freeing function: dump_variables}}
-  use_arguments(list); // expected-warning{{Attempt to use potentially released memory}}
+  dump_variables(list, mode); // expected-note{{Freeing function: dump_variables (list)}}
+  use_arguments(list); // expected-warning{{Attempt to use potentially released memory: list}}
 }
 
 typedef int bool;
@@ -368,16 +350,16 @@ void exec_force_minimal(void){
   TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
   ExecForceStoreMinimalTuple(tuple, slot, false);
   useTupleMin(tuple);
-  ExecForceStoreMinimalTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreMinimalTuple}}
-  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory}}
+  ExecForceStoreMinimalTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreMinimalTuple (tuple)}}
+  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory: tuple}}
 
 }
 
 void exec_force_minimal_argument(bool shouldFree){
   MinimalTuple tuple = palloc(sizeof(MinimalTuple));
   TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
-  ExecForceStoreMinimalTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreMinimalTuple}}
-  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory}}
+  ExecForceStoreMinimalTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreMinimalTuple (tuple)}}
+  useTupleMin(tuple); // expected-warning{{Attempt to use potentially released memory: tuple}}
 
 }
 
@@ -386,16 +368,16 @@ void exec_force_heap(void){
   TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
   ExecForceStoreHeapTuple(tuple, slot, false);
   useTupleHeap(tuple);
-  ExecForceStoreHeapTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreHeapTuple}}
-  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory}}
+  ExecForceStoreHeapTuple(tuple, slot, true); // expected-note{{Freeing function: ExecForceStoreHeapTuple (tuple)}}
+  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory: tuple}}
 
 }
 
 void exec_force_heap_argument(bool shouldFree){
   HeapTuple tuple = palloc(sizeof(HeapTuple));
   TupleTableSlot *slot = palloc(sizeof(TupleTableSlot));
-  ExecForceStoreHeapTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreHeapTuple}}
-  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory}}
+  ExecForceStoreHeapTuple(tuple, slot, shouldFree); // expected-note{{Freeing function: ExecForceStoreHeapTuple (tuple)}}
+  useTupleHeap(tuple); // expected-warning{{Attempt to use potentially released memory: tuple}}
 
 }
 
@@ -408,14 +390,14 @@ void exec_reset_tt(void){
   List *list = palloc(sizeof(List));
   ExecResetTupleTable(list, false);
   useList(list);
-  ExecResetTupleTable(list, true); // expected-note{{Freeing function: ExecResetTupleTable}}
-  useList(list); // expected-warning{{Attempt to use released memory}}
+  ExecResetTupleTable(list, true); // expected-note{{Freeing function: ExecResetTupleTable (list)}}
+  useList(list); // expected-warning{{Attempt to use released memory: list}}
 }
 
 void exec_reset_tt_argument(bool shouldFree){
   List *list = palloc(sizeof(List));
-  ExecResetTupleTable(list, shouldFree); // expected-note{{Freeing function: ExecResetTupleTable}}
-  useList(list); // expected-warning{{Attempt to use potentially released memory}}
+  ExecResetTupleTable(list, shouldFree); // expected-note{{Freeing function: ExecResetTupleTable (list)}}
+  useList(list); // expected-warning{{Attempt to use potentially released memory: list}}
 }
 
 typedef unsigned int bits32;
@@ -432,15 +414,15 @@ void free_json_lc(void){
   useJsonLexContext(lexContext);
   lexContext->flags |= (1 << 0);
   lexContext->flags = (1 << 0);
-  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext}}
-  useJsonLexContext(lexContext); // expected-warning{{Attempt to use released memory}}
+  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext (lexContext)}}
+  useJsonLexContext(lexContext); // expected-warning{{Attempt to use released memory: lexContext}}
 }
 
 void free_json_lc_argument(bits32 flags){
   JsonLexContext *lexContext = palloc(sizeof(JsonLexContext));
   lexContext->flags = flags;
-  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext}}
-  useJsonLexContext(lexContext); // expected-warning{{Attempt to use potentially released memory}}
+  freeJsonLexContext(lexContext); // expected-note{{Freeing function: freeJsonLexContext (lexContext)}}
+  useJsonLexContext(lexContext); // expected-warning{{Attempt to use potentially released memory: lexContext}}
 }
 
 typedef struct {}PGresult;
@@ -455,15 +437,36 @@ void free_pgfdw_report_error(void){
   PGconn *conn = palloc(sizeof(PGconn));
   pgfdw_report_error(0, res, conn, false, "PG is great");
   usePGresult(res); 
-  pgfdw_report_error(0, res, conn, true, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error}}
-  usePGresult(res); // expected-warning{{Attempt to use released memory}}
+  pgfdw_report_error(0, res, conn, true, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error (res)}}
+  usePGresult(res); // expected-warning{{Attempt to use released memory: res}}
 }
 
 void free_pgfdw_report_error_argument(bool clear){
   PGresult *res = palloc(sizeof(PGresult));
   PGconn *conn = palloc(sizeof(PGconn));
-  pgfdw_report_error(0, res, conn, clear, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error}}
-  usePGresult(res); // expected-warning{{Attempt to use potentially released memory}}
+  pgfdw_report_error(0, res, conn, clear, "PG is great"); // expected-note{{Freeing function: pgfdw_report_error (res)}}
+  usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
 }
+
+static const PGresult OOM_result = {};
+
+void PQclear(PGresult *res);
+
+void free_PQclear(void){
+  PGresult *res = palloc(sizeof(PGresult));
+  const PGresult *resOOM = &OOM_result;
+  PQclear(res); // expected-note{{Freeing function: PQclear (res)}}
+  usePGresult(res); // expected-warning{{Attempt to use released memory: res}}
+  PQclear((PGresult *) resOOM);
+  usePGresult((PGresult *) resOOM);
+
+}
+
+void free_argument(PGresult * res){
+  PQclear(res); // expected-note{{Freeing function: PQclear (res)}}
+  usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
+
+}
+
 //HANDLE DEPENDENT
 //
