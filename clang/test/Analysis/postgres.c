@@ -43,6 +43,11 @@ void myfooint(int p);
 char *fooRetPtr(void);
 
 //HANDLE NORMAL FREE
+void normal_free(void){
+  int *p = palloc(12);
+  free(p); // expected-note{{Freeing function: free (p)}}
+  pfree(p); // expected-warning{{Attempt to free released memory: p}}
+}
 //HANDLE NORMAL REALLOC
 //PFREE
 void f2(void) {
