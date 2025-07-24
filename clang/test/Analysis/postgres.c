@@ -304,18 +304,18 @@ void use_bms(Bitmapset *a);
 void bitmapset(void){
   Bitmapset *a = palloc(sizeof(Bitmapset));
   Bitmapset *b = NULL;
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  bms_int_members(a, b); // expected-note{{The return value should probably be reassigned (a)}}
   use_bms(a); // expected-warning{{Attempt to use released memory: a}}
 
   a = palloc(sizeof(Bitmapset));
   b = palloc(sizeof(Bitmapset));
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  bms_int_members(a, b); // expected-note{{The return value should probably be reassigned (a)}}
   use_bms(a); // expected-warning{{Attempt to use potentially released memory: a}}
 }
 
 void bitmapset_argument(Bitmapset *b){
   Bitmapset *a = palloc(sizeof(Bitmapset));
-  bms_int_members(a, b); // expected-note{{Freeing function: bms_int_members (a)}}
+  bms_int_members(a, b); // expected-note{{The return value should probably be reassigned (a)}}
   use_bms(a); // expected-warning{{Attempt to use potentially released memory: a}}
 }
 
@@ -473,5 +473,36 @@ void free_argument(PGresult * res){
 
 }
 
-//HANDLE DEPENDENT
-//
+typedef struct{} BrinTuple;
+typedef unsigned int Size;
+
+BrinTuple *brin_copy_tuple(BrinTuple *tuple, Size len, BrinTuple *dest, Size *destsz);
+void useBrinTuple(BrinTuple * tuple);
+
+void free_brin_copy_tuple(void){
+  BrinTuple *tuple = palloc(sizeof(BrinTuple));
+  BrinTuple *otherTuple = palloc(sizeof(BrinTuple));
+  Size destsz = 5;
+  Size *destszPtr = &destsz;
+  Size len = 3;
+  brin_copy_tuple(tuple, len, otherTuple, destszPtr);
+  useBrinTuple(otherTuple);
+  destsz = 0;
+  brin_copy_tuple(tuple, len, otherTuple, destszPtr); // expected-note{{The return value should probably be reassigned (otherTuple)}}
+  useBrinTuple(otherTuple); // expected-warning{{Attempt to use potentially released memory: otherTuple}}
+  destsz = 0;
+  otherTuple = palloc(sizeof(BrinTuple));
+  destsz = 2;
+  brin_copy_tuple(tuple, len, otherTuple, destszPtr); // expected-note{{The return value should probably be reassigned (otherTuple)}}
+  useBrinTuple(otherTuple); // expected-warning{{Attempt to use potentially released memory: otherTuple}}
+}
+enum COMPAT_MODE{MODE};
+
+bool ecpg_check_PQresult (PGresult *results, int lineno, PGconn *	connection,	enum COMPAT_MODE compat);
+
+void free_ecpg_check(void){
+  PGresult *res = palloc(sizeof(PGresult));
+  PGconn *conn = palloc(sizeof(PGconn));
+  ecpg_check_PQresult(res, 0, conn, MODE); // expected-note{{The return value should probably be checked}}
+  usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
+}
