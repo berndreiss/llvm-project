@@ -470,7 +470,6 @@ void free_PQclear(void){
 void free_argument(PGresult * res){
   PQclear(res); // expected-note{{Freeing function: PQclear (res)}}
   usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
-
 }
 
 typedef struct{} BrinTuple;
@@ -505,4 +504,22 @@ void free_ecpg_check(void){
   PGconn *conn = palloc(sizeof(PGconn));
   ecpg_check_PQresult(res, 0, conn, MODE); // expected-note{{The return value should probably be checked}}
   usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
+}
+
+void PQfinish(PGconn *conn);
+
+// PQfinish should not thorw double-free
+void PGfinish_double(void){
+  PGconn *conn = palloc(sizeof(PQfinish));  
+  PQfinish(conn);
+  PQfinish(conn);
+}
+
+void PQerrorMessage(const PGconn *conn);
+
+// ignore use in PQerrorMessage
+void PQerrorMessage_use(void){
+  PGconn *conn = palloc(sizeof(PGconn));
+  pfree(conn);
+  PQerrorMessage(conn);
 }
