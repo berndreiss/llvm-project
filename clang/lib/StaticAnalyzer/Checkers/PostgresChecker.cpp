@@ -698,17 +698,15 @@ llvm::StringSet<> BooleanSet{
 
 // Set of functions to be ignored for double-free
 llvm::StringSet<> IgnoreDouble{
-  {"PQfinish"},
 };
 
 // Map of functions to be ignored for use-after-free
 llvm::StringMap<unsigned int> IgnoreUse{
-  {"PQerrorMessage", 0},
+  //{"PQerrorMessage", 0},??
 };
 
 // Map of functions to be ignored for use-after-free
 llvm::StringSet<> IgnoreAlltogether{
-  {"exit_nicely"},
 };
 
 // Helper function: retrieves the variable declaration from an expression and 
