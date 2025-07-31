@@ -623,7 +623,6 @@ llvm::StringMap<unsigned int> ArbitraryMap{
   {{"bms_join"}, {0}},
   {{"bms_join"}, {1}},
   {{"bms_replace_members"}, {0}},
-  {{"_bt_doinsert"}, {1}},
   {{"CheckAttributeType"}, {3}},
   {{"core_yyrealloc"}, {0}},
   {{"ecpg_check_PQresult"}, {0}},
