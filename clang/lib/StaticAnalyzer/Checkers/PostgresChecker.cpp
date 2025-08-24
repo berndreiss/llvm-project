@@ -1,4 +1,3 @@
-// Handle	pfree(*pubname);!!!
 //== PostgresChecker.cpp ------------------------------*- C++ -*--==//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -611,7 +610,8 @@ llvm::StringMap<DependencyInfo> DependentMap{
 // (potentially) freed
 llvm::StringMap<unsigned int> ArbitraryMap{
   // C function
-  {{"free"}, {0}},
+  {{"realloc"}, {0}},
+  {{"calloc"}, {0}},
   // PostgreSQL-specific functions
   {{"add_partial_path"}, {1}},
   {{"add_path"}, {1}},
@@ -655,7 +655,6 @@ llvm::StringMap<unsigned int> ArbitraryMap{
   {{"ReorderBufferQueueChange"}, {3}},
   {{"repalloc"}, {0}},
   {{"repalloc0"}, {0}},
-  {{"rewrite_heap_tuple"}, {1}},
   {{"rewrite_heap_tuple"}, {2}},
   {{"sequence_close"}, {0}},
   {{"SPI_repalloc"}, {0}},
