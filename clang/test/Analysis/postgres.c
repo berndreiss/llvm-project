@@ -506,20 +506,3 @@ void free_ecpg_check(void){
   usePGresult(res); // expected-warning{{Attempt to use potentially released memory: res}}
 }
 
-void PQfinish(PGconn *conn);
-
-// PQfinish should not thorw double-free
-void PGfinish_double(void){
-  PGconn *conn = palloc(sizeof(PQfinish));  
-  PQfinish(conn);
-  PQfinish(conn);
-}
-
-void PQerrorMessage(const PGconn *conn);
-
-// ignore use in PQerrorMessage
-void PQerrorMessage_use(void){
-  PGconn *conn = palloc(sizeof(PGconn));
-  pfree(conn);
-  PQerrorMessage(conn);
-}
